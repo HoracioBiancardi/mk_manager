@@ -8,6 +8,22 @@
   <link rel="stylesheet" href="/static/css/style.css">
   <!-- marked deve ser carregado antes do módulo ES (scripts regulares são síncronos) -->
   <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/highlight.min.js"></script>
+  <script>
+    marked.use({
+      renderer: (() => {
+        const r = new marked.Renderer();
+        r.code = (code, lang) => {
+          const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+          const highlighted = hljs.highlight(typeof code === 'object' ? code.text : code, { language }).value;
+          const l = typeof code === 'object' ? (code.lang || lang || 'text') : (lang || 'text');
+          return `<pre><code class="hljs language-${l}">${highlighted}</code></pre>`;
+        };
+        return r;
+      })()
+    });
+  </script>
 </head>
 <body>
 
