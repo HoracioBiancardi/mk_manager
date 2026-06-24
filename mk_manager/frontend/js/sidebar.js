@@ -34,6 +34,21 @@ export function renderSidebar() {
   list.innerHTML = files.map(f => {
     const icon = f.type === 'task' ? '✅' : '📝';
     const active = f.id === st.activeId ? ' active' : '';
+
+    if (st.renamingId === f.id) {
+      return `<div class="file-item${active} renaming" data-id="${f.id}">
+        <div class="file-item-icon">${icon}</div>
+        <div class="file-item-body">
+          <input class="rename-input" id="rename-input"
+            value="${esc(f.title || '')}"
+            onkeydown="onRenameKey(event,'${f.id}')"
+            onblur="onRenameBlur('${f.id}',this.value)"
+            onclick="event.stopPropagation()">
+          <div class="rename-hint">↵ confirmar · Esc cancelar</div>
+        </div>
+      </div>`;
+    }
+
     const taskBar = f.type === 'task' ? `
       <div class="task-bar-wrap">
         <div class="task-bar"><div class="task-bar-fill" style="width:${f.task_total ? Math.round(f.task_done / f.task_total * 100) : 0}%"></div></div>
@@ -52,11 +67,17 @@ export function renderSidebar() {
         ${tagsHtml}${snippetHtml}${taskBar}
       </div>
       <div class="file-item-actions" onclick="event.stopPropagation()">
+        <button class="fact" onclick="startRenameFile('${f.id}','${esc(f.title || '')}')" title="Renomear">✏️</button>
         <button class="fact" onclick="exportFile('${f.id}','${esc(f.title || 'sem-titulo')}')" title="Baixar .md">⬇</button>
         <button class="fact del" onclick="openDeleteModal('${f.id}','${esc(f.title || 'Sem título')}','${esc(f.filename)}')" title="Excluir">🗑</button>
       </div>
     </div>`;
   }).join('');
+
+  // Focus rename input if active
+  if (st.renamingId) {
+    requestAnimationFrame(() => document.getElementById('rename-input')?.focus());
+  }
 }
 
 // ── Árvore de pastas ──────────────────────────────────────────────────────────

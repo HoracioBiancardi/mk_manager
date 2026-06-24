@@ -12,7 +12,8 @@ This satisfies:
 
 from __future__ import annotations
 
-import uuid
+import re
+import unicodedata
 from datetime import datetime, timezone
 
 from mk_manager.domain.entities import FileRecord, SearchResult
@@ -25,21 +26,24 @@ from mk_manager.repositories.base import AbstractFileRepository
 
 
 def _utc_now() -> str:
-    """Return the current UTC instant as an ISO 8601 string.
-
-    Returns:
-        Timezone-aware ISO 8601 timestamp, e.g. ``"2024-01-15T10:30:00+00:00"``.
-    """
     return datetime.now(timezone.utc).isoformat()
 
 
-def _generate_id() -> str:
-    """Generate a short, URL-safe unique identifier.
+def _slugify(text: str) -> str:
+    text = unicodedata.normalize("NFD", text)
+    text = "".join(c for c in text if unicodedata.category(c) != "Mn")
+    text = text.lower().strip()
+    text = re.sub(r"[^a-z0-9]+", "-", text)
+    return text.strip("-")
 
-    Returns:
-        14-character lowercase hexadecimal string derived from a UUID4.
-    """
-    return uuid.uuid4().hex[:14]
+
+def _id_for_title(title: str) -> str:
+    """Return a slug of *title*, or a timestamp-based fallback for empty titles."""
+    slug = _slugify(title)
+    if slug:
+        return slug
+    now = datetime.now(timezone.utc)
+    return f"nota-{now.strftime('%Y%m%d-%H%M%S')}"
 
 
 def _build_snippet(content: str, query: str, radius: int = 120) -> str:
@@ -217,7 +221,7 @@ class FileService:
         """
         now = _utc_now()
         return self._repo.create(
-            file_id=_generate_id(),
+            file_id=_id_for_title(request.title),
             title=request.title,
             file_type=request.type,
             tags=request.tags,

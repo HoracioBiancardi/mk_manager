@@ -20,4 +20,5 @@ export const st = {
   saveTimer: null,
   searchTimer: null,
   pendingDelete: null,
+  renamingId: null,
 };

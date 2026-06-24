@@ -23,7 +23,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from mk_manager.config import get_settings
-from mk_manager.routers import files, search, stats
+from mk_manager.routers import assets, files, search, stats
 
 _FRONTEND_DIR: Path = Path(__file__).parent / "frontend"
 _DS_DIR: Path = Path(__file__).parent.parent / "design-system"
@@ -74,6 +74,7 @@ def create_app() -> FastAPI:
     app.include_router(files.router)
     app.include_router(search.router)
     app.include_router(stats.router)
+    app.include_router(assets.router)
 
     @app.get("/", include_in_schema=False)
     @app.get("/index.html", include_in_schema=False)
@@ -82,6 +83,11 @@ def create_app() -> FastAPI:
 
     app.mount("/static", StaticFiles(directory=str(_FRONTEND_DIR)), name="static")
     app.mount("/ds", StaticFiles(directory=str(_DS_DIR)), name="design-system")
+
+    # Serve uploaded assets; create dir eagerly so StaticFiles doesn't error
+    _assets_dir = get_settings().notes_dir / "assets"
+    _assets_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="assets")
 
     return app
 

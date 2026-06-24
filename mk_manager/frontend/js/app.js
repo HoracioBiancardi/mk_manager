@@ -2,7 +2,7 @@
 
 import { st } from './state.js';
 import { esc, toast, dlBlob, initBackground } from './utils.js';
-import { apiFetch } from './api.js';
+import { apiFetch, apiUpload } from './api.js';
 import {
   renderSidebar, renderFolderTree, renderTagFilterChips,
   getDisplayFiles, toggleFolder, toggleFolderSection,
@@ -13,7 +13,7 @@ import {
   renderTags, renderPreview, setView, applyRatio, initResizer,
   updateFooter, setSaveStatus, updateStatusVis,
   onEditorInput, onTitleChange, onEditorKeydown,
-  onTagKey, removeTag, fmt, ins, insCodeBlock,
+  onTagKey, removeTag, fmt, ins, insCodeBlock, insRaw, insMermaid,
 } from './editor.js';
 import {
   renderKanban, openFromKanban,
@@ -86,16 +86,20 @@ async function saveFile() {
   const folder = document.getElementById('folder-input')?.value.trim() ?? st.activeFolder;
   const status = document.getElementById('status-select')?.value ?? st.activeStatus;
   try {
-    const r = await apiFetch(`/files/${st.activeId}`, {
+    const prevId = st.activeId;
+    const r = await apiFetch(`/files/${prevId}`, {
       method: 'PUT',
       body: JSON.stringify({ title, content, tags: st.activeTags, folder, status }),
     });
     const updated = await r.json();
-    const idx = st.files.findIndex(f => f.id === st.activeId);
+    const idx = st.files.findIndex(f => f.id === prevId);
     if (idx !== -1) st.files[idx] = { ...updated };
+    // The file may have been renamed on disk (ID = slug of title)
+    if (updated.id !== prevId) st.activeId = updated.id;
     st.activeFolder = updated.folder || '';
     st.activeStatus = updated.status || '';
     st.isDirty = false;
+    document.getElementById('filename-label').textContent = updated.filename;
     renderSidebar();
     renderFolderTree();
     renderTagFilterChips();
@@ -239,6 +243,89 @@ async function exportAll() {
   toast(`${st.files.length} arquivo(s) exportado(s).`, 'success');
 }
 
+// ── Export PDF ────────────────────────────────────────────────────────────────
+function printPDF() {
+  if (!st.activeId) { toast('Abra uma nota para exportar.', 'info'); return; }
+  renderPreview();
+  window.print();
+}
+
+// ── Import de assets ──────────────────────────────────────────────────────────
+function triggerAssetImport() {
+  if (!st.activeId) { toast('Abra uma nota antes de importar um arquivo.', 'info'); return; }
+  document.getElementById('asset-file-input').click();
+}
+
+async function onAssetFiles(files) {
+  if (!files.length) return;
+  for (const file of files) {
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const r = await apiUpload(fd);
+      const data = await r.json();
+      const isImage = /\.(png|jpe?g|gif|webp|svg|bmp|ico|avif)$/i.test(file.name);
+      const link = isImage
+        ? `![${file.name}](${data.url})`
+        : `[${file.name}](${data.url})`;
+      insRaw(link);
+      toast(`"${data.filename}" importado.`, 'success');
+    } catch (e) {
+      toast('Erro ao importar: ' + e.message, 'error');
+    }
+  }
+  document.getElementById('asset-file-input').value = '';
+}
+
+// ── Rename inline ─────────────────────────────────────────────────────────────
+function startRenameFile(id, title) {
+  st.renamingId = id;
+  renderSidebar();
+}
+
+async function confirmRenameFile(id, newTitle) {
+  if (st.renamingId !== id) return;
+  st.renamingId = null;
+  const trimmed = newTitle.trim();
+  if (!trimmed) { renderSidebar(); return; }
+  const file = st.files.find(f => f.id === id);
+  if (!file || file.title === trimmed) { renderSidebar(); return; }
+  try {
+    const r = await apiFetch(`/files/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ title: trimmed }),
+    });
+    const updated = await r.json();
+    const idx = st.files.findIndex(f => f.id === id);
+    if (idx !== -1) st.files[idx] = { ...updated };
+    if (st.activeId === id) {
+      document.getElementById('title-input').value = updated.title;
+      document.getElementById('filename-label').textContent = updated.filename;
+      if (updated.id !== id) st.activeId = updated.id;
+    }
+    renderSidebar();
+    toast('Renomeado com sucesso.', 'success');
+  } catch (e) {
+    renderSidebar();
+    toast('Erro ao renomear: ' + e.message, 'error');
+  }
+}
+
+function cancelRename() {
+  st.renamingId = null;
+  renderSidebar();
+}
+
+function onRenameKey(e, id) {
+  e.stopPropagation();
+  if (e.key === 'Enter') { e.preventDefault(); confirmRenameFile(id, e.target.value); }
+  else if (e.key === 'Escape') { e.preventDefault(); cancelRename(); }
+}
+
+function onRenameBlur(id, value) {
+  if (st.renamingId === id) confirmRenameFile(id, value);
+}
+
 // ── Filtros e busca ────────────────────────────────────────────────────────────
 function onSearch(v) {
   st.search = v.trim();
@@ -328,7 +415,13 @@ Object.assign(window, {
   toggleFolder, toggleFolderSection, startNewFolder, cancelNewFolder, onNewFolderKey,
   // editor
   onEditorInput, onTitleChange, onEditorKeydown, onTagKey, removeTag,
-  fmt, ins, insCodeBlock, setView, onMetaChange,
+  fmt, ins, insCodeBlock, insMermaid, setView, onMetaChange,
+  // export
+  printPDF,
+  // import de assets
+  triggerAssetImport, onAssetFiles,
+  // rename inline
+  startRenameFile, confirmRenameFile, cancelRename, onRenameKey, onRenameBlur,
   // kanban
   setMainView, renderKanban, openFromKanban,
   onCardDragStart, onCardDragEnd, onColDragOver, onColDragLeave, onColDrop,

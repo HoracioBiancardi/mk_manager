@@ -19,6 +19,7 @@ relative to the notes root if not present in the frontmatter.
 from __future__ import annotations
 
 import re
+import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -29,6 +30,15 @@ from mk_manager.domain.entities import FileRecord
 from mk_manager.repositories.base import AbstractFileRepository
 
 _FRONTMATTER_RE: re.Pattern[str] = re.compile(r"^---\n(.*?)\n---\n?", re.DOTALL)
+
+
+def _slugify(text: str) -> str:
+    """Convert *text* to a filesystem-safe ASCII slug."""
+    text = unicodedata.normalize("NFD", text)
+    text = "".join(c for c in text if unicodedata.category(c) != "Mn")
+    text = text.lower().strip()
+    text = re.sub(r"[^a-z0-9]+", "-", text)
+    return text.strip("-")
 
 
 def _coerce_str(value: Any) -> str:
@@ -77,6 +87,24 @@ class MarkdownFileRepository(AbstractFileRepository):
                 continue
 
     # ── Private helpers ────────────────────────────────────────────────────
+
+    def _unique_id(self, desired: str, current_id: str | None = None) -> str:
+        """Return *desired* or *desired_N* that doesn't exist in the notes tree.
+
+        *current_id* is excluded from conflict checks so that renaming a file
+        to its own slug (no-op) doesn't append a counter.
+        """
+        candidate = desired
+        counter = 2
+        while True:
+            conflicts = [
+                p for p in self._dir.rglob(f"{candidate}.md")
+                if p.stem != current_id
+            ]
+            if not conflicts:
+                return candidate
+            candidate = f"{desired}_{counter}"
+            counter += 1
 
     def _build_path(self, file_id: str, folder: str = "") -> Path:
         """Return the canonical path for *file_id* inside *folder*."""
@@ -182,9 +210,11 @@ class MarkdownFileRepository(AbstractFileRepository):
         status: str = "",
     ) -> FileRecord:
         folder = folder.strip("/")
-        rel_filename = f"{folder}/{file_id}.md" if folder else f"{file_id}.md"
+        # Use slug of title as ID; fall back to whatever the caller provided
+        actual_id = self._unique_id(file_id)
+        rel_filename = f"{folder}/{actual_id}.md" if folder else f"{actual_id}.md"
         record = FileRecord(
-            id=file_id,
+            id=actual_id,
             title=title,
             type=file_type,  # type: ignore[arg-type]
             tags=tags,
@@ -195,7 +225,7 @@ class MarkdownFileRepository(AbstractFileRepository):
             folder=folder,
             status=status,
         )
-        self._write(self._build_path(file_id, folder), record)
+        self._write(self._build_path(actual_id, folder), record)
         return record
 
     def update(
@@ -212,13 +242,22 @@ class MarkdownFileRepository(AbstractFileRepository):
         old_path = self._require_path(file_id)
         existing = self._parse(old_path)
 
+        new_title = title if title is not None else existing.title
         new_folder = folder.strip("/") if folder is not None else existing.folder
         new_folder = new_folder or ""
-        rel_filename = f"{new_folder}/{file_id}.md" if new_folder else f"{file_id}.md"
+
+        # Re-slug the ID whenever the title's slug doesn't match the current file ID
+        desired = _slugify(new_title) if new_title else ""
+        if desired and desired != file_id:
+            new_id = self._unique_id(desired, file_id)
+        else:
+            new_id = file_id
+
+        rel_filename = f"{new_folder}/{new_id}.md" if new_folder else f"{new_id}.md"
 
         updated = FileRecord(
-            id=existing.id,
-            title=title if title is not None else existing.title,
+            id=new_id,
+            title=new_title,
             type=existing.type,
             tags=tags if tags is not None else existing.tags,
             content=content if content is not None else existing.content,
@@ -229,7 +268,7 @@ class MarkdownFileRepository(AbstractFileRepository):
             status=status if status is not None else existing.status,
         )
 
-        new_path = self._build_path(file_id, new_folder)
+        new_path = self._build_path(new_id, new_folder)
         if new_path != old_path:
             self._write(new_path, updated)
             old_path.unlink()

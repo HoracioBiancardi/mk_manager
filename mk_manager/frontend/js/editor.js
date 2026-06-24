@@ -141,11 +141,10 @@ export function initResizer() {
 
 // ── Preview markdown ──────────────────────────────────────────────────────────
 
-const TASK_RE = /^- \[[ x]\] /gm;
-
 function toggleCheckboxAt(content, idx) {
   let count = 0;
-  return content.replace(/^(- \[)([ x])(\] )/gm, (m, a, ch, b) => {
+  // [ \t]* allows indented subtasks like "  - [ ] subtask"
+  return content.replace(/^([ \t]*- \[)([ x])(\] )/gm, (m, a, ch, b) => {
     if (count++ === idx) return a + (ch === ' ' ? 'x' : ' ') + b;
     return m;
   });
@@ -155,6 +154,14 @@ export function renderPreview() {
   const content = document.getElementById('md-editor').value;
   const el = document.getElementById('md-preview');
   el.innerHTML = marked.parse(content);
+
+  // Render Mermaid diagrams
+  const diagrams = el.querySelectorAll('.mermaid');
+  if (diagrams.length && typeof mermaid !== 'undefined') {
+    diagrams.forEach(d => d.removeAttribute('data-processed'));
+    mermaid.run({ nodes: diagrams }).catch(() => {});
+  }
+
   let cbIdx = 0;
   el.querySelectorAll('input[type="checkbox"]').forEach(cb => {
     cb.removeAttribute('disabled');
@@ -246,6 +253,27 @@ export function ins(text) {
   ta.focus(); onEditorInput();
 }
 
+export function insMermaid() {
+  const ta = document.getElementById('md-editor');
+  const pos = ta.selectionStart;
+  const before = ta.value.slice(0, pos);
+  const prefix = (before && !before.endsWith('\n')) ? '\n' : '';
+  const block = `${prefix}\`\`\`mermaid\nflowchart TD\n    A[Início] --> B[Passo]\n    B --> C{Decisão?}\n    C -->|Sim| D[Resultado]\n    C -->|Não| E[Outro]\n\`\`\``;
+  ta.value = before + block + ta.value.slice(ta.selectionEnd);
+  ta.selectionStart = ta.selectionEnd = before.length + block.length;
+  ta.focus();
+  onEditorInput();
+}
+
+export function insRaw(text) {
+  const ta = document.getElementById('md-editor');
+  const pos = ta.selectionStart;
+  ta.value = ta.value.slice(0, pos) + text + ta.value.slice(ta.selectionEnd);
+  ta.selectionStart = ta.selectionEnd = pos + text.length;
+  ta.focus();
+  onEditorInput();
+}
+
 export function insCodeBlock() {
   const ta = document.getElementById('md-editor');
   const s = ta.selectionStart, e = ta.selectionEnd;
@@ -265,8 +293,8 @@ export function updateFooter() {
   const content = document.getElementById('md-editor')?.value || '';
   const words = content.trim() ? content.trim().split(/\s+/).length : 0;
   document.getElementById('word-count').textContent = `${words} palavra${words !== 1 ? 's' : ''}`;
-  const total = (content.match(/^- \[[ x]\] /gm) || []).length;
-  const done = (content.match(/^- \[x\] /gm) || []).length;
+  const total = (content.match(/^[ \t]*- \[[ x]\] /gm) || []).length;
+  const done  = (content.match(/^[ \t]*- \[x\] /gm) || []).length;
   const file = st.files.find(f => f.id === st.activeId);
   if (file?.type === 'task' && total > 0) {
     document.getElementById('task-stats').textContent = `${done}/${total} tasks (${Math.round(done / total * 100)}%)`;
