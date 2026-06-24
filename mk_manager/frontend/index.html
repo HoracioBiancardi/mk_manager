@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MK Manager</title>
+  <link rel="stylesheet" href="/ds/css/design-system.css">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <!-- marked deve ser carregado antes do módulo ES (scripts regulares são síncronos) -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+<div class="aurora">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+  <div class="orb orb-4"></div>
+</div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="white" stroke-width="1.8" stroke-linejoin="round"/>
+        <path d="M14 2v6h6" stroke="rgba(196,181,253,.8)" stroke-width="1.8" stroke-linejoin="round"/>
+        <path d="M8 13h8M8 17h5" stroke="rgba(255,255,255,.6)" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="brand-text">
+      <span class="brand-name">MK Manager</span>
+      <span class="brand-tagline">Markdown Notes &amp; Tasks</span>
+    </div>
+  </div>
+  <div class="main-nav-tabs">
+    <button class="main-nav-tab active" id="nav-notes" onclick="setMainView('notes')">📝 Notas</button>
+    <button class="main-nav-tab" id="nav-worker" onclick="setMainView('worker')">📋 Worker</button>
+  </div>
+  <div style="display:flex;gap:.5rem;align-items:center">
+    <span style="font-size:.7rem;color:var(--text-muted);opacity:.7">Ctrl+N nota · Ctrl+Shift+N tarefa · Ctrl+S salvar</span>
+    <span id="conn-badge" style="font-size:.7rem;padding:.2rem .55rem;border-radius:5px;background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.2)">● offline</span>
+    <button class="btn btn-ghost btn-sm" onclick="exportAll()">⬇ Exportar tudo</button>
+  </div>
+</div>
+
+<!-- APP LAYOUT -->
+<div class="app-layout" id="app-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar glass">
+    <div class="sidebar-top">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input id="sidebar-search" type="text" placeholder="Buscar em notas e tasks…" oninput="onSearch(this.value)" autocomplete="off">
+      </div>
+      <div class="filter-tabs">
+        <button class="filter-tab active" data-filter="all" onclick="setFilter('all')">Todos</button>
+        <button class="filter-tab" data-filter="note" onclick="setFilter('note')">📝 Notas</button>
+        <button class="filter-tab" data-filter="task" onclick="setFilter('task')">✅ Tasks</button>
+      </div>
+      <div class="sidebar-new">
+        <button class="btn btn-primary btn-sm" onclick="newFile('note')" id="btn-new-note">📝 Nova Nota</button>
+        <button class="btn btn-ghost btn-sm" onclick="newFile('task')" id="btn-new-task">✅ Nova Task</button>
+      </div>
+    </div>
+
+    <!-- Tag filter chips -->
+    <div class="tag-filter-wrap" id="tag-filter-wrap">
+      <div class="tag-filter-label">Filtrar por tag</div>
+      <div class="tag-filter-chips" id="tag-filter-chips"></div>
+    </div>
+
+    <!-- Folder tree -->
+    <div class="folder-section" id="folder-section">
+      <div class="folder-section-header" onclick="toggleFolderSection()">
+        <span class="folder-section-title">📁 Pastas</span>
+        <div style="display:flex;align-items:center;gap:.2rem" onclick="event.stopPropagation()">
+          <button class="folder-add-btn" onclick="startNewFolder()" title="Nova pasta">＋</button>
+          <span id="folder-section-arrow" class="folder-toggle open">▶</span>
+        </div>
+      </div>
+      <div class="folder-section-body" id="folder-tree-body">
+        <div class="new-folder-row" id="new-folder-row">
+          <input id="new-folder-input" class="new-folder-input" type="text"
+            placeholder="pasta/subpasta" autocomplete="off"
+            onkeydown="onNewFolderKey(event)">
+          <button class="new-folder-cancel" onclick="cancelNewFolder()" title="Cancelar">✕</button>
+        </div>
+        <div id="folder-rows"></div>
+      </div>
+    </div>
+
+    <div id="file-list" class="file-list">
+      <div class="list-empty"><div class="ei">⏳</div>Carregando…</div>
+    </div>
+    <div class="sidebar-footer" id="storage-info">–</div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main-panel">
+    <div id="empty-panel" class="empty-panel">
+      <div class="empty-state">
+        <div class="empty-icon">📝</div>
+        <p>Selecione um arquivo ou crie uma nova nota</p>
+        <div class="empty-hint">Arquivos .md salvos em <code style="font-size:.78rem;color:#93c5fd">./notes/</code></div>
+      </div>
+    </div>
+
+    <div id="editor-area" style="display:none">
+      <div class="editor-topbar">
+        <div class="file-meta-bar">
+          <span id="type-badge" class="type-badge note">Note</span>
+          <input id="title-input" type="text" class="title-input" placeholder="Sem título…" oninput="onTitleChange(this.value)" autocomplete="off">
+        </div>
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <span id="filename-label" style="font-size:.68rem;color:var(--text-muted);opacity:.7"></span>
+          <button class="btn btn-ghost btn-sm" onclick="exportCurrent()">⬇ .md</button>
+          <div class="view-toggle">
+            <button class="view-btn" id="btn-edit" onclick="setView('edit')" title="Só editor">✏️</button>
+            <button class="view-btn active" id="btn-split" onclick="setView('split')" title="Split">⬚</button>
+            <button class="view-btn" id="btn-preview" onclick="setView('preview')" title="Só preview">👁</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tags-bar">
+        <span class="tags-label">Tags</span>
+        <div id="tags-container" class="tags-container"></div>
+        <input id="tag-input" type="text" class="tag-input" placeholder="+ adicionar tag" onkeydown="onTagKey(event)" autocomplete="off">
+      </div>
+
+      <div class="meta-row">
+        <span class="meta-label">📁 Pasta</span>
+        <input id="folder-input" type="text" class="meta-input" placeholder="ex: trabalho/projetos" oninput="onMetaChange()" autocomplete="off">
+        <div id="status-row-part" style="display:contents">
+          <span class="meta-sep">|</span>
+          <span class="meta-label">Status</span>
+          <select id="status-select" class="status-select" onchange="onMetaChange()">
+            <option value="">— nenhum —</option>
+            <option value="planning">Planejado</option>
+            <option value="development">Em Desenvolvimento</option>
+            <option value="review">Em Review</option>
+            <option value="done">Concluído</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="editor-body">
+        <div id="editor-pane" class="editor-pane">
+          <div class="md-toolbar">
+            <button class="tool-btn" onclick="fmt('**','**')"><b>B</b></button>
+            <button class="tool-btn" onclick="fmt('*','*')"><i>I</i></button>
+            <button class="tool-btn" onclick="fmt('~~','~~')"><s>S</s></button>
+            <button class="tool-btn" onclick="fmt('`','`')">`c`</button>
+            <span class="tool-sep"></span>
+            <button class="tool-btn" onclick="ins('# ')">H1</button>
+            <button class="tool-btn" onclick="ins('## ')">H2</button>
+            <button class="tool-btn" onclick="ins('### ')">H3</button>
+            <span class="tool-sep"></span>
+            <button class="tool-btn" onclick="ins('- ')">• Lista</button>
+            <button class="tool-btn" onclick="ins('1. ')">1. Lista</button>
+            <button class="tool-btn" onclick="ins('- [ ] ')">☐ Task</button>
+            <button class="tool-btn" onclick="ins('  - [ ] ')" title="Sub-task (indentada)">↳ Sub</button>
+            <span class="tool-sep"></span>
+            <button class="tool-btn" onclick="fmt('[','](url)')">🔗</button>
+            <button class="tool-btn" onclick="ins('> ')">❝</button>
+            <button class="tool-btn" onclick="insCodeBlock()">```</button>
+            <button class="tool-btn" onclick="ins('\n---\n')">—</button>
+          </div>
+          <textarea id="md-editor" class="md-textarea"
+            placeholder="Comece a escrever em Markdown…&#10;&#10;Use - [ ] para criar tasks interativas"
+            oninput="onEditorInput()" onkeydown="onEditorKeydown(event)"></textarea>
+        </div>
+        <div id="resize-handle" class="resize-handle" title="Arraste para redimensionar · Duplo-clique para 50/50">
+          <div class="rh-dots">
+            <div class="rh-dot"></div><div class="rh-dot"></div><div class="rh-dot"></div>
+            <div class="rh-dot"></div><div class="rh-dot"></div>
+          </div>
+        </div>
+        <div id="preview-pane" class="preview-pane">
+          <div id="md-preview" class="md-preview"></div>
+        </div>
+      </div>
+
+      <div class="editor-footer">
+        <span id="word-count">0 palavras</span>
+        <span id="task-stats"></span>
+        <span id="save-status" class="save-status saved">Salvo</span>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- WORKER / KANBAN VIEW -->
+<div id="worker-view" style="display:none">
+  <div class="kanban-board">
+    <div class="kanban-col" id="col-planning" data-status="planning"
+      ondragover="onColDragOver(event)" ondragleave="onColDragLeave(event)" ondrop="onColDrop(event,'planning')">
+      <div class="kanban-col-header">
+        <span class="kanban-col-title" style="color:#fbbf24">📋 Planejado</span>
+        <span class="kanban-col-count" id="cnt-planning">0</span>
+      </div>
+      <div class="kanban-cards" id="cards-planning"></div>
+    </div>
+    <div class="kanban-col" id="col-development" data-status="development"
+      ondragover="onColDragOver(event)" ondragleave="onColDragLeave(event)" ondrop="onColDrop(event,'development')">
+      <div class="kanban-col-header">
+        <span class="kanban-col-title" style="color:#60a5fa">⚙️ Em Desenvolvimento</span>
+        <span class="kanban-col-count" id="cnt-development">0</span>
+      </div>
+      <div class="kanban-cards" id="cards-development"></div>
+    </div>
+    <div class="kanban-col" id="col-review" data-status="review"
+      ondragover="onColDragOver(event)" ondragleave="onColDragLeave(event)" ondrop="onColDrop(event,'review')">
+      <div class="kanban-col-header">
+        <span class="kanban-col-title" style="color:#c084fc">🔍 Em Review</span>
+        <span class="kanban-col-count" id="cnt-review">0</span>
+      </div>
+      <div class="kanban-cards" id="cards-review"></div>
+    </div>
+    <div class="kanban-col" id="col-done" data-status="done"
+      ondragover="onColDragOver(event)" ondragleave="onColDragLeave(event)" ondrop="onColDrop(event,'done')">
+      <div class="kanban-col-header">
+        <span class="kanban-col-title" style="color:#34d399">✅ Concluído</span>
+        <span class="kanban-col-count" id="cnt-done">0</span>
+      </div>
+      <div class="kanban-cards" id="cards-done"></div>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE MODAL -->
+<div class="overlay" id="delete-overlay">
+  <div class="modal glass">
+    <div class="modal-header">
+      <h2>Excluir arquivo</h2>
+      <button class="close-btn" onclick="closeDeleteModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      Deseja excluir <strong id="delete-filename">"Arquivo"</strong>?<br>
+      O arquivo <code id="delete-path" style="font-size:.78rem;color:#93c5fd"></code> será removido do disco.
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeDeleteModal()">Cancelar</button>
+      <button class="btn btn-danger" id="confirm-del-btn" onclick="confirmDelete()">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Módulo principal (deferred automaticamente, marked já está carregado) -->
+<script type="module" src="/static/js/app.js"></script>
+
+</body>
+</html>
