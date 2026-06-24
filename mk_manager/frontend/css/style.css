@@ -640,29 +640,42 @@
     .md-preview table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 1rem;
+      margin: .25rem 0 1.25rem;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid rgba(99,155,255,.15);
+      background: rgba(8,16,40,.4);
+      backdrop-filter: blur(6px);
+    }
+
+    .md-preview thead tr {
+      background: rgba(14,27,62,.8);
+      border-bottom: 1px solid rgba(99,155,255,.2);
     }
 
     .md-preview th {
-      background: var(--glass-alt);
-      padding: .55rem .875rem;
+      padding: .6rem 1rem;
       text-align: left;
       font-size: .7rem;
       font-weight: 600;
-      border: 1px solid var(--border);
-      color: var(--text-muted);
+      color: #93c5fd;
       text-transform: uppercase;
-      letter-spacing: .05em;
+      letter-spacing: .06em;
     }
 
     .md-preview td {
-      padding: .6rem .875rem;
-      border: 1px solid var(--border);
+      padding: .58rem 1rem;
       font-size: .875rem;
+      border-top: 1px solid rgba(99,155,255,.08);
+      color: var(--text);
     }
 
-    .md-preview tr:hover td {
-      background: rgba(59, 130, 246, .04);
+    .md-preview tbody tr:nth-child(even) td {
+      background: rgba(59,130,246,.03);
+    }
+
+    .md-preview tbody tr:hover td {
+      background: rgba(59,130,246,.07);
     }
 
     .md-preview img {

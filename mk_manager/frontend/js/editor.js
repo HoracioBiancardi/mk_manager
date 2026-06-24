@@ -253,6 +253,21 @@ export function ins(text) {
   ta.focus(); onEditorInput();
 }
 
+export function insTable() {
+  const ta = document.getElementById('md-editor');
+  const pos = ta.selectionStart;
+  const before = ta.value.slice(0, pos);
+  const prefix = (before && !before.endsWith('\n')) ? '\n' : '';
+  const block = `${prefix}| Coluna 1 | Coluna 2 | Coluna 3 |\n| --- | --- | --- |\n| dado | dado | dado |\n| dado | dado | dado |`;
+  ta.value = before + block + ta.value.slice(ta.selectionEnd);
+  // Seleciona "Coluna 1" para o usuário poder digitar diretamente
+  const headerStart = before.length + prefix.length + 2;
+  ta.selectionStart = headerStart;
+  ta.selectionEnd = headerStart + 8;
+  ta.focus();
+  onEditorInput();
+}
+
 export function insMermaid() {
   const ta = document.getElementById('md-editor');
   const pos = ta.selectionStart;

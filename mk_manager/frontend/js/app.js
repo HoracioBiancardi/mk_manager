@@ -13,7 +13,7 @@ import {
   renderTags, renderPreview, setView, applyRatio, initResizer,
   updateFooter, setSaveStatus, updateStatusVis,
   onEditorInput, onTitleChange, onEditorKeydown,
-  onTagKey, removeTag, fmt, ins, insCodeBlock, insRaw, insMermaid,
+  onTagKey, removeTag, fmt, ins, insCodeBlock, insRaw, insMermaid, insTable,
 } from './editor.js';
 import {
   renderKanban, openFromKanban,
@@ -415,7 +415,7 @@ Object.assign(window, {
   toggleFolder, toggleFolderSection, startNewFolder, cancelNewFolder, onNewFolderKey,
   // editor
   onEditorInput, onTitleChange, onEditorKeydown, onTagKey, removeTag,
-  fmt, ins, insCodeBlock, insMermaid, setView, onMetaChange,
+  fmt, ins, insCodeBlock, insMermaid, insTable, setView, onMetaChange,
   // export
   printPDF,
   // import de assets
