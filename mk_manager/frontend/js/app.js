@@ -15,11 +15,6 @@ import {
   onEditorInput, onTitleChange, onEditorKeydown,
   onTagKey, removeTag, fmt, ins, insCodeBlock, insRaw, insMermaid, insTable, formatTable,
 } from './editor.js';
-import {
-  renderKanban, openFromKanban,
-  onCardDragStart, onCardDragEnd,
-  onColDragOver, onColDragLeave, onColDrop,
-} from './kanban.js';
 
 // ── Conexão ───────────────────────────────────────────────────────────────────
 async function checkConn() {
@@ -58,7 +53,6 @@ async function loadFiles() {
     renderFolderTree();
     renderTagFilterChips();
     updateStorageInfo();
-    if (st.mainView === 'worker') renderKanban();
   } catch (e) {
     toast('Erro ao carregar arquivos: ' + e.message, 'error');
   }
@@ -471,16 +465,6 @@ async function onNewFolderKey(e) {
   }
 }
 
-// ── Vista principal ────────────────────────────────────────────────────────────
-function setMainView(v) {
-  st.mainView = v;
-  document.getElementById('nav-notes').classList.toggle('active', v === 'notes');
-  document.getElementById('nav-worker').classList.toggle('active', v === 'worker');
-  document.getElementById('app-layout').style.display = v === 'notes' ? 'flex' : 'none';
-  document.getElementById('worker-view').style.display = v === 'worker' ? 'block' : 'none';
-  if (v === 'worker') renderKanban();
-}
-
 // ── Expor ao DOM (necessário para event handlers inline) ──────────────────────
 Object.assign(window, {
   // arquivo
@@ -500,9 +484,6 @@ Object.assign(window, {
   triggerAssetImport, onAssetFiles,
   // rename inline
   startRenameFile, confirmRenameFile, cancelRename, onRenameKey, onRenameBlur,
-  // kanban
-  setMainView, renderKanban, openFromKanban,
-  onCardDragStart, onCardDragEnd, onColDragOver, onColDragLeave, onColDrop,
 });
 
 // ── Init ───────────────────────────────────────────────────────────────────────

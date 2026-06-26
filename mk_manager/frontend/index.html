@@ -77,11 +77,7 @@
       <span class="brand-tagline">Markdown Notes &amp; Tasks</span>
     </div>
   </div>
-  <div class="main-nav-tabs">
-    <button class="main-nav-tab active" id="nav-notes" onclick="setMainView('notes')">📝 Notas</button>
-    <button class="main-nav-tab" id="nav-worker" onclick="setMainView('worker')">📋 Worker</button>
-  </div>
-  <div style="display:flex;gap:.5rem;align-items:center">
+<div style="display:flex;gap:.5rem;align-items:center">
     <span style="font-size:.7rem;color:var(--text-muted);opacity:.7">Ctrl+N nota · Ctrl+Shift+N tarefa · Ctrl+S salvar · Ctrl+B negrito · Ctrl+I itálico · Ctrl+K link</span>
     <span id="conn-badge" style="font-size:.7rem;padding:.2rem .55rem;border-radius:5px;background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.2)">● offline</span>
     <button class="btn btn-ghost btn-sm" onclick="exportAll()">⬇ Exportar tudo</button>
@@ -240,44 +236,6 @@
       </div>
     </div>
   </main>
-</div>
-
-<!-- WORKER / KANBAN VIEW -->
-<div id="worker-view" style="display:none">
-  <div class="kanban-board">
-    <div class="kanban-col" id="col-planning" data-status="planning"
-      ondragover="onColDragOver(event)" ondragleave="onColDragLeave(event)" ondrop="onColDrop(event,'planning')">
-      <div class="kanban-col-header">
-        <span class="kanban-col-title" style="color:#fbbf24">📋 Planejado</span>
-        <span class="kanban-col-count" id="cnt-planning">0</span>
-      </div>
-      <div class="kanban-cards" id="cards-planning"></div>
-    </div>
-    <div class="kanban-col" id="col-development" data-status="development"
-      ondragover="onColDragOver(event)" ondragleave="onColDragLeave(event)" ondrop="onColDrop(event,'development')">
-      <div class="kanban-col-header">
-        <span class="kanban-col-title" style="color:#60a5fa">⚙️ Em Desenvolvimento</span>
-        <span class="kanban-col-count" id="cnt-development">0</span>
-      </div>
-      <div class="kanban-cards" id="cards-development"></div>
-    </div>
-    <div class="kanban-col" id="col-review" data-status="review"
-      ondragover="onColDragOver(event)" ondragleave="onColDragLeave(event)" ondrop="onColDrop(event,'review')">
-      <div class="kanban-col-header">
-        <span class="kanban-col-title" style="color:#c084fc">🔍 Em Review</span>
-        <span class="kanban-col-count" id="cnt-review">0</span>
-      </div>
-      <div class="kanban-cards" id="cards-review"></div>
-    </div>
-    <div class="kanban-col" id="col-done" data-status="done"
-      ondragover="onColDragOver(event)" ondragleave="onColDragLeave(event)" ondrop="onColDrop(event,'done')">
-      <div class="kanban-col-header">
-        <span class="kanban-col-title" style="color:#34d399">✅ Concluído</span>
-        <span class="kanban-col-count" id="cnt-done">0</span>
-      </div>
-      <div class="kanban-cards" id="cards-done"></div>
-    </div>
-  </div>
 </div>
 
 <!-- DELETE MODAL -->

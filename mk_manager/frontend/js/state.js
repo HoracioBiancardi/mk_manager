@@ -12,7 +12,6 @@ export const st = {
   view: 'split',
   isDirty: false,
   splitRatio: 0.5,
-  mainView: 'notes',
   folderFilter: null,
   tagFilter: null,
   folderSectionOpen: true,
