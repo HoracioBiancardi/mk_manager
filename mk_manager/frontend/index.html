@@ -82,7 +82,7 @@
     <button class="main-nav-tab" id="nav-worker" onclick="setMainView('worker')">📋 Worker</button>
   </div>
   <div style="display:flex;gap:.5rem;align-items:center">
-    <span style="font-size:.7rem;color:var(--text-muted);opacity:.7">Ctrl+N nota · Ctrl+Shift+N tarefa · Ctrl+S salvar</span>
+    <span style="font-size:.7rem;color:var(--text-muted);opacity:.7">Ctrl+N nota · Ctrl+Shift+N tarefa · Ctrl+S salvar · Ctrl+B negrito · Ctrl+I itálico · Ctrl+K link</span>
     <span id="conn-badge" style="font-size:.7rem;padding:.2rem .55rem;border-radius:5px;background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.2)">● offline</span>
     <button class="btn btn-ghost btn-sm" onclick="exportAll()">⬇ Exportar tudo</button>
   </div>
@@ -214,6 +214,7 @@
             <button class="tool-btn" onclick="ins('\n---\n')">—</button>
             <span class="tool-sep"></span>
             <button class="tool-btn" onclick="insTable()" title="Inserir tabela">⊞ Tabela</button>
+            <button class="tool-btn" onclick="formatTable()" title="Alinhar colunas da tabela (cursor deve estar dentro da tabela)">⊟ Alinhar</button>
             <button class="tool-btn" onclick="insMermaid()" title="Inserir diagrama Mermaid (flowchart, sequência…)">⬡ Diagrama</button>
             <button class="tool-btn tool-btn-import" onclick="triggerAssetImport()" title="Importar arquivo (imagem, PDF, MD…)">📎 Importar</button>
           </div>
@@ -302,6 +303,9 @@
 <!-- Input oculto para importar assets -->
 <input type="file" id="asset-file-input" style="display:none" multiple
   onchange="onAssetFiles(this.files)">
+
+<!-- html2canvas: captura de código/tabela como PNG (carregado sob demanda via CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
 
 <!-- Módulo principal (deferred automaticamente, marked já está carregado) -->
 <script type="module" src="/static/js/app.js"></script>

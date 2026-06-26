@@ -595,9 +595,40 @@
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 1.125rem;
-      margin-bottom: 1rem;
+      margin-bottom: 0;
       overflow-x: auto;
     }
+
+    /* wrapper externo para pre e table — permite posicionar o botão fora do scroll container */
+    .capture-wrap {
+      position: relative;
+      display: block;
+      margin-bottom: 1rem;
+    }
+    .capture-wrap > pre  { margin-bottom: 0; }
+    .capture-wrap > table { width: 100%; margin: 0; }
+
+    .capture-wrap:hover  .capture-btn,
+    .mermaid-wrap:hover  .capture-btn { opacity: 1; }
+
+    .capture-btn {
+      position: absolute;
+      top: .45rem; right: .45rem;
+      background: rgba(0,0,0,.6);
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 5px;
+      padding: .2rem .5rem;
+      cursor: pointer;
+      font-size: .68rem;
+      color: rgba(255,255,255,.9);
+      opacity: 0;
+      transition: opacity .15s, background .15s;
+      z-index: 20;
+      line-height: 1.4;
+      white-space: nowrap;
+      pointer-events: auto;
+    }
+    .capture-btn:hover { background: rgba(59,130,246,.55); opacity: 1; }
 
     .md-preview pre code {
       background: none;
@@ -949,6 +980,7 @@
       overflow-x: auto;
       display: flex;
       justify-content: center;
+      position: relative;
     }
     .mermaid-wrap svg {
       max-width: 100%;
@@ -960,12 +992,12 @@
     @page { size: A4 portrait; margin: 2cm; }
 
     @media print {
-      /* Oculta toda a UI */
+      /* Oculta UI e botões de captura */
       .topbar, .sidebar, .aurora, #bg-canvas, .toast,
       #worker-view, #empty-panel,
       .editor-topbar, .tags-bar, .meta-row, .editor-footer,
       #editor-pane, #resize-handle,
-      .md-toolbar { display: none !important; }
+      .md-toolbar, .capture-btn { display: none !important; }
 
       body, html { background: white !important; }
       canvas { display: none !important; }
@@ -989,10 +1021,11 @@
         color: #111 !important;
         line-height: 1.8;
       }
-      .md-preview h1 { color: #111 !important; border-color: #ccc !important; font-size: 1.6rem; }
-      .md-preview h2 { color: #222 !important; font-size: 1.25rem; }
-      .md-preview h3 { color: #333 !important; }
-      .md-preview p, .md-preview li { color: #222 !important; }
+      .md-preview h1 { color: #111 !important; border-color: #ccc !important; font-size: 1.6rem; break-after: avoid; page-break-after: avoid; }
+      .md-preview h2 { color: #222 !important; font-size: 1.25rem; break-after: avoid; page-break-after: avoid; }
+      .md-preview h3 { color: #333 !important; break-after: avoid; page-break-after: avoid; }
+      .md-preview h4, .md-preview h5, .md-preview h6 { break-after: avoid; page-break-after: avoid; }
+      .md-preview p, .md-preview li { color: #222 !important; orphans: 3; widows: 3; }
       .md-preview a   { color: #1a56db !important; }
       .md-preview strong { color: #111 !important; }
       .md-preview em     { color: #444 !important; }
@@ -1004,12 +1037,23 @@
       .md-preview pre {
         background: #f5f5f5 !important;
         border-color: #ddd !important;
+        overflow: visible !important;
+        white-space: pre-wrap !important;
+        word-break: break-word !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
       }
       .md-preview pre code { color: #222 !important; background: transparent !important; }
       .md-preview blockquote {
         border-color: #888 !important;
         background: #f9f9f9 !important;
         color: #555 !important;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      .md-preview table {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
       }
       .md-preview th { background: #f0f0f0 !important; color: #333 !important; border-color: #ccc !important; }
       .md-preview td { border-color: #ccc !important; color: #222 !important; }
@@ -1017,6 +1061,14 @@
       .mermaid-wrap {
         background: white !important;
         border-color: #ddd !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        display: block !important;
+      }
+      .capture-wrap {
+        display: block !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
       }
     }
 
