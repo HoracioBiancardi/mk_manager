@@ -245,13 +245,11 @@ export function renderPreview() {
 // ── Captura de elementos como imagem ─────────────────────────────────────────
 
 function addCaptureButtons(container) {
-  // Blocos de código: envolve em .capture-wrap (fora do overflow-x:auto do pre)
-  container.querySelectorAll("pre").forEach((pre, i) => {
+  // Blocos de código: envolve em .capture-wrap e adiciona botão de copiar
+  container.querySelectorAll("pre").forEach((pre) => {
     if (pre.closest(".capture-wrap")) return;
     const wrap = wrapInCapture(pre);
-    wrap.appendChild(
-      makeCaptureBtn(() => captureWithCanvas(pre, `codigo-${i + 1}.png`)),
-    );
+    wrap.appendChild(makeCopyBtn(pre));
   });
 
   // Tabelas
@@ -289,6 +287,22 @@ function makeCaptureBtn(onClick) {
   btn.addEventListener("click", (e) => {
     e.stopPropagation();
     onClick();
+  });
+  return btn;
+}
+
+function makeCopyBtn(pre) {
+  const btn = document.createElement("button");
+  btn.className = "capture-btn";
+  btn.title = "Copiar código";
+  btn.textContent = "⎘ Copiar";
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const text = pre.querySelector("code")?.innerText ?? pre.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = "✓ Copiado!";
+      setTimeout(() => { btn.textContent = "⎘ Copiar"; }, 1500);
+    }).catch(() => toast("Erro ao copiar.", "error"));
   });
   return btn;
 }
@@ -409,11 +423,7 @@ async function captureMermaid(wrap, filename) {
   }
 }
 
-// Código e tabelas: usa html2canvas (CDN) se disponível, senão SVG foreignObject
-async function captureCode(el, filename) {
-  await captureWithCanvas(el, filename);
-}
-
+// Tabelas: usa html2canvas (CDN) se disponível, senão SVG foreignObject
 async function captureWithCanvas(el, filename) {
   if (typeof html2canvas !== "undefined") {
     try {
