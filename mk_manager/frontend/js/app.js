@@ -4,9 +4,8 @@ import { st } from './state.js';
 import { esc, toast, dlBlob, initBackground } from './utils.js';
 import { apiFetch, apiUpload } from './api.js';
 import {
-  renderSidebar, renderFolderTree, renderTagFilterChips,
-  getDisplayFiles, toggleFolder, toggleFolderSection,
-  startNewFolder, cancelNewFolder, folderPathsFromFiles,
+  renderSidebar, renderTree, renderSearchResults, renderTagsPanel,
+  getDisplayFiles, toggleTreeFolder, toggleFolder, folderPathsFromFiles,
 } from './sidebar.js';
 import {
   setSaveCallback, showEditorPanel, showEmptyPanel,
@@ -22,9 +21,7 @@ async function checkConn() {
     await fetch('/api/stats');
     const b = document.getElementById('conn-badge');
     b.textContent = '● online';
-    b.style.background = 'rgba(16,185,129,.15)';
-    b.style.color = '#34d399';
-    b.style.borderColor = 'rgba(16,185,129,.2)';
+    b.classList.add('online');
     return true;
   } catch {
     return false;
@@ -45,13 +42,10 @@ async function updateStorageInfo() {
 // ── Carregar arquivos ──────────────────────────────────────────────────────────
 async function loadFiles() {
   try {
-    const url = st.filter === 'all' ? '/files' : `/files?type=${st.filter}`;
-    const r = await apiFetch(url);
+    const r = await apiFetch('/files');
     st.files = await r.json();
     st.searchResults = null;
     renderSidebar();
-    renderFolderTree();
-    renderTagFilterChips();
     updateStorageInfo();
   } catch (e) {
     toast('Erro ao carregar arquivos: ' + e.message, 'error');
@@ -59,14 +53,14 @@ async function loadFiles() {
 }
 
 async function doSearch(q) {
-  if (!q && !st.tagFilter) { st.searchResults = null; renderSidebar(); return; }
+  if (!q && !st.tagFilter) { st.searchResults = null; renderSearchResults(); return; }
   try {
     let url = `/search?q=${encodeURIComponent(q || '')}`;
     if (st.filter !== 'all') url += `&type=${st.filter}`;
     if (st.tagFilter) url += `&tag=${encodeURIComponent(st.tagFilter)}`;
     const r = await apiFetch(url);
     st.searchResults = await r.json();
-    renderSidebar();
+    renderSearchResults();
   } catch (e) {
     toast('Erro na busca: ' + e.message, 'error');
   }
@@ -95,8 +89,6 @@ async function saveFile() {
     st.isDirty = false;
     document.getElementById('filename-label').textContent = updated.filename;
     renderSidebar();
-    renderFolderTree();
-    renderTagFilterChips();
     setSaveStatus('saved');
     updateStorageInfo();
   } catch (e) {
@@ -148,7 +140,7 @@ async function newFile(type) {
     document.getElementById(`btn-new-${type}`).disabled = true;
     const r = await apiFetch('/files', {
       method: 'POST',
-      body: JSON.stringify({ title: '', type, tags: [], content: defaultContent, folder: st.folderFilter || '', status: '' }),
+      body: JSON.stringify({ title: '', type, tags: [], content: defaultContent, folder: '', status: '' }),
     });
     const file = await r.json();
     st.files.unshift(file);
@@ -410,19 +402,38 @@ function setFilter(f) {
   document.querySelectorAll('.filter-tab').forEach(b =>
     b.classList.toggle('active', b.dataset.filter === f)
   );
-  if (st.search) doSearch(st.search); else loadFiles();
-}
-
-function setFolderFilter(path) {
-  st.folderFilter = path;
-  renderFolderTree();
-  if (st.search || st.tagFilter) doSearch(st.search); else renderSidebar();
+  if (st.search || st.tagFilter) doSearch(st.search); else renderSearchResults();
 }
 
 function setTagFilter(tag) {
   st.tagFilter = st.tagFilter === tag ? null : tag;
-  renderTagFilterChips();
-  doSearch(st.search);
+  renderTagsPanel();
+}
+
+function switchPanel(panel) {
+  const sidebarEl = document.querySelector('.sidebar-panel');
+
+  if (st.activePanel === panel && st.sidebarOpen) {
+    st.sidebarOpen = false;
+    sidebarEl.classList.add('collapsed');
+    document.querySelectorAll('.activity-btn').forEach(b => b.classList.remove('active'));
+    return;
+  }
+
+  st.activePanel = panel;
+  st.sidebarOpen = true;
+  sidebarEl.classList.remove('collapsed');
+  document.querySelectorAll('.activity-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.panel === panel)
+  );
+  document.querySelectorAll('.panel-content').forEach(p =>
+    p.classList.toggle('active', p.id === 'panel-' + panel)
+  );
+  if (panel === 'search') {
+    setTimeout(() => document.getElementById('sidebar-search')?.focus(), 60);
+    renderSearchResults();
+  }
+  if (panel === 'tags') renderTagsPanel();
 }
 
 function onMetaChange() {
@@ -433,37 +444,6 @@ function onMetaChange() {
   st.saveTimer = setTimeout(saveFile, 800);
 }
 
-// ── Nova pasta ─────────────────────────────────────────────────────────────────
-async function onNewFolderKey(e) {
-  if (e.key === 'Escape') { cancelNewFolder(); return; }
-  if (e.key !== 'Enter') return;
-  const raw = e.target.value.trim().replace(/\/+/g, '/').replace(/^\/|\/$/g, '');
-  if (!raw) { cancelNewFolder(); return; }
-  cancelNewFolder();
-  try {
-    document.getElementById('btn-new-note').disabled = true;
-    const r = await apiFetch('/files', {
-      method: 'POST',
-      body: JSON.stringify({ title: '', type: 'note', tags: [], content: '', folder: raw, status: '' }),
-    });
-    const file = await r.json();
-    st.files.unshift(file);
-    st.folderFilter = raw;
-    st.expandedFolders.add(raw.split('/').slice(0, -1).join('/') || raw);
-    renderSidebar();
-    renderFolderTree();
-    renderTagFilterChips();
-    await openFile(file.id);
-    setTimeout(() => {
-      document.getElementById('title-input').focus();
-      toast(`Pasta "${raw}" criada`, 'success');
-    }, 80);
-  } catch (err) {
-    toast('Erro ao criar pasta: ' + err.message, 'error');
-  } finally {
-    document.getElementById('btn-new-note').disabled = false;
-  }
-}
 
 // ── Expor ao DOM (necessário para event handlers inline) ──────────────────────
 Object.assign(window, {
@@ -472,9 +452,9 @@ Object.assign(window, {
   // modal
   openDeleteModal, closeDeleteModal, confirmDelete,
   // busca e filtros
-  onSearch, setFilter, setFolderFilter, setTagFilter,
-  // pastas
-  toggleFolder, toggleFolderSection, startNewFolder, cancelNewFolder, onNewFolderKey,
+  onSearch, setFilter, setTagFilter,
+  // navegação de painéis
+  switchPanel, toggleTreeFolder, toggleFolder,
   // editor
   onEditorInput, onTitleChange, onEditorKeydown, onTagKey, removeTag,
   fmt, ins, insCodeBlock, insMermaid, insTable, formatTable, setView, onMetaChange,
@@ -500,6 +480,8 @@ document.addEventListener('keydown', e => {
 });
 
 (async () => {
+  const treeEl = document.getElementById('file-tree');
+  if (treeEl) treeEl.innerHTML = '<div class="tree-empty">⏳ Carregando…</div>';
   initBackground();
   initResizer();
   const ok = await checkConn();
