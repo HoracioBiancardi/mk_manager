@@ -155,7 +155,8 @@ export function renderSearchResults() {
   const el = document.getElementById('search-results');
   if (!el) return;
 
-  const files = st.searchResults !== null ? st.searchResults : (st.search ? [] : st.files);
+  const baseFiles = st.filter === 'all' ? st.files : st.files.filter(f => f.type === st.filter);
+  const files = st.searchResults !== null ? st.searchResults : (st.search ? [] : baseFiles);
   const hasSearch = !!st.search;
 
   if (!files.length) {
