@@ -12,6 +12,7 @@ from typing import Literal
 
 _TASK_ANY_RE: re.Pattern[str] = re.compile(r"^- \[[ x]\] ", re.MULTILINE)
 _TASK_DONE_RE: re.Pattern[str] = re.compile(r"^- \[x\] ", re.MULTILINE)
+_TASK_ITEM_RE: re.Pattern[str] = re.compile(r"^(\s*)- \[([ x])\] (.+)", re.MULTILINE)
 
 
 @dataclass
@@ -69,6 +70,18 @@ class FileRecord:
             Number of lines matching the ``- [x]`` pattern.
         """
         return len(_TASK_DONE_RE.findall(self.content))
+
+    @property
+    def task_items(self) -> list[dict]:
+        """Parse all checklist items from content.
+
+        Returns:
+            List of dicts with ``text``, ``done``, and ``indent`` keys.
+        """
+        return [
+            {"text": m.group(3), "done": m.group(2) == "x", "indent": len(m.group(1))}
+            for m in _TASK_ITEM_RE.finditer(self.content)
+        ]
 
 
 @dataclass

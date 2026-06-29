@@ -204,7 +204,7 @@ export function initResizer() {
 
 function toggleCheckboxAt(content, idx) {
   let count = 0;
-  return content.replace(/^([ \t]*- \[)([ x])(\] )/gm, (m, a, ch, b) => {
+  return content.replace(/^([ \t]*[-*+] \[)([ xX])(\] )/gm, (m, a, ch, b) => {
     if (count++ === idx) return a + (ch === " " ? "x" : " ") + b;
     return m;
   });
@@ -218,7 +218,9 @@ export function renderPreview() {
   const diagrams = el.querySelectorAll(".mermaid");
   if (diagrams.length && typeof mermaid !== "undefined") {
     diagrams.forEach((d) => d.removeAttribute("data-processed"));
-    mermaid.run({ nodes: diagrams }).catch(() => {});
+    mermaid.run({ nodes: diagrams }).then(() => {
+      el.querySelectorAll(".mermaid-wrap svg").forEach(fixMermaidLabels);
+    }).catch(() => {});
   }
 
   let cbIdx = 0;
@@ -240,6 +242,53 @@ export function renderPreview() {
 
   // Aguarda mermaid renderizar antes de injetar botões
   setTimeout(() => addCaptureButtons(el), 300);
+}
+
+// ── Corrige labels cortados em nós mermaid ────────────────────────────────────
+
+function fixMermaidLabels(svgEl) {
+  svgEl.querySelectorAll("foreignObject").forEach(fo => {
+    const foW = parseFloat(fo.getAttribute("width") || 0);
+    const foH = parseFloat(fo.getAttribute("height") || 0);
+    if (foW < 10 || foH < 10) return; // pula edge-labels (w=0 ou h=0)
+
+    const div = fo.querySelector("div");
+    if (!div) return;
+
+    // Permite quebra de linha dentro do nó
+    div.style.whiteSpace = "normal";
+    div.style.wordBreak = "break-word";
+
+    // Mede altura real após quebra
+    const realH = div.scrollHeight;
+    const delta = realH - foH;
+    if (delta < 2) return;
+
+    // Expande foreignObject
+    fo.setAttribute("height", realH);
+
+    // Expande rect de fundo (padding de 7.5px em cada lado)
+    const labelG = fo.closest("g.label, g[class~='label']");
+    if (!labelG) return;
+    const nodeG = labelG.parentElement;
+    if (!nodeG) return;
+
+    const rect = nodeG.querySelector(":scope > rect");
+    if (rect) {
+      rect.setAttribute("height", parseFloat(rect.getAttribute("height") || 0) + delta);
+      rect.setAttribute("y", parseFloat(rect.getAttribute("y") || 0) - delta / 2);
+    }
+
+    // Reposiciona g.label verticalmente para manter centralizado
+    const tf = labelG.getAttribute("transform") || "";
+    const m = tf.match(/translate\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/);
+    if (m) {
+      labelG.setAttribute(
+        "transform",
+        `translate(${m[1]}, ${(parseFloat(m[2]) - delta / 2).toFixed(4)})`
+      );
+    }
+  });
 }
 
 // ── Captura de elementos como imagem ─────────────────────────────────────────
@@ -267,6 +316,9 @@ function addCaptureButtons(container) {
       wrap.appendChild(
         makeCaptureBtn(() => captureMermaid(wrap, `diagrama-${i + 1}.png`)),
       );
+    }
+    if (!wrap.querySelector(".mermaid-modal-btn")) {
+      wrap.appendChild(makeExpandBtn(() => openMermaidModal(wrap)));
     }
   });
 }
@@ -307,6 +359,153 @@ function makeCopyBtn(pre) {
   return btn;
 }
 
+function makeExpandBtn(onClick) {
+  const btn = document.createElement("button");
+  btn.className = "mermaid-modal-btn";
+  btn.title = "Visualizar diagrama em tela cheia";
+  btn.textContent = "⛶ Zoom";
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    onClick();
+  });
+  return btn;
+}
+
+function openMermaidModal(wrap) {
+  const svgEl = wrap.querySelector("svg");
+  if (!svgEl) { toast("Diagrama ainda não renderizado.", "info"); return; }
+
+  // getBBox() no grupo raiz captura o conteúdo real, inclusive labels que excedem as dims declaradas do SVG
+  const rootG = svgEl.querySelector(":scope > g");
+  let cX = 0, cY = 0, cW, cH;
+  const pad = 20;
+  try {
+    const bb = (rootG || svgEl).getBBox();
+    cX = bb.x - pad; cY = bb.y - pad;
+    cW = bb.width + pad * 2; cH = bb.height + pad * 2;
+  } catch {
+    const r = svgEl.getBoundingClientRect();
+    cW = r.width; cH = r.height;
+  }
+
+  const svgClone = svgEl.cloneNode(true);
+  svgClone.setAttribute("width", Math.ceil(cW));
+  svgClone.setAttribute("height", Math.ceil(cH));
+  svgClone.setAttribute("viewBox", `${cX} ${cY} ${cW} ${cH}`);
+  svgClone.removeAttribute("style");
+
+  const overlay = document.createElement("div");
+  overlay.className = "mermaid-zoom-overlay";
+
+  const modal = document.createElement("div");
+  modal.className = "mermaid-zoom-modal";
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "mermaid-zoom-toolbar";
+
+  const label = document.createElement("span");
+  label.className = "mermaid-zoom-label";
+  label.textContent = "Diagrama";
+
+  const levelEl = document.createElement("span");
+  levelEl.className = "mermaid-zoom-level";
+  levelEl.textContent = "100%";
+
+  const mkBtn = (text, title) => {
+    const b = document.createElement("button");
+    b.className = "mermaid-zoom-ctrl";
+    b.textContent = text;
+    b.title = title;
+    return b;
+  };
+
+  const btnOut   = mkBtn("−", "Reduzir (scroll para baixo)");
+  const btnIn    = mkBtn("+", "Ampliar (scroll para cima)");
+  const btnFit   = mkBtn("↺ Ajustar", "Ajustar ao tamanho do painel");
+  const btnClose = mkBtn("✕ Fechar", "Fechar (Esc)");
+  btnClose.style.marginLeft = "auto";
+
+  toolbar.append(label, levelEl, btnOut, btnIn, btnFit, btnClose);
+
+  const content = document.createElement("div");
+  content.className = "mermaid-zoom-content";
+  const inner = document.createElement("div");
+  inner.className = "mermaid-zoom-inner";
+  inner.appendChild(svgClone);
+  content.appendChild(inner);
+
+  modal.appendChild(toolbar);
+  modal.appendChild(content);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  let scale = 1, panX = 0, panY = 0;
+
+  function applyTransform() {
+    inner.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+    levelEl.textContent = `${Math.round(scale * 100)}%`;
+  }
+
+  function clampScale(s) { return Math.min(8, Math.max(0.1, s)); }
+
+  function fitToContent() {
+    scale = 1; panX = 0; panY = 0;
+    applyTransform();
+    const cr = content.getBoundingClientRect();
+    const ratioX = (cr.width - 64) / cW;
+    const ratioY = (cr.height - 64) / cH;
+    scale = clampScale(Math.min(ratioX, ratioY, 1));
+    applyTransform();
+  }
+
+  requestAnimationFrame(fitToContent);
+
+  btnIn.addEventListener("click",  () => { scale = clampScale(scale * 1.25); applyTransform(); });
+  btnOut.addEventListener("click", () => { scale = clampScale(scale / 1.25); applyTransform(); });
+  btnFit.addEventListener("click", fitToContent);
+
+  content.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    scale = clampScale(scale * (e.deltaY > 0 ? 0.88 : 1.14));
+    applyTransform();
+  }, { passive: false });
+
+  let dragging = false, sx = 0, sy = 0;
+
+  const onMouseDown = (e) => {
+    if (e.button !== 0) return;
+    dragging = true;
+    sx = e.clientX - panX;
+    sy = e.clientY - panY;
+    content.style.cursor = "grabbing";
+  };
+  const onMouseMove = (e) => {
+    if (!dragging) return;
+    panX = e.clientX - sx;
+    panY = e.clientY - sy;
+    applyTransform();
+  };
+  const onMouseUp = () => {
+    dragging = false;
+    content.style.cursor = "grab";
+  };
+
+  content.addEventListener("mousedown", onMouseDown);
+  document.addEventListener("mousemove", onMouseMove);
+  document.addEventListener("mouseup", onMouseUp);
+
+  function close() {
+    document.removeEventListener("mousemove", onMouseMove);
+    document.removeEventListener("mouseup", onMouseUp);
+    document.removeEventListener("keydown", onKey);
+    overlay.remove();
+  }
+
+  const onKey = (e) => { if (e.key === "Escape") close(); };
+  btnClose.addEventListener("click", close);
+  document.addEventListener("keydown", onKey);
+}
+
 // Mermaid: extrai o SVG e converte para PNG via canvas
 async function captureMermaid(wrap, filename) {
   const svgEl = wrap.querySelector("svg");
@@ -320,33 +519,37 @@ async function captureMermaid(wrap, filename) {
   const screenW = screenRect.width || 800;
   const screenH = screenRect.height || 600;
 
-  // ViewBox original do mermaid (sistema de coordenadas do SVG)
-  let vbX = 0,
-    vbY = 0,
-    vbW = screenW,
-    vbH = screenH;
+  // ViewBox declarado pelo mermaid (base para calcular a escala px/unidade)
+  let origVbX = 0, origVbY = 0, origVbW = screenW, origVbH = screenH;
   const origVB = svgEl.getAttribute("viewBox");
   if (origVB) {
-    const p = origVB
-      .trim()
-      .split(/[\s,]+/)
-      .map(Number);
-    if (p.length === 4) {
-      [vbX, vbY, vbW, vbH] = p;
-    }
+    const p = origVB.trim().split(/[\s,]+/).map(Number);
+    if (p.length === 4) { [origVbX, origVbY, origVbW, origVbH] = p; }
   }
 
-  // Fator de escala: unidades SVG → pixels CSS
-  const scaleX = screenW / (vbW || screenW);
-  const scaleY = screenH / (vbH || screenH);
+  // getBBox captura conteúdo real, inclusive labels expandidos pelo fixMermaidLabels
+  let vbX = origVbX, vbY = origVbY, vbW = origVbW, vbH = origVbH;
+  try {
+    const rootG = svgEl.querySelector(":scope > g");
+    const bb = (rootG || svgEl).getBBox();
+    vbX = Math.min(origVbX, bb.x);
+    vbY = Math.min(origVbY, bb.y);
+    vbW = Math.max(origVbX + origVbW, bb.x + bb.width) - vbX;
+    vbH = Math.max(origVbY + origVbH, bb.y + bb.height) - vbY;
+  } catch { /* mantém origVb */ }
 
-  // Padding em pixels CSS → converte para unidades SVG para expandir o viewBox
-  const padPx = 120; // margem generosa para cobrir overflow de fontes/setas
-  const padVbX = padPx / scaleX;
-  const padVbY = padPx / scaleY;
+  // Fator de escala: unidades SVG → pixels CSS (baseado no viewBox original)
+  const scaleX = screenW / (origVbW || screenW);
+  const scaleY = screenH / (origVbH || screenH);
 
-  const exportW = Math.ceil(screenW + padPx * 2);
-  const exportH = Math.ceil(screenH + padPx * 2);
+  // Padding em pixels CSS (X maior para cobrir expansão de 50% de width dos nós sem wrapping)
+  const padPxX = 100;
+  const padPxY = 32;
+  const padVbX = padPxX / scaleX;
+  const padVbY = padPxY / scaleY;
+
+  const exportW = Math.ceil(vbW * scaleX + padPxX * 2);
+  const exportH = Math.ceil(vbH * scaleY + padPxY * 2);
 
   const clone = svgEl.cloneNode(true);
   clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
@@ -354,7 +557,7 @@ async function captureMermaid(wrap, filename) {
   clone.setAttribute("height", exportH);
   clone.setAttribute(
     "viewBox",
-    `${vbX - padVbX} ${vbY - padVbY} ${vbW + padVbX * 2} ${vbH + padVbY * 2}`,
+    `${vbX - padVbX} ${vbY - padVbY} ${vbW + padVbX * 2} ${vbH + padVbY * 2}`
   );
   clone.removeAttribute("style");
   clone.setAttribute("overflow", "visible");
@@ -382,20 +585,28 @@ async function captureMermaid(wrap, filename) {
     const y = parseFloat(fo.getAttribute("y") || 0);
     const w = parseFloat(fo.getAttribute("width") || 100);
     const h = parseFloat(fo.getAttribute("height") || 30);
-    // Expande 50% em cada lado MANTENDO o centro — desloca x/y negativamente
-    // para compensar, assim o texto continua centrado no nó.
-    const ew = w * 0.5;
-    const eh = h * -0.15;
-    fo.setAttribute("x", x - ew);
-    fo.setAttribute("y", y - eh);
-    fo.setAttribute("width", w + ew * 2);
-    fo.setAttribute("height", h + eh * 2);
     fo.setAttribute("overflow", "visible");
     const inner = fo.querySelector("div, [xmlns]");
     if (inner) {
+      const wasWrapped = inner.style.whiteSpace === "normal";
+      if (wasWrapped) {
+        // Nó com wrapping: width explícito força quebra de linha no canvas export
+        // (inline-block sem width explícito não respeita largura do foreignObject no SVG→canvas)
+        inner.style.width = w + "px";
+        inner.style.textAlign = "center";
+        inner.style.overflow = "visible";
+      } else {
+        // Nó original mermaid (nowrap): expande largura para capturar overflow de fonte
+        const ew = w * 0.5;
+        const eh = h * -0.15;
+        fo.setAttribute("x", x - ew);
+        fo.setAttribute("y", y - eh);
+        fo.setAttribute("width", w + ew * 2);
+        fo.setAttribute("height", h + eh * 2);
+        inner.style.whiteSpace = "nowrap";
+        inner.style.overflow = "visible";
+      }
       inner.style.maxWidth = "none";
-      inner.style.whiteSpace = "nowrap";
-      inner.style.overflow = "visible";
     }
   });
   clone.querySelectorAll("[style]").forEach((el) => {
@@ -518,8 +729,10 @@ function downloadCanvas(canvas, filename) {
     const a = document.createElement("a");
     a.href = url;
     a.download = filename;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 100);
   }, "image/png");
 }
 

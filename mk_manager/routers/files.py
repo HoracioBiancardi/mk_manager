@@ -47,6 +47,7 @@ def _to_meta(record: FileRecord) -> FileMetaResponse:
         word_count=record.word_count,
         task_total=record.task_total,
         task_done=record.task_done,
+        task_items=record.task_items,
         folder=record.folder,
         status=record.status,
     )

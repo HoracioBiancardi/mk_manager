@@ -25,6 +25,7 @@
 .conn-badge.online {
   background: rgba(63,185,80,.1); color: var(--success);
   border-color: rgba(63,185,80,.2);
+  animation: onlinePulse 2.5s ease-in-out infinite;
 }
 
 /* ── Utilitários inline substituídos ────────────────────────────── */
@@ -53,9 +54,9 @@
   display: flex; align-items: center; justify-content: center;
   background: none; border: none; cursor: pointer;
   color: var(--text-subtle); border-radius: var(--r-md);
-  transition: color .12s, background .12s; position: relative;
+  transition: color .12s, background .12s, transform .15s var(--ease-spring); position: relative;
 }
-.activity-btn:hover { color: var(--text-muted); background: rgba(255,255,255,.04); }
+.activity-btn:hover { color: var(--text-muted); background: rgba(255,255,255,.04); transform: scale(1.12); }
 .activity-btn.active { color: var(--text); }
 .activity-btn.active::before {
   content: ''; position: absolute; left: 0; top: 22%; height: 56%;
@@ -77,7 +78,10 @@
   display: none; flex: 1; min-height: 0;
   flex-direction: column; overflow: hidden;
 }
-.panel-content.active { display: flex; }
+.panel-content.active {
+  display: flex;
+  animation: fadeUp .18s ease both;
+}
 .panel-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: .625rem .75rem .375rem; flex-shrink: 0;
@@ -97,6 +101,7 @@
   font-size: .8rem; color: var(--text-muted); font-weight: 500;
   transition: background .1s, color .1s; user-select: none;
   white-space: nowrap; overflow: hidden;
+  animation: fadeSlideIn .15s ease both;
 }
 .tree-folder-row:hover { background: var(--surface-hover); color: var(--text); }
 
@@ -107,6 +112,7 @@
   transition: background .1s, color .1s;
   border-left: 2px solid transparent;
   white-space: nowrap; overflow: hidden;
+  animation: fadeSlideIn .15s ease both;
 }
 .tree-item:hover { background: var(--surface-hover); color: var(--text); }
 .tree-item.active {
@@ -143,6 +149,167 @@
 }
 .tree-item:hover .tree-item-actions { opacity: 1; }
 
+.tree-item[draggable="true"] { cursor: grab; }
+.tree-item[draggable="true"]:active { cursor: grabbing; }
+.tree-folder-row.drag-over {
+  background: rgba(16,185,129,.15); color: var(--text);
+  outline: 1px dashed var(--primary); outline-offset: -2px;
+}
+.tree-folder-new {
+  display: flex; align-items: center; gap: .3rem;
+  padding: .28rem .5rem; font-size: .8rem; color: var(--text-muted);
+}
+
+/* ── Tooltip de preview no explorador ───────────────────────────── */
+.tree-tooltip {
+  position: fixed; z-index: 1000; max-width: 260px;
+  background: var(--surface-alt); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: .625rem .75rem;
+  font-size: .78rem; color: var(--text);
+  box-shadow: 0 4px 20px rgba(0,0,0,.3);
+  pointer-events: none;
+  opacity: 0; transform: translateX(-6px);
+  transition: opacity .12s, transform .12s;
+}
+.tree-tooltip.visible { opacity: 1; transform: translateX(0); }
+.tip-title {
+  font-weight: 600; color: var(--text);
+  margin-bottom: .3rem; line-height: 1.4; word-break: break-word;
+}
+.tip-stat {
+  display: block; color: var(--text-muted);
+  font-size: .71rem; margin-top: .18rem;
+}
+.tip-tags { margin-top: .3rem; display: flex; flex-wrap: wrap; gap: .15rem; }
+.tip-tag {
+  display: inline-block; background: var(--primary-dim); color: var(--primary);
+  font-size: .63rem; padding: .05rem .32rem; border-radius: 10px;
+}
+
+/* ── Kanban ──────────────────────────────────────────────────────── */
+.kanban-pane {
+  flex: 1; display: none; min-height: 0; overflow: hidden;
+  background: var(--bg);
+}
+.kanban-board {
+  flex: 1; display: flex; gap: .75rem;
+  align-items: stretch;
+  overflow-x: auto; overflow-y: hidden;
+  padding: .75rem; min-height: 0;
+}
+.kanban-board::after {
+  content: ''; display: block;
+  flex: 0 0 .01px; /* força o padding-right a aparecer no scroll */
+}
+.kanban-col {
+  flex: 0 0 220px; min-width: 220px; display: flex; flex-direction: column;
+  background: var(--surface-alt); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: .625rem;
+  overflow: hidden; min-height: 0;
+  transition: border-color .12s, background .12s;
+}
+.kanban-col.drag-over {
+  background: rgba(16,185,129,.1); border-color: var(--primary);
+}
+.kanban-col-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .05rem .1rem .5rem; flex-shrink: 0;
+  font-size: .67rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .07em;
+}
+.kanban-col-header-actions {
+  display: flex; align-items: center; gap: .25rem;
+}
+.kanban-col-count {
+  background: var(--surface); color: var(--text-subtle);
+  font-size: .6rem; padding: .04rem .3rem; border-radius: 8px;
+}
+.kanban-col-del {
+  display: none; background: none; border: none;
+  color: var(--text-subtle); font-size: .85rem; line-height: 1;
+  cursor: pointer; padding: 0 .1rem; border-radius: var(--r-sm);
+  transition: color .1s, background .1s;
+}
+.kanban-col-del:hover { color: var(--danger, #f87171); background: rgba(248,113,113,.1); }
+.kanban-col:hover .kanban-col-del { display: block; }
+.kanban-cards {
+  display: flex; flex-direction: column; gap: .35rem;
+  overflow-y: auto; flex: 1; min-height: 0;
+}
+.kanban-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: .5rem .625rem;
+  cursor: grab; font-size: .8rem;
+  transition: border-color .12s, box-shadow .12s, opacity .12s;
+  user-select: none;
+}
+.kanban-card:hover { border-color: var(--primary); box-shadow: var(--glow-ring); }
+.kanban-card.dragging { opacity: .4; cursor: grabbing; }
+.kanban-card-title { color: var(--text); font-weight: 500; line-height: 1.4; word-break: break-word; }
+.kanban-card-tags { margin-top: .35rem; display: flex; flex-wrap: wrap; gap: .15rem; }
+.kanban-tag {
+  font-size: .59rem; padding: .04rem .28rem;
+  background: var(--primary-dim); color: var(--primary); border-radius: 8px;
+}
+.kanban-progress {
+  margin-top: .375rem; height: 3px;
+  background: var(--surface-hover); border-radius: 4px; overflow: hidden;
+}
+.kanban-progress-bar { height: 100%; background: var(--primary); border-radius: 4px; transition: width .2s; }
+.kanban-progress-label { font-size: .63rem; color: var(--text-subtle); margin-top: .15rem; display: block; }
+.kanban-add-col-btn {
+  flex: 0 0 auto; align-self: flex-start;
+  background: transparent; border: 1px dashed var(--border);
+  border-radius: var(--r-md); color: var(--text-muted);
+  font-size: .77rem; padding: .45rem .75rem; cursor: pointer;
+  transition: border-color .12s, color .12s, background .12s;
+  font-family: inherit; white-space: nowrap;
+}
+.kanban-add-col-btn:hover { border-color: var(--primary); color: var(--text); background: var(--primary-dim); }
+.kanban-add-col-form { flex: 0 0 180px; align-self: flex-start; }
+.kanban-add-col-input {
+  width: 100%; background: var(--surface-alt);
+  border: 1px solid var(--primary); border-radius: var(--r-md);
+  color: var(--text); font-size: .8rem; padding: .45rem .75rem;
+  outline: none; font-family: inherit; box-shadow: var(--glow-ring);
+}
+
+/* ── Kanban card task preview ────────────────────────────────────── */
+.kanban-card-tasks { margin-top: .45rem; display: flex; flex-direction: column; gap: .2rem; }
+.kanban-card-task-item {
+  display: flex; align-items: flex-start; gap: .35rem;
+  font-size: .7rem; color: var(--text-subtle); line-height: 1.35;
+}
+.kanban-card-task-item.done { text-decoration: line-through; opacity: .55; }
+.kanban-card-task-icon { flex-shrink: 0; font-size: .65rem; margin-top: .05rem; color: var(--primary); }
+.kanban-card-task-item.done .kanban-card-task-icon { color: var(--text-subtle); }
+.kanban-card-task-more { font-size: .65rem; color: var(--text-muted); margin-top: .15rem; }
+
+/* ── Kanban quick-edit modal ─────────────────────────────────────── */
+.kanban-qedit-modal { max-width: 480px; width: 100%; max-height: 80vh; display: flex; flex-direction: column; }
+.kanban-qedit-title-text { font-size: 1rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kanban-qedit-body { overflow-y: auto; flex: 1; padding: .5rem 0; }
+.kanban-qedit-empty { color: var(--text-subtle); font-size: .85rem; padding: .5rem 0; }
+.kanban-qedit-item {
+  display: flex; align-items: flex-start; gap: .6rem;
+  padding: .4rem .25rem; border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer; border-radius: var(--r-sm); transition: background .1s;
+}
+.kanban-qedit-item:last-child { border-bottom: none; }
+.kanban-qedit-item:hover { background: var(--surface-hover); }
+.kanban-qedit-item input[type=checkbox] {
+  flex-shrink: 0; margin-top: .2rem; cursor: pointer;
+  accent-color: var(--primary); width: .95rem; height: .95rem;
+}
+.kanban-qedit-item label {
+  cursor: pointer; color: var(--text); font-size: .85rem; line-height: 1.45;
+  flex: 1;
+}
+.kanban-qedit-item.done label { text-decoration: line-through; color: var(--text-subtle); }
+.kanban-qedit-item.indent-1 { padding-left: 1.25rem; }
+.kanban-qedit-item.indent-2 { padding-left: 2.25rem; }
+.kanban-qedit-saving { font-size: .72rem; color: var(--text-muted); padding: .25rem 0; text-align: right; }
+
 /* ── Search panel ────────────────────────────────────────────────── */
 .panel-search-box { padding: 0 .625rem .375rem; flex-shrink: 0; }
 .panel-search-input {
@@ -166,6 +333,7 @@
   padding: .5rem .75rem; cursor: pointer;
   border-left: 2px solid transparent;
   transition: background .1s, border-color .1s;
+  animation: fadeUp .15s ease both;
 }
 .search-result:hover { background: var(--surface-hover); }
 .search-result.active {
@@ -194,9 +362,9 @@
   font-size: .68rem; padding: .22rem .55rem; border-radius: 20px;
   background: var(--surface-alt); color: var(--text-muted);
   border: 1px solid var(--border); cursor: pointer;
-  transition: all .12s; font-family: inherit;
+  transition: all .15s var(--ease-spring); font-family: inherit;
 }
-.tag-browse-chip:hover { background: var(--surface-hover); color: var(--text); }
+.tag-browse-chip:hover { background: var(--surface-hover); color: var(--text); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,.3); }
 .tag-browse-chip.active {
   background: var(--primary-dim); color: var(--primary);
   border-color: rgba(16,185,129,.3);
@@ -229,11 +397,12 @@
   display: flex; align-items: flex-start; gap: .5rem;
   padding: .6rem .5rem .6rem .625rem;
   border-radius: var(--r-md); cursor: pointer;
-  transition: background .12s, border-color .12s;
+  transition: background .12s, border-color .12s, transform .15s var(--ease-spring), box-shadow .15s;
   border-left: 2px solid transparent;
   margin-bottom: .1rem;
+  animation: fadeUp .16s ease both;
 }
-.file-item:hover { background: var(--surface-hover); }
+.file-item:hover { background: var(--surface-hover); transform: translateX(2px); }
 .file-item.active {
   background: var(--primary-dim);
   border-left-color: var(--primary);
@@ -558,7 +727,8 @@
 .capture-wrap > table { width: 100%; margin: 0; }
 
 .capture-wrap:hover .capture-btn,
-.mermaid-wrap:hover  .capture-btn { opacity: 1; }
+.mermaid-wrap:hover  .capture-btn,
+.mermaid-wrap:hover  .mermaid-modal-btn { opacity: 1; }
 
 .capture-btn {
   position: absolute; top: .4rem; right: .4rem;
@@ -569,6 +739,77 @@
   z-index: 20; line-height: 1.4; white-space: nowrap; pointer-events: auto;
 }
 .capture-btn:hover { background: var(--primary-dim); color: var(--primary); opacity: 1; }
+
+.mermaid-modal-btn {
+  position: absolute; top: .4rem; right: 5rem;
+  background: var(--surface-alt); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: .18rem .5rem;
+  cursor: pointer; font-size: .67rem; color: var(--text-muted);
+  opacity: 0; transition: opacity .15s, background .15s, color .15s;
+  z-index: 20; line-height: 1.4; white-space: nowrap; pointer-events: auto;
+}
+.mermaid-modal-btn:hover { background: var(--primary-dim); color: var(--primary); opacity: 1; }
+
+/* ── Modal de zoom do Mermaid ─────────────────────────────────────── */
+.mermaid-zoom-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.72);
+  z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeInOverlay .15s ease;
+}
+@keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
+
+.mermaid-zoom-modal {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  width: 90vw; height: 85vh;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0,0,0,.45);
+  animation: slideUpModal .15s ease;
+}
+@keyframes slideUpModal { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.mermaid-zoom-toolbar {
+  display: flex; align-items: center; gap: .35rem;
+  padding: .4rem .65rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-alt);
+  flex-shrink: 0;
+}
+.mermaid-zoom-label {
+  font-size: .72rem; color: var(--text-muted);
+  margin-right: .25rem;
+}
+.mermaid-zoom-level {
+  font-size: .72rem; color: var(--text-subtle);
+  min-width: 2.8rem; text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.mermaid-zoom-ctrl {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: .18rem .5rem;
+  cursor: pointer; font-size: .72rem; color: var(--text);
+  line-height: 1.4; white-space: nowrap;
+  transition: background .12s, color .12s;
+}
+.mermaid-zoom-ctrl:hover { background: var(--primary-dim); color: var(--primary); border-color: var(--primary); }
+
+.mermaid-zoom-content {
+  flex: 1; overflow: hidden;
+  cursor: grab; position: relative;
+  display: flex; align-items: center; justify-content: center;
+  user-select: none; background: var(--bg);
+}
+.mermaid-zoom-content:active { cursor: grabbing; }
+
+.mermaid-zoom-inner {
+  transform-origin: center center;
+  will-change: transform;
+}
 
 .md-preview pre code { background: none; border: none; padding: 0; color: var(--text); }
 .md-preview pre code.hljs { background: transparent; padding: 0; }
@@ -668,7 +909,8 @@
   border-radius: var(--r-md); padding: 1.25rem 1rem;
   overflow-x: auto; display: flex; justify-content: center; position: relative;
 }
-.mermaid-wrap svg { max-width: 100%; height: auto; }
+.mermaid-wrap svg { max-width: 100%; height: auto; overflow: visible; }
+.mermaid-wrap svg foreignObject { overflow: visible; }
 .mermaid-wrap .mermaid { display: flex; justify-content: center; width: 100%; }
 
 /* ── Editor footer ───────────────────────────────────────────────── */

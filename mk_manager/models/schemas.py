@@ -38,6 +38,7 @@ class FileMetaResponse(BaseModel):
     word_count: int
     task_total: int
     task_done: int
+    task_items: list[dict] = []
     folder: str = ""
     status: str = ""
 

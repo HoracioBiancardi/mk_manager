@@ -1,27 +1,76 @@
 // Responsabilidade: inicialização, coordenação e operações de arquivo (CRUD)
 
-import { st } from './state.js';
-import { esc, toast, dlBlob, initBackground } from './utils.js';
-import { apiFetch, apiUpload } from './api.js';
+import { st } from "./state.js";
+import { esc, toast, dlBlob, initBackground, timeAgo } from "./utils.js";
+import { apiFetch, apiUpload } from "./api.js";
 import {
-  renderSidebar, renderTree, renderSearchResults, renderTagsPanel,
-  getDisplayFiles, toggleTreeFolder, toggleFolder, folderPathsFromFiles,
-} from './sidebar.js';
+  renderSidebar,
+  renderTree,
+  renderSearchResults,
+  renderTagsPanel,
+  getDisplayFiles,
+  toggleTreeFolder,
+  toggleFolder,
+  folderPathsFromFiles,
+} from "./sidebar.js";
 import {
-  setSaveCallback, showEditorPanel, showEmptyPanel,
-  renderTags, renderPreview, setView, applyRatio, initResizer,
-  updateFooter, setSaveStatus, updateStatusVis,
-  onEditorInput, onTitleChange, onEditorKeydown,
-  onTagKey, removeTag, fmt, ins, insCodeBlock, insRaw, insMermaid, insTable, formatTable,
-} from './editor.js';
+  setSaveCallback,
+  showEditorPanel,
+  showEmptyPanel,
+  renderTags,
+  renderPreview,
+  setView,
+  applyRatio,
+  initResizer,
+  updateFooter,
+  setSaveStatus,
+  updateStatusVis,
+  onEditorInput,
+  onTitleChange,
+  onEditorKeydown,
+  onTagKey,
+  removeTag,
+  fmt,
+  ins,
+  insCodeBlock,
+  insRaw,
+  insMermaid,
+  insTable,
+  formatTable,
+} from "./editor.js";
+import {
+  initKanban,
+  loadKanbanColumns,
+  updateStatusSelect,
+  renderKanban,
+  enterKanbanMode,
+  exitKanbanMode,
+  openFileFromKanban,
+  moveTaskStatus,
+  onKanbanCardDragStart,
+  onKanbanColDragOver,
+  onKanbanColDragLeave,
+  onKanbanColDrop,
+  startAddKanbanCol,
+  onKanbanColKey,
+  onKanbanColBlur,
+  confirmAddKanbanCol,
+  cancelAddKanbanCol,
+  deleteKanbanCol,
+  openKanbanQEdit,
+  closeKanbanQEdit,
+  onKanbanQEditOverlayClick,
+  toggleKanbanQEditItem,
+  openEditorFromKanbanQEdit,
+} from "./kanban.js";
 
 // ── Conexão ───────────────────────────────────────────────────────────────────
 async function checkConn() {
   try {
-    await fetch('/api/stats');
-    const b = document.getElementById('conn-badge');
-    b.textContent = '● online';
-    b.classList.add('online');
+    await fetch("/api/stats");
+    const b = document.getElementById("conn-badge");
+    b.textContent = "● online";
+    b.classList.add("online");
     return true;
   } catch {
     return false;
@@ -31,93 +80,107 @@ async function checkConn() {
 // ── Storage info ───────────────────────────────────────────────────────────────
 async function updateStorageInfo() {
   try {
-    const r = await apiFetch('/stats');
+    const r = await apiFetch("/stats");
     const s = await r.json();
     const kb = (s.size_bytes / 1024).toFixed(1);
-    document.getElementById('storage-info').textContent =
+    document.getElementById("storage-info").textContent =
       `${s.total} arquivo(s) · ${s.notes} notas · ${s.tasks} tasks · ${kb} KB`;
-  } catch { }
+  } catch {}
 }
 
 // ── Carregar arquivos ──────────────────────────────────────────────────────────
 async function loadFiles() {
   try {
-    const r = await apiFetch('/files');
+    const r = await apiFetch("/files");
     st.files = await r.json();
     st.searchResults = null;
     renderSidebar();
     updateStorageInfo();
   } catch (e) {
-    toast('Erro ao carregar arquivos: ' + e.message, 'error');
+    toast("Erro ao carregar arquivos: " + e.message, "error");
   }
 }
 
 async function doSearch(q) {
-  if (!q && !st.tagFilter) { st.searchResults = null; renderSearchResults(); return; }
+  if (!q && !st.tagFilter) {
+    st.searchResults = null;
+    renderSearchResults();
+    return;
+  }
   try {
-    let url = `/search?q=${encodeURIComponent(q || '')}`;
-    if (st.filter !== 'all') url += `&type=${st.filter}`;
+    let url = `/search?q=${encodeURIComponent(q || "")}`;
+    if (st.filter !== "all") url += `&type=${st.filter}`;
     if (st.tagFilter) url += `&tag=${encodeURIComponent(st.tagFilter)}`;
     const r = await apiFetch(url);
     st.searchResults = await r.json();
     renderSearchResults();
   } catch (e) {
-    toast('Erro na busca: ' + e.message, 'error');
+    toast("Erro na busca: " + e.message, "error");
   }
 }
 
 // ── CRUD ───────────────────────────────────────────────────────────────────────
 async function saveFile() {
   if (!st.activeId) return;
-  const content = document.getElementById('md-editor').value;
-  const title = document.getElementById('title-input').value.trim();
-  const folder = document.getElementById('folder-input')?.value.trim() ?? st.activeFolder;
-  const status = document.getElementById('status-select')?.value ?? st.activeStatus;
+  const content = document.getElementById("md-editor").value;
+  const title = document.getElementById("title-input").value.trim();
+  const folder =
+    document.getElementById("folder-input")?.value.trim() ?? st.activeFolder;
+  const status =
+    document.getElementById("status-select")?.value ?? st.activeStatus;
   try {
     const prevId = st.activeId;
     const r = await apiFetch(`/files/${prevId}`, {
-      method: 'PUT',
-      body: JSON.stringify({ title, content, tags: st.activeTags, folder, status }),
+      method: "PUT",
+      body: JSON.stringify({
+        title,
+        content,
+        tags: st.activeTags,
+        folder,
+        status,
+      }),
     });
     const updated = await r.json();
-    const idx = st.files.findIndex(f => f.id === prevId);
+    const idx = st.files.findIndex((f) => f.id === prevId);
     if (idx !== -1) st.files[idx] = { ...updated };
     // The file may have been renamed on disk (ID = slug of title)
     if (updated.id !== prevId) st.activeId = updated.id;
-    st.activeFolder = updated.folder || '';
-    st.activeStatus = updated.status || '';
+    st.activeFolder = updated.folder || "";
+    st.activeStatus = updated.status || "";
     st.isDirty = false;
-    document.getElementById('filename-label').textContent = updated.filename;
+    document.getElementById("filename-label").textContent = updated.filename;
     renderSidebar();
-    setSaveStatus('saved');
+    setSaveStatus("saved");
     updateStorageInfo();
   } catch (e) {
-    setSaveStatus('error');
-    toast('Erro ao salvar: ' + e.message, 'error');
+    setSaveStatus("error");
+    toast("Erro ao salvar: " + e.message, "error");
   }
 }
 
 async function openFile(id) {
+  if (st.kanbanMode) exitKanbanMode();
   if (st.isDirty && st.activeId) await saveFile();
   try {
     const r = await apiFetch(`/files/${id}`);
     const file = await r.json();
     st.activeId = id;
     st.activeTags = [...(file.tags || [])];
-    st.activeFolder = file.folder || '';
-    st.activeStatus = file.status || '';
+    st.activeFolder = file.folder || "";
+    st.activeStatus = file.status || "";
     st.isDirty = false;
 
-    document.getElementById('title-input').value = file.title;
-    document.getElementById('md-editor').value = file.content;
-    document.getElementById('filename-label').textContent = file.filename;
-    const folderInput = document.getElementById('folder-input');
-    if (folderInput) folderInput.value = file.folder || '';
-    const statusSel = document.getElementById('status-select');
-    if (statusSel) statusSel.value = file.status || '';
+    document.getElementById("title-input").value = file.title;
+    document.getElementById("md-editor").value = file.content;
+    document.getElementById("filename-label").textContent = file.filename;
+    const folderInput = document.getElementById("folder-input");
+    if (folderInput) folderInput.value = file.folder || "";
+    updateStatusSelect();
+    const statusSel = document.getElementById("status-select");
+    if (statusSel) statusSel.value = file.status || "";
 
-    const badge = document.getElementById('type-badge');
-    badge.textContent = file.type === 'task' ? 'Task' : 'Note';
+    const badge = document.getElementById("type-badge");
+    badge.textContent = file.type === "task" ? "Task" : "Note";
     badge.className = `type-badge ${file.type}`;
     updateStatusVis(file.type);
 
@@ -126,29 +189,38 @@ async function openFile(id) {
     showEditorPanel();
     setView(st.view);
     updateFooter();
-    setSaveStatus('saved');
+    setSaveStatus("saved");
   } catch (e) {
-    toast('Erro ao abrir arquivo: ' + e.message, 'error');
+    toast("Erro ao abrir arquivo: " + e.message, "error");
   }
 }
 
 async function newFile(type) {
-  const defaultContent = type === 'task'
-    ? '- [ ] Primeira tarefa\n- [ ] Segunda tarefa\n- [ ] Terceira tarefa\n'
-    : '';
+  if (st.kanbanMode) exitKanbanMode();
+  const defaultContent =
+    type === "task"
+      ? "- [ ] Primeira tarefa\n- [ ] Segunda tarefa\n- [ ] Terceira tarefa\n"
+      : "";
   try {
     document.getElementById(`btn-new-${type}`).disabled = true;
-    const r = await apiFetch('/files', {
-      method: 'POST',
-      body: JSON.stringify({ title: '', type, tags: [], content: defaultContent, folder: '', status: '' }),
+    const r = await apiFetch("/files", {
+      method: "POST",
+      body: JSON.stringify({
+        title: "",
+        type,
+        tags: [],
+        content: defaultContent,
+        folder: "",
+        status: "",
+      }),
     });
     const file = await r.json();
     st.files.unshift(file);
     renderSidebar();
     await openFile(file.id);
-    setTimeout(() => document.getElementById('title-input').focus(), 60);
+    setTimeout(() => document.getElementById("title-input").focus(), 60);
   } catch (e) {
-    toast('Erro ao criar arquivo: ' + e.message, 'error');
+    toast("Erro ao criar arquivo: " + e.message, "error");
   } finally {
     document.getElementById(`btn-new-${type}`).disabled = false;
   }
@@ -156,38 +228,44 @@ async function newFile(type) {
 
 async function deleteFile(id) {
   try {
-    await apiFetch(`/files/${id}`, { method: 'DELETE' });
-    st.files = st.files.filter(f => f.id !== id);
-    if (st.searchResults) st.searchResults = st.searchResults.filter(f => f.id !== id);
-    if (st.activeId === id) { st.activeId = null; showEmptyPanel(); }
+    await apiFetch(`/files/${id}`, { method: "DELETE" });
+    st.files = st.files.filter((f) => f.id !== id);
+    if (st.searchResults)
+      st.searchResults = st.searchResults.filter((f) => f.id !== id);
+    if (st.activeId === id) {
+      st.activeId = null;
+      showEmptyPanel();
+    }
     renderSidebar();
     updateStorageInfo();
-    toast('Arquivo excluído.', 'success');
+    toast("Arquivo excluído.", "success");
   } catch (e) {
-    toast('Erro ao excluir: ' + e.message, 'error');
+    toast("Erro ao excluir: " + e.message, "error");
   }
 }
 
 // ── Delete modal ───────────────────────────────────────────────────────────────
 function openDeleteModal(id, title, filename) {
   st.pendingDelete = id;
-  document.getElementById('delete-filename').textContent = `"${title}"`;
-  document.getElementById('delete-path').textContent = `notes/${filename}`;
-  document.getElementById('delete-overlay').classList.add('open');
+  document.getElementById("delete-filename").textContent = `"${title}"`;
+  document.getElementById("delete-path").textContent = `notes/${filename}`;
+  document.getElementById("delete-overlay").classList.add("open");
 }
 
 function closeDeleteModal() {
-  document.getElementById('delete-overlay').classList.remove('open');
+  document.getElementById("delete-overlay").classList.remove("open");
   st.pendingDelete = null;
 }
 
 async function confirmDelete() {
   if (!st.pendingDelete) return;
-  const btn = document.getElementById('confirm-del-btn');
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  const btn = document.getElementById("confirm-del-btn");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
   await deleteFile(st.pendingDelete);
   closeDeleteModal();
-  btn.disabled = false; btn.textContent = 'Excluir';
+  btn.disabled = false;
+  btn.textContent = "Excluir";
 }
 
 // ── Export ─────────────────────────────────────────────────────────────────────
@@ -196,24 +274,27 @@ async function exportFile(id, title) {
     const r = await apiFetch(`/files/${id}`);
     const file = await r.json();
     const fm = [
-      '---',
+      "---",
       `id: ${file.id}`,
-      `title: ${file.title || 'Sem título'}`,
+      `title: ${file.title || "Sem título"}`,
       `type: ${file.type}`,
-      `tags: [${(file.tags || []).join(', ')}]`,
+      `tags: [${(file.tags || []).join(", ")}]`,
       `created: '${file.created}'`,
       `modified: '${file.modified}'`,
-      '---',
-      '',
+      "---",
+      "",
       file.content,
-    ].join('\n');
-    const slug = (file.title || 'sem-titulo').toLowerCase()
-      .normalize('NFD').replace(/[̀-ͯ]/g, '')
-      .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    dlBlob(slug + '.md', fm, 'text/markdown;charset=utf-8');
-    toast('Arquivo exportado!', 'success');
+    ].join("\n");
+    const slug = (file.title || "sem-titulo")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    dlBlob(slug + ".md", fm, "text/markdown;charset=utf-8");
+    toast("Arquivo exportado!", "success");
   } catch (e) {
-    toast('Erro ao exportar: ' + e.message, 'error');
+    toast("Erro ao exportar: " + e.message, "error");
   }
 }
 
@@ -224,29 +305,43 @@ async function exportCurrent() {
 }
 
 async function exportAll() {
-  if (!st.files.length) { toast('Nenhum arquivo para exportar.', 'info'); return; }
+  if (!st.files.length) {
+    toast("Nenhum arquivo para exportar.", "info");
+    return;
+  }
   for (const f of st.files) await exportFile(f.id, f.title);
-  toast(`${st.files.length} arquivo(s) exportado(s).`, 'success');
+  toast(`${st.files.length} arquivo(s) exportado(s).`, "success");
 }
 
 // ── Export PDF ────────────────────────────────────────────────────────────────
 function printPDF() {
-  if (!st.activeId) { toast('Abra uma nota para exportar.', 'info'); return; }
+  if (!st.activeId) {
+    toast("Abra uma nota para exportar.", "info");
+    return;
+  }
 
-  const rawTitle = document.getElementById('title-input').value || 'Nota';
-  const safeTitle = rawTitle.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const rawTitle = document.getElementById("title-input").value || "Nota";
+  const safeTitle = rawTitle
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 
   // Parseia o markdown direto, sem tocar o preview pane
-  const mdContent = document.getElementById('md-editor').value;
-  const bodyHTML  = marked.parse(mdContent);
+  const mdContent = document.getElementById("md-editor").value;
+  const bodyHTML = marked.parse(mdContent);
   const hasMermaid = bodyHTML.includes('class="mermaid"');
 
-  const hlURL = [...document.querySelectorAll('link[rel="stylesheet"]')]
-    .find(l => l.href.includes('highlight'))?.href
-    || 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css';
+  const hlURL =
+    [...document.querySelectorAll('link[rel="stylesheet"]')].find((l) =>
+      l.href.includes("highlight"),
+    )?.href ||
+    "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css";
 
-  const win = window.open('', '_blank');
-  if (!win) { toast('Permita pop-ups para exportar PDF.', 'info'); return; }
+  const win = window.open("", "_blank");
+  if (!win) {
+    toast("Permita pop-ups para exportar PDF.", "info");
+    return;
+  }
 
   win.document.write(`<!DOCTYPE html>
 <html lang="pt-BR">
@@ -297,7 +392,7 @@ function printPDF() {
 <body>
 <h1>${safeTitle}</h1>
 ${bodyHTML}
-${hasMermaid ? '<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"><\\/script>' : ''}
+${hasMermaid ? '<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"><\\/script>' : ""}
 <script>
 window.addEventListener('load', function() {
   if (${hasMermaid} && typeof mermaid !== 'undefined') {
@@ -316,8 +411,11 @@ window.addEventListener('load', function() {
 
 // ── Import de assets ──────────────────────────────────────────────────────────
 function triggerAssetImport() {
-  if (!st.activeId) { toast('Abra uma nota antes de importar um arquivo.', 'info'); return; }
-  document.getElementById('asset-file-input').click();
+  if (!st.activeId) {
+    toast("Abra uma nota antes de importar um arquivo.", "info");
+    return;
+  }
+  document.getElementById("asset-file-input").click();
 }
 
 async function onAssetFiles(files) {
@@ -325,20 +423,137 @@ async function onAssetFiles(files) {
   for (const file of files) {
     try {
       const fd = new FormData();
-      fd.append('file', file);
+      fd.append("file", file);
       const r = await apiUpload(fd);
       const data = await r.json();
-      const isImage = /\.(png|jpe?g|gif|webp|svg|bmp|ico|avif)$/i.test(file.name);
+      const isImage = /\.(png|jpe?g|gif|webp|svg|bmp|ico|avif)$/i.test(
+        file.name,
+      );
       const link = isImage
         ? `![${file.name}](${data.url})`
         : `[${file.name}](${data.url})`;
       insRaw(link);
-      toast(`"${data.filename}" importado.`, 'success');
+      toast(`"${data.filename}" importado.`, "success");
     } catch (e) {
-      toast('Erro ao importar: ' + e.message, 'error');
+      toast("Erro ao importar: " + e.message, "error");
     }
   }
-  document.getElementById('asset-file-input').value = '';
+  document.getElementById("asset-file-input").value = "";
+}
+
+// ── Tooltip de preview no explorador ─────────────────────────────────────────
+function showFileTooltip(e, id) {
+  const f = st.files.find((f) => f.id === id);
+  if (!f) return;
+  const tip = document.getElementById("tree-tooltip");
+  if (!tip) return;
+
+  let html = `<div class="tip-title">${esc(f.title || "Sem título")}</div>`;
+  if (f.folder) html += `<span class="tip-stat">📁 ${esc(f.folder)}</span>`;
+  if (f.tags?.length) {
+    html += `<div class="tip-tags">${f.tags.map((t) => `<span class="tip-tag">${esc(t)}</span>`).join("")}</div>`;
+  }
+  if (f.type === "task" && f.task_total) {
+    html += `<span class="tip-stat">✓ ${f.task_done}/${f.task_total} tasks</span>`;
+  }
+  html += `<span class="tip-stat">${f.word_count} pal. · ${timeAgo(f.modified)}</span>`;
+  tip.innerHTML = html;
+
+  const rect = e.currentTarget.getBoundingClientRect();
+  const sidebar = document.querySelector(".sidebar-panel");
+  const sRight = sidebar ? sidebar.getBoundingClientRect().right : rect.right;
+  tip.style.top = `${Math.max(4, rect.top)}px`;
+  tip.style.left = `${sRight + 10}px`;
+  tip.classList.add("visible");
+}
+
+function hideFileTooltip() {
+  document.getElementById("tree-tooltip")?.classList.remove("visible");
+}
+
+// ── Mover arquivo para pasta (drag & drop) ────────────────────────────────────
+async function moveFileToFolder(fileId, folderPath) {
+  try {
+    const r = await apiFetch(`/files/${fileId}`, {
+      method: "PUT",
+      body: JSON.stringify({ folder: folderPath }),
+    });
+    const updated = await r.json();
+    const idx = st.files.findIndex((f) => f.id === fileId);
+    if (idx !== -1) st.files[idx] = { ...updated };
+    if (st.activeId === fileId) {
+      st.activeFolder = updated.folder || "";
+      const folderInput = document.getElementById("folder-input");
+      if (folderInput) folderInput.value = updated.folder || "";
+    }
+    st.emptyFolders.delete(folderPath);
+    renderSidebar();
+    toast(`Movido para "${folderPath}".`, "success");
+  } catch (e) {
+    toast("Erro ao mover arquivo: " + e.message, "error");
+  }
+}
+
+function onFileDragStart(e, id) {
+  st.draggingFileId = id;
+  e.dataTransfer.effectAllowed = "move";
+}
+
+function onFolderDragOver(e, path) {
+  e.preventDefault();
+  e.stopPropagation();
+  e.dataTransfer.dropEffect = "move";
+  e.currentTarget.classList.add("drag-over");
+}
+
+function onFolderDragLeave(e) {
+  if (!e.currentTarget.contains(e.relatedTarget)) {
+    e.currentTarget.classList.remove("drag-over");
+  }
+}
+
+function onFolderDrop(e, path) {
+  e.preventDefault();
+  e.stopPropagation();
+  e.currentTarget.classList.remove("drag-over");
+  const id = st.draggingFileId;
+  st.draggingFileId = null;
+  if (id) moveFileToFolder(id, path);
+}
+
+// ── Nova pasta inline ──────────────────────────────────────────────────────────
+function startNewFolderInput() {
+  st.creatingFolder = true;
+  renderTree();
+}
+
+function onNewFolderKey(e) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    confirmNewFolder(e.target.value);
+  } else if (e.key === "Escape") {
+    e.preventDefault();
+    cancelNewFolderInput();
+  }
+}
+
+function onNewFolderBlur(value) {
+  if (st.creatingFolder) confirmNewFolder(value);
+}
+
+function confirmNewFolder(name) {
+  st.creatingFolder = false;
+  const trimmed = name.trim().replace(/^\/+|\/+$/g, "");
+  if (trimmed) {
+    st.emptyFolders.add(trimmed);
+    st.expandedFolders.add(trimmed);
+  }
+  renderTree();
+}
+
+function cancelNewFolderInput() {
+  st.creatingFolder = false;
+  renderTree();
 }
 
 // ── Rename inline ─────────────────────────────────────────────────────────────
@@ -351,27 +566,33 @@ async function confirmRenameFile(id, newTitle) {
   if (st.renamingId !== id) return;
   st.renamingId = null;
   const trimmed = newTitle.trim();
-  if (!trimmed) { renderSidebar(); return; }
-  const file = st.files.find(f => f.id === id);
-  if (!file || file.title === trimmed) { renderSidebar(); return; }
+  if (!trimmed) {
+    renderSidebar();
+    return;
+  }
+  const file = st.files.find((f) => f.id === id);
+  if (!file || file.title === trimmed) {
+    renderSidebar();
+    return;
+  }
   try {
     const r = await apiFetch(`/files/${id}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify({ title: trimmed }),
     });
     const updated = await r.json();
-    const idx = st.files.findIndex(f => f.id === id);
+    const idx = st.files.findIndex((f) => f.id === id);
     if (idx !== -1) st.files[idx] = { ...updated };
     if (st.activeId === id) {
-      document.getElementById('title-input').value = updated.title;
-      document.getElementById('filename-label').textContent = updated.filename;
+      document.getElementById("title-input").value = updated.title;
+      document.getElementById("filename-label").textContent = updated.filename;
       if (updated.id !== id) st.activeId = updated.id;
     }
     renderSidebar();
-    toast('Renomeado com sucesso.', 'success');
+    toast("Renomeado com sucesso.", "success");
   } catch (e) {
     renderSidebar();
-    toast('Erro ao renomear: ' + e.message, 'error');
+    toast("Erro ao renomear: " + e.message, "error");
   }
 }
 
@@ -382,8 +603,13 @@ function cancelRename() {
 
 function onRenameKey(e, id) {
   e.stopPropagation();
-  if (e.key === 'Enter') { e.preventDefault(); confirmRenameFile(id, e.target.value); }
-  else if (e.key === 'Escape') { e.preventDefault(); cancelRename(); }
+  if (e.key === "Enter") {
+    e.preventDefault();
+    confirmRenameFile(id, e.target.value);
+  } else if (e.key === "Escape") {
+    e.preventDefault();
+    cancelRename();
+  }
 }
 
 function onRenameBlur(id, value) {
@@ -399,10 +625,11 @@ function onSearch(v) {
 
 function setFilter(f) {
   st.filter = f;
-  document.querySelectorAll('.filter-tab').forEach(b =>
-    b.classList.toggle('active', b.dataset.filter === f)
-  );
-  if (st.search || st.tagFilter) doSearch(st.search); else renderSearchResults();
+  document
+    .querySelectorAll(".filter-tab")
+    .forEach((b) => b.classList.toggle("active", b.dataset.filter === f));
+  if (st.search || st.tagFilter) doSearch(st.search);
+  else renderSearchResults();
 }
 
 function setTagFilter(tag) {
@@ -411,80 +638,180 @@ function setTagFilter(tag) {
 }
 
 function switchPanel(panel) {
-  const sidebarEl = document.querySelector('.sidebar-panel');
+  if (panel === "kanban") {
+    if (st.kanbanMode) {
+      exitKanbanMode();
+      document
+        .querySelectorAll(".activity-btn")
+        .forEach((b) =>
+          b.classList.toggle(
+            "active",
+            b.dataset.panel === st.activePanel && st.sidebarOpen,
+          ),
+        );
+    } else {
+      enterKanbanMode();
+      document
+        .querySelectorAll(".activity-btn")
+        .forEach((b) =>
+          b.classList.toggle("active", b.dataset.panel === "kanban"),
+        );
+    }
+    return;
+  }
+
+  if (st.kanbanMode) exitKanbanMode();
+
+  const sidebarEl = document.querySelector(".sidebar-panel");
 
   if (st.activePanel === panel && st.sidebarOpen) {
     st.sidebarOpen = false;
-    sidebarEl.classList.add('collapsed');
-    document.querySelectorAll('.activity-btn').forEach(b => b.classList.remove('active'));
+    sidebarEl.classList.add("collapsed");
+    document
+      .querySelectorAll(".activity-btn")
+      .forEach((b) => b.classList.remove("active"));
     return;
   }
 
   st.activePanel = panel;
   st.sidebarOpen = true;
-  sidebarEl.classList.remove('collapsed');
-  document.querySelectorAll('.activity-btn').forEach(b =>
-    b.classList.toggle('active', b.dataset.panel === panel)
-  );
-  document.querySelectorAll('.panel-content').forEach(p =>
-    p.classList.toggle('active', p.id === 'panel-' + panel)
-  );
-  if (panel === 'search') {
-    setTimeout(() => document.getElementById('sidebar-search')?.focus(), 60);
+  sidebarEl.classList.remove("collapsed");
+  document
+    .querySelectorAll(".activity-btn")
+    .forEach((b) => b.classList.toggle("active", b.dataset.panel === panel));
+  document
+    .querySelectorAll(".panel-content")
+    .forEach((p) => p.classList.toggle("active", p.id === "panel-" + panel));
+  if (panel === "search") {
+    setTimeout(() => document.getElementById("sidebar-search")?.focus(), 60);
     renderSearchResults();
   }
-  if (panel === 'tags') renderTagsPanel();
+  if (panel === "tags") renderTagsPanel();
 }
 
 function onMetaChange() {
   if (!st.activeId) return;
   st.isDirty = true;
-  setSaveStatus('saving');
+  setSaveStatus("saving");
   clearTimeout(st.saveTimer);
   st.saveTimer = setTimeout(saveFile, 800);
 }
 
-
 // ── Expor ao DOM (necessário para event handlers inline) ──────────────────────
 Object.assign(window, {
   // arquivo
-  openFile, newFile, saveFile, exportFile, exportCurrent, exportAll,
+  openFile,
+  newFile,
+  saveFile,
+  exportFile,
+  exportCurrent,
+  exportAll,
   // modal
-  openDeleteModal, closeDeleteModal, confirmDelete,
+  openDeleteModal,
+  closeDeleteModal,
+  confirmDelete,
   // busca e filtros
-  onSearch, setFilter, setTagFilter,
+  onSearch,
+  setFilter,
+  setTagFilter,
   // navegação de painéis
-  switchPanel, toggleTreeFolder, toggleFolder,
+  switchPanel,
+  toggleTreeFolder,
+  toggleFolder,
   // editor
-  onEditorInput, onTitleChange, onEditorKeydown, onTagKey, removeTag,
-  fmt, ins, insCodeBlock, insMermaid, insTable, formatTable, setView, onMetaChange,
+  onEditorInput,
+  onTitleChange,
+  onEditorKeydown,
+  onTagKey,
+  removeTag,
+  fmt,
+  ins,
+  insCodeBlock,
+  insMermaid,
+  insTable,
+  formatTable,
+  setView,
+  onMetaChange,
   // export
   printPDF,
   // import de assets
-  triggerAssetImport, onAssetFiles,
+  triggerAssetImport,
+  onAssetFiles,
   // rename inline
-  startRenameFile, confirmRenameFile, cancelRename, onRenameKey, onRenameBlur,
+  startRenameFile,
+  confirmRenameFile,
+  cancelRename,
+  onRenameKey,
+  onRenameBlur,
+  // pasta + drag & drop no explorador
+  moveFileToFolder,
+  startNewFolderInput,
+  onNewFolderKey,
+  onNewFolderBlur,
+  confirmNewFolder,
+  cancelNewFolderInput,
+  onFileDragStart,
+  onFolderDragOver,
+  onFolderDragLeave,
+  onFolderDrop,
+  // tooltip do explorador
+  showFileTooltip,
+  hideFileTooltip,
+  // kanban
+  openFileFromKanban,
+  moveTaskStatus,
+  onKanbanCardDragStart,
+  onKanbanColDragOver,
+  onKanbanColDragLeave,
+  onKanbanColDrop,
+  startAddKanbanCol,
+  onKanbanColKey,
+  onKanbanColBlur,
+  confirmAddKanbanCol,
+  cancelAddKanbanCol,
+  deleteKanbanCol,
+  // kanban quick-edit
+  openKanbanQEdit,
+  closeKanbanQEdit,
+  onKanbanQEditOverlayClick,
+  toggleKanbanQEditItem,
+  openEditorFromKanbanQEdit,
 });
 
 // ── Init ───────────────────────────────────────────────────────────────────────
 marked.use({ breaks: true, gfm: true });
 
 setSaveCallback(saveFile);
+initKanban({ openFile, hideFileTooltip });
 
-document.addEventListener('keydown', e => {
-  if (e.ctrlKey && e.key === 'n' && !e.shiftKey && !e.target.matches('input,textarea')) {
-    e.preventDefault(); newFile('note');
+document.addEventListener("keydown", (e) => {
+  if (
+    e.ctrlKey &&
+    e.key === "n" &&
+    !e.shiftKey &&
+    !e.target.matches("input,textarea")
+  ) {
+    e.preventDefault();
+    newFile("note");
   }
-  if (e.ctrlKey && e.shiftKey && e.key === 'N') { e.preventDefault(); newFile('task'); }
-  if (e.key === 'Escape') closeDeleteModal();
+  if (e.ctrlKey && e.shiftKey && e.key === "N") {
+    e.preventDefault();
+    newFile("task");
+  }
+  if (e.key === "Escape") {
+    closeDeleteModal();
+    closeKanbanQEdit();
+  }
 });
 
 (async () => {
-  const treeEl = document.getElementById('file-tree');
+  loadKanbanColumns();
+  updateStatusSelect();
+  const treeEl = document.getElementById("file-tree");
   if (treeEl) treeEl.innerHTML = '<div class="tree-empty">⏳ Carregando…</div>';
   initBackground();
   initResizer();
   const ok = await checkConn();
   if (ok) await loadFiles();
-  else toast('API offline. Inicie o servidor: uv run mk-manager', 'error');
+  else toast("API offline. Inicie o servidor: uv run mk-manager", "error");
 })();

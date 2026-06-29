@@ -24,6 +24,7 @@ export function folderPathsFromFiles(files) {
       paths.add(acc);
     }
   }
+  for (const p of st.emptyFolders) paths.add(p);
   return [...paths].sort();
 }
 
@@ -53,7 +54,9 @@ export function renderTree() {
   }
 
   const allFolderPaths = folderPathsFromFiles(files);
-  const rootFiles = files.filter(f => !(f.folder || '').trim());
+  const rootFiles = files
+    .filter(f => !(f.folder || '').trim())
+    .sort((a, b) => (a.title || '').localeCompare(b.title || '', 'pt-BR', { sensitivity: 'base' }));
 
   const filesByFolder = {};
   files.filter(f => (f.folder || '').trim()).forEach(f => {
@@ -61,8 +64,22 @@ export function renderTree() {
     if (!filesByFolder[folder]) filesByFolder[folder] = [];
     filesByFolder[folder].push(f);
   });
+  for (const key of Object.keys(filesByFolder)) {
+    filesByFolder[key].sort((a, b) => (a.title || '').localeCompare(b.title || '', 'pt-BR', { sensitivity: 'base' }));
+  }
 
   let html = '';
+
+  if (st.creatingFolder) {
+    html += `<div class="tree-folder-new">
+      <span class="tree-caret-gap"></span>
+      ${FOLDER_ICON}
+      <input class="rename-input" id="new-folder-input" placeholder="Nome da pasta"
+        onkeydown="onNewFolderKey(event)"
+        onblur="onNewFolderBlur(this.value)"
+        onclick="event.stopPropagation()">
+    </div>`;
+  }
 
   rootFiles.forEach(f => { html += treeFileHtml(f, 0); });
 
@@ -90,6 +107,9 @@ export function renderTree() {
 
   tree.innerHTML = html;
 
+  if (st.creatingFolder) {
+    requestAnimationFrame(() => document.getElementById('new-folder-input')?.focus());
+  }
   if (st.activeId) {
     requestAnimationFrame(() => {
       tree.querySelector(`.tree-item[data-id="${st.activeId}"]`)?.scrollIntoView({ block: 'nearest' });
@@ -103,7 +123,11 @@ export function renderTree() {
 function treeFolderHtml(path, name, depth, isOpen, fileCount, hasContent) {
   const indent = (0.5 + depth * 0.875).toFixed(2);
   const ep = esc(path);
-  return `<div class="tree-folder-row" style="padding-left:${indent}rem" onclick="toggleTreeFolder('${ep}')">
+  return `<div class="tree-folder-row" data-folder-path="${ep}" style="padding-left:${indent}rem"
+    onclick="toggleTreeFolder('${ep}')"
+    ondragover="onFolderDragOver(event,'${ep}')"
+    ondrop="onFolderDrop(event,'${ep}')"
+    ondragleave="onFolderDragLeave(event)">
     ${hasContent
       ? `<span class="tree-caret${isOpen ? ' open' : ''}">${CARET_SVG}</span>`
       : '<span class="tree-caret-gap"></span>'}
@@ -119,7 +143,8 @@ function treeFileHtml(f, depth) {
   const fileIcon = f.type === 'task' ? TASK_ICON : NOTE_ICON;
 
   if (st.renamingId === f.id) {
-    return `<div class="tree-item${active}" style="padding-left:${indent}rem" data-id="${f.id}">
+    return `<div class="tree-item${active}" style="padding-left:${indent}rem" data-id="${f.id}"
+      draggable="true" ondragstart="onFileDragStart(event,'${f.id}')">
       <span class="tree-caret-gap"></span>
       ${fileIcon}
       <input class="rename-input" id="rename-input" style="flex:1"
@@ -130,7 +155,10 @@ function treeFileHtml(f, depth) {
     </div>`;
   }
 
-  return `<div class="tree-item${active}" style="padding-left:${indent}rem" data-id="${f.id}" onclick="openFile('${f.id}')">
+  return `<div class="tree-item${active}" style="padding-left:${indent}rem" data-id="${f.id}"
+    onclick="openFile('${f.id}')"
+    draggable="true" ondragstart="onFileDragStart(event,'${f.id}')"
+    onmouseenter="showFileTooltip(event,'${f.id}')" onmouseleave="hideFileTooltip()">
     <span class="tree-caret-gap"></span>
     ${fileIcon}
     <span class="tree-name">${esc(f.title || 'Sem título')}</span>

@@ -35,6 +35,7 @@ def _to_search_response(result: SearchResult) -> SearchResultResponse:
         word_count=record.word_count,
         task_total=record.task_total,
         task_done=record.task_done,
+        task_items=record.task_items,
         snippet=result.snippet,
     )
 
