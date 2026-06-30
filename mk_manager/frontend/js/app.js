@@ -18,7 +18,6 @@ import {
   showEditorPanel,
   showEmptyPanel,
   renderTags,
-  renderPreview,
   setView,
   applyRatio,
   initResizer,

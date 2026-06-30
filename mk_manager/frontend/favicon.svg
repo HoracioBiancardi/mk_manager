@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#0d1117"/>
+  <g stroke="#0d1117" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+    <!-- blade -->
+    <path d="M32 5 L37 13 L37 38 L32 44 L27 38 L27 13 Z" fill="#10b981"/>
+    <!-- crossguard -->
+    <path d="M18 38 H46 L42 44 H22 Z" fill="#e6edf3"/>
+    <!-- grip -->
+    <rect x="29" y="44" width="6" height="11" rx="1.5" fill="#e6edf3"/>
+    <!-- pommel -->
+    <circle cx="32" cy="58" r="4.5" fill="#10b981"/>
+  </g>
+  <path d="M32 9 L34 13 L34 36 L32 39 L30 36 L30 13 Z" fill="#0ea472" opacity=".55"/>
+</svg>

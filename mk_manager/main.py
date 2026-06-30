@@ -82,6 +82,11 @@ def create_app() -> FastAPI:
     async def serve_frontend() -> FileResponse:
         return FileResponse(_FRONTEND_DIR / "index.html")
 
+    @app.get("/favicon.svg", include_in_schema=False)
+    @app.get("/favicon.ico", include_in_schema=False)
+    async def serve_favicon() -> FileResponse:
+        return FileResponse(_FRONTEND_DIR / "favicon.svg")
+
     app.mount("/static", StaticFiles(directory=str(_FRONTEND_DIR)), name="static")
     app.mount("/ds", StaticFiles(directory=str(_DS_DIR)), name="design-system")
 

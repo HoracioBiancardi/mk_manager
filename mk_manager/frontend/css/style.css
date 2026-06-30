@@ -934,9 +934,11 @@
   border-radius: var(--r-md); padding: 1.25rem 1rem;
   overflow-x: auto; display: flex; justify-content: center; position: relative;
 }
-.mermaid-wrap svg { max-width: 100%; height: auto; overflow: visible; }
+/* Mantém o diagrama no tamanho natural (texto legível); se for mais largo
+   que o painel, rola horizontalmente em vez de espremer os nós. */
+.mermaid-wrap svg { max-width: none; height: auto; overflow: visible; }
 .mermaid-wrap svg foreignObject { overflow: visible; }
-.mermaid-wrap .mermaid { display: flex; justify-content: center; width: 100%; }
+.mermaid-wrap .mermaid { display: flex; justify-content: center; width: 100%; min-width: min-content; }
 
 /* ── Editor footer ───────────────────────────────────────────────── */
 .editor-footer {
