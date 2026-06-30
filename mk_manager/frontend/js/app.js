@@ -102,7 +102,7 @@ async function loadFiles() {
 }
 
 async function doSearch(q) {
-  if (!q && !st.tagFilter) {
+  if (!q && !st.tagFilters.length) {
     st.searchResults = null;
     renderSearchResults();
     return;
@@ -110,7 +110,7 @@ async function doSearch(q) {
   try {
     let url = `/search?q=${encodeURIComponent(q || "")}`;
     if (st.filter !== "all") url += `&type=${st.filter}`;
-    if (st.tagFilter) url += `&tag=${encodeURIComponent(st.tagFilter)}`;
+    for (const t of st.tagFilters) url += `&tag=${encodeURIComponent(t)}`;
     const r = await apiFetch(url);
     st.searchResults = await r.json();
     renderSearchResults();
@@ -628,13 +628,40 @@ function setFilter(f) {
   document
     .querySelectorAll(".filter-tab")
     .forEach((b) => b.classList.toggle("active", b.dataset.filter === f));
-  if (st.search || st.tagFilter) doSearch(st.search);
+  if (st.search || st.tagFilters.length) doSearch(st.search);
   else renderSearchResults();
 }
 
 function setTagFilter(tag) {
-  st.tagFilter = st.tagFilter === tag ? null : tag;
+  const idx = st.tagFilters.indexOf(tag);
+  if (idx === -1) st.tagFilters.push(tag);
+  else st.tagFilters.splice(idx, 1);
   renderTagsPanel();
+}
+
+function onTagSearchInput(v) {
+  st.tagSearch = v.trim().toLowerCase();
+  renderTagsPanel();
+}
+
+async function renameTagPrompt(oldTag) {
+  const input = prompt(`Renomear tag "${oldTag}" para:\n(se já existir, as duas são unificadas)`, oldTag);
+  if (input === null) return;
+  const newTag = input.trim();
+  if (!newTag || newTag === oldTag) return;
+  try {
+    const r = await apiFetch(`/tags/${encodeURIComponent(oldTag)}`, {
+      method: "PUT",
+      body: JSON.stringify({ new_tag: newTag }),
+    });
+    const { updated_count } = await r.json();
+    st.tagFilters = st.tagFilters.map((t) => (t === oldTag ? newTag : t));
+    st.tagFilters = [...new Set(st.tagFilters)];
+    await loadFiles();
+    toast(`"${oldTag}" renomeada para "${newTag}" em ${updated_count} arquivo(s).`, "success");
+  } catch (e) {
+    toast("Erro ao renomear tag: " + e.message, "error");
+  }
 }
 
 function switchPanel(panel) {
@@ -714,6 +741,8 @@ Object.assign(window, {
   onSearch,
   setFilter,
   setTagFilter,
+  onTagSearchInput,
+  renameTagPrompt,
   // navegação de painéis
   switchPanel,
   toggleTreeFolder,

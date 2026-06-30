@@ -64,6 +64,18 @@ export function renderTags(tags) {
         `<span class="tag-chip">${esc(t)}<button onclick="removeTag(${i})" title="Remover">×</button></span>`,
     )
     .join("");
+  renderTagSuggestions(tags);
+}
+
+function renderTagSuggestions(activeTags) {
+  const datalist = document.getElementById("tag-suggestions");
+  if (!datalist) return;
+  const known = new Set(st.files.flatMap((f) => f.tags || []));
+  for (const t of activeTags) known.delete(t);
+  datalist.innerHTML = [...known]
+    .sort()
+    .map((t) => `<option value="${esc(t)}"></option>`)
+    .join("");
 }
 
 export function onTagKey(e) {

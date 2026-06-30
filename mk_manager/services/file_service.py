@@ -137,7 +137,7 @@ class FileService:
         self,
         query: str,
         type_filter: str | None = None,
-        tag_filter: str | None = None,
+        tag_filter: list[str] | None = None,
     ) -> list[SearchResult]:
         """Full-text search across title, tags, and content.
 
@@ -161,7 +161,7 @@ class FileService:
         if type_filter:
             records = [r for r in records if r.type == type_filter]
         if tag_filter:
-            records = [r for r in records if tag_filter in r.tags]
+            records = [r for r in records if all(t in r.tags for t in tag_filter)]
 
         q_lower = query.strip().lower()
         results: list[SearchResult] = []
@@ -256,6 +256,38 @@ class FileService:
             folder=request.folder,
             status=request.status,
         )
+
+    def rename_tag(self, old_tag: str, new_tag: str) -> int:
+        """Rename *old_tag* to *new_tag* across every file that has it.
+
+        If a file already has *new_tag*, the old entry is simply dropped
+        (merge semantics) instead of creating a duplicate.
+
+        Args:
+            old_tag: Existing tag value to replace.
+            new_tag: Replacement tag value.
+
+        Returns:
+            Number of files whose tag list was changed.
+        """
+        updated_count = 0
+        for record in self._repo.list_all():
+            if old_tag not in record.tags:
+                continue
+            new_tags = [t for t in record.tags if t != old_tag]
+            if new_tag not in new_tags:
+                new_tags.insert(record.tags.index(old_tag), new_tag)
+            self._repo.update(
+                record.id,
+                title=None,
+                tags=new_tags,
+                content=None,
+                modified=_utc_now(),
+                folder=None,
+                status=None,
+            )
+            updated_count += 1
+        return updated_count
 
     def delete_file(self, file_id: str) -> None:
         """Permanently delete a file.

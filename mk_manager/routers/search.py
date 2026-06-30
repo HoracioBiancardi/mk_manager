@@ -56,8 +56,8 @@ def search_files(
         Query(description="Restrict results to 'note' or 'task'"),
     ] = None,
     tag: Annotated[
-        str | None,
-        Query(description="Filter by exact tag value"),
+        list[str] | None,
+        Query(description="Filter by exact tag value(s); repeat for AND match"),
     ] = None,
     service: FileService = Depends(get_file_service),
 ) -> list[SearchResultResponse]:

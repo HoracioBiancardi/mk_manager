@@ -98,6 +98,27 @@ class FileUpdateRequest(BaseModel):
     status: str | None = Field(default=None, description="New kanban status")
 
 
+class TagRenameRequest(BaseModel):
+    """Request body for renaming a tag across every file that has it.
+
+    Attributes:
+        new_tag: The replacement tag value. If it already exists on a file,
+            the old and new tags are merged (no duplicate entries).
+    """
+
+    new_tag: str = Field(description="New tag value to rename/merge into")
+
+
+class TagRenameResponse(BaseModel):
+    """Result of a tag rename operation.
+
+    Attributes:
+        updated_count: Number of files whose tag list was changed.
+    """
+
+    updated_count: int
+
+
 class SearchResultResponse(FileMetaResponse):
     """Search result enriched with a content excerpt around the match.
 

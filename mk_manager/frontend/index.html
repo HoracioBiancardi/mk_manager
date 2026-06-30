@@ -176,6 +176,9 @@
       <div class="panel-header">
         <span class="panel-title">Tags</span>
       </div>
+      <div class="tags-panel-search">
+        <input id="tags-search-input" type="text" class="tag-search-input" placeholder="Buscar tag…" oninput="onTagSearchInput(this.value)" autocomplete="off">
+      </div>
       <div id="tags-panel-body" class="tags-panel-body"></div>
     </div>
 
@@ -214,7 +217,8 @@
         <div class="info-group">
           <span class="info-label">Tags</span>
           <div id="tags-container" class="tags-container"></div>
-          <input id="tag-input" type="text" class="tag-input" placeholder="+ tag" onkeydown="onTagKey(event)" autocomplete="off">
+          <input id="tag-input" type="text" class="tag-input" placeholder="+ tag" onkeydown="onTagKey(event)" autocomplete="off" list="tag-suggestions">
+          <datalist id="tag-suggestions"></datalist>
         </div>
         <div class="info-sep"></div>
         <div class="info-group">

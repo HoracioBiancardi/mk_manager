@@ -212,23 +212,62 @@ export function renderTagsPanel() {
   const el = document.getElementById('tags-panel-body');
   if (!el) return;
 
-  const allTags = [...new Set(st.files.flatMap(f => f.tags || []))].sort();
-  if (!allTags.length) {
+  const tagCounts = new Map();
+  for (const f of st.files) {
+    for (const t of f.tags || []) {
+      tagCounts.set(t, (tagCounts.get(t) || 0) + 1);
+    }
+  }
+  if (!tagCounts.size) {
     el.innerHTML = '<div class="tags-empty">Nenhuma tag ainda.<br>Adicione tags na barra do editor.</div>';
     return;
   }
+  const sortedTags = [...tagCounts.keys()].sort((a, b) => tagCounts.get(b) - tagCounts.get(a) || a.localeCompare(b));
+  const visibleTags = st.tagSearch
+    ? sortedTags.filter(t => t.toLowerCase().includes(st.tagSearch))
+    : sortedTags;
 
-  const activeTag = st.tagFilter;
+  const activeTags = st.tagFilters;
   let html = `<div class="tags-cloud">`;
-  html += allTags.map(t =>
-    `<button class="tag-browse-chip${activeTag === t ? ' active' : ''}" onclick="setTagFilter('${esc(t)}')">${esc(t)}</button>`
-  ).join('');
+  html += visibleTags.length
+    ? visibleTags.map(t =>
+        `<span class="tag-browse-wrap">
+          <button class="tag-browse-chip${activeTags.includes(t) ? ' active' : ''}" onclick="setTagFilter('${esc(t)}')" title="${tagCounts.get(t)} nota${tagCounts.get(t) === 1 ? '' : 's'}">${esc(t)}</button>
+          <button class="tag-rename-btn" onclick="event.stopPropagation(); renameTagPrompt('${esc(t)}')" title="Renomear / unificar tag">✎</button>
+        </span>`
+      ).join('')
+    : '<div class="tags-empty">Nenhuma tag encontrada.</div>';
   html += '</div>';
 
-  if (activeTag) {
-    const filtered = st.files.filter(f => (f.tags || []).includes(activeTag));
+  if (activeTags.length) {
+    const filtered = st.files.filter(f => activeTags.every(t => (f.tags || []).includes(t)));
+    const label = activeTags.map(t => `"${esc(t)}"`).join(' + ');
+
+    html += `<div class="tags-lineage">`;
+    html += activeTags.map((t, i) =>
+      `${i > 0 ? '<span class="tags-lineage-sep">›</span>' : ''}<button class="tags-lineage-crumb" onclick="setTagFilter('${esc(t)}')" title="Remover do filtro">${esc(t)} ×</button>`
+    ).join('');
+    html += `</div>`;
+
+    const relatedCounts = new Map();
+    for (const f of filtered) {
+      for (const t of f.tags || []) {
+        if (activeTags.includes(t)) continue;
+        relatedCounts.set(t, (relatedCounts.get(t) || 0) + 1);
+      }
+    }
+    const relatedTags = [...relatedCounts.keys()].sort((a, b) => relatedCounts.get(b) - relatedCounts.get(a) || a.localeCompare(b));
+    if (relatedTags.length) {
+      html += `<div class="tags-panel-divider">tags relacionadas</div>`;
+      html += `<div class="tags-cloud">`;
+      html += relatedTags.map(t =>
+        `<button class="tag-browse-chip tag-related-chip" onclick="setTagFilter('${esc(t)}')" title="${relatedCounts.get(t)} nota${relatedCounts.get(t) === 1 ? '' : 's'} em comum">${esc(t)} <span class="tag-related-count">${relatedCounts.get(t)}</span></button>`
+      ).join('');
+      html += `</div>`;
+    }
+
     if (filtered.length) {
-      html += `<div class="tags-panel-divider">com tag "${esc(activeTag)}"</div>`;
+      html += `<div class="tags-panel-divider">com tag ${label}</div>`;
       html += `<div class="tags-panel-files">`;
       html += filtered.map(f => {
         const a = f.id === st.activeId ? ' active' : '';
@@ -239,6 +278,8 @@ export function renderTagsPanel() {
         </div>`;
       }).join('');
       html += '</div>';
+    } else {
+      html += `<div class="tags-panel-divider">nenhuma nota com ${label}</div>`;
     }
   }
 

@@ -23,7 +23,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from mk_manager.config import get_settings
-from mk_manager.routers import assets, files, search, stats
+from mk_manager.routers import assets, files, search, stats, tags
 
 _FRONTEND_DIR: Path = Path(__file__).parent / "frontend"
 _DS_DIR: Path = Path(__file__).parent.parent / "design-system"
@@ -75,6 +75,7 @@ def create_app() -> FastAPI:
     app.include_router(search.router)
     app.include_router(stats.router)
     app.include_router(assets.router)
+    app.include_router(tags.router)
 
     @app.get("/", include_in_schema=False)
     @app.get("/index.html", include_in_schema=False)
