@@ -1,7 +1,18 @@
 // Responsabilidade: renderização dos painéis laterais (árvore, busca, tags)
+// e interações da árvore (drag&drop, tooltip, rename/nova pasta inline)
 
 import { st } from './state.js';
 import { esc, timeAgo } from './utils.js';
+
+// ── Ações injetadas por files.js (evita import circular: files.js precisa de
+// renderSidebar/renderTree daqui, então este módulo não importa files.js de volta) ──
+let _moveFileToFolder = null;
+let _confirmRenameFile = null;
+
+export function initSidebarActions({ moveFileToFolder, confirmRenameFile }) {
+  _moveFileToFolder = moveFileToFolder;
+  _confirmRenameFile = confirmRenameFile;
+}
 
 // ── SVG icons ─────────────────────────────────────────────────────────────────
 
@@ -286,9 +297,146 @@ export function renderTagsPanel() {
   el.innerHTML = html;
 }
 
-// ── Stubs de compatibilidade (funções removidas da UI) ────────────────────────
-export function renderFolderTree() {}
-export function renderTagFilterChips() {}
-export function toggleFolderSection() {}
-export function startNewFolder() {}
-export function cancelNewFolder() {}
+// ── Tooltip de preview no explorador ─────────────────────────────────────────
+
+export function showFileTooltip(e, id) {
+  const f = st.files.find((f) => f.id === id);
+  if (!f) return;
+  const tip = document.getElementById('tree-tooltip');
+  if (!tip) return;
+
+  let html = `<div class="tip-title">${esc(f.title || 'Sem título')}</div>`;
+  if (f.folder) html += `<span class="tip-stat">📁 ${esc(f.folder)}</span>`;
+  if (f.tags?.length) {
+    html += `<div class="tip-tags">${f.tags.map((t) => `<span class="tip-tag">${esc(t)}</span>`).join('')}</div>`;
+  }
+  if (f.type === 'task' && f.task_total) {
+    html += `<span class="tip-stat">✓ ${f.task_done}/${f.task_total} tasks</span>`;
+  }
+  html += `<span class="tip-stat">${f.word_count} pal. · ${timeAgo(f.modified)}</span>`;
+  tip.innerHTML = html;
+
+  const rect = e.currentTarget.getBoundingClientRect();
+  const sidebar = document.querySelector('.sidebar-panel');
+  const sRight = sidebar ? sidebar.getBoundingClientRect().right : rect.right;
+  tip.style.top = `${Math.max(4, rect.top)}px`;
+  tip.style.left = `${sRight + 10}px`;
+  tip.classList.add('visible');
+}
+
+export function hideFileTooltip() {
+  document.getElementById('tree-tooltip')?.classList.remove('visible');
+}
+
+// ── Drag & drop de arquivos para pastas ────────────────────────────────────────
+
+export function onFileDragStart(e, id) {
+  st.draggingFileId = id;
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+export function onFolderDragOver(e, path) {
+  e.preventDefault();
+  e.stopPropagation();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('drag-over');
+}
+
+export function onFolderDragLeave(e) {
+  if (!e.currentTarget.contains(e.relatedTarget)) {
+    e.currentTarget.classList.remove('drag-over');
+  }
+}
+
+export function onFolderDrop(e, path) {
+  e.preventDefault();
+  e.stopPropagation();
+  e.currentTarget.classList.remove('drag-over');
+  const id = st.draggingFileId;
+  st.draggingFileId = null;
+  if (id) _moveFileToFolder?.(id, path);
+}
+
+// ── Nova pasta inline ──────────────────────────────────────────────────────────
+
+export function startNewFolderInput() {
+  st.creatingFolder = true;
+  renderTree();
+}
+
+export function onNewFolderKey(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    confirmNewFolder(e.target.value);
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    cancelNewFolderInput();
+  }
+}
+
+export function onNewFolderBlur(value) {
+  if (st.creatingFolder) confirmNewFolder(value);
+}
+
+export function confirmNewFolder(name) {
+  st.creatingFolder = false;
+  const trimmed = name.trim().replace(/^\/+|\/+$/g, '');
+  if (trimmed) {
+    st.emptyFolders.add(trimmed);
+    st.expandedFolders.add(trimmed);
+  }
+  renderTree();
+}
+
+export function cancelNewFolderInput() {
+  st.creatingFolder = false;
+  renderTree();
+}
+
+// ── Rename inline ─────────────────────────────────────────────────────────────
+
+export function startRenameFile(id) {
+  st.renamingId = id;
+  renderSidebar();
+}
+
+export function cancelRename() {
+  st.renamingId = null;
+  renderSidebar();
+}
+
+export function onRenameKey(e, id) {
+  e.stopPropagation();
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    _confirmRenameFile?.(id, e.target.value);
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    cancelRename();
+  }
+}
+
+export function onRenameBlur(id, value) {
+  if (st.renamingId === id) _confirmRenameFile?.(id, value);
+}
+
+// ── Expor ao DOM (necessário para event handlers inline gerados acima) ────────
+Object.assign(window, {
+  toggleTreeFolder,
+  toggleFolder,
+  showFileTooltip,
+  hideFileTooltip,
+  onFileDragStart,
+  onFolderDragOver,
+  onFolderDragLeave,
+  onFolderDrop,
+  startNewFolderInput,
+  onNewFolderKey,
+  onNewFolderBlur,
+  confirmNewFolder,
+  cancelNewFolderInput,
+  startRenameFile,
+  cancelRename,
+  onRenameKey,
+  onRenameBlur,
+});

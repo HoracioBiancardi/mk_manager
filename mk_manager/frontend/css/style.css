@@ -286,29 +286,22 @@
 .kanban-card-task-more { font-size: .65rem; color: var(--text-muted); margin-top: .15rem; }
 
 /* ── Kanban quick-edit modal ─────────────────────────────────────── */
-.kanban-qedit-modal { max-width: 480px; width: 100%; max-height: 80vh; display: flex; flex-direction: column; }
+.kanban-qedit-modal { max-width: 660px; width: 100%; max-height: 82vh; display: flex; flex-direction: column; }
 .kanban-qedit-title-text { font-size: 1rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.kanban-qedit-body { overflow-y: auto; flex: 1; padding: .5rem 0; }
+.kanban-qedit-body { overflow-y: auto; flex: 1; padding: .75rem 1.25rem 1rem; line-height: 1.7; }
 .kanban-qedit-empty { color: var(--text-subtle); font-size: .85rem; padding: .5rem 0; }
-.kanban-qedit-item {
-  display: flex; align-items: flex-start; gap: .6rem;
-  padding: .4rem .25rem; border-bottom: 1px solid var(--border-subtle);
-  cursor: pointer; border-radius: var(--r-sm); transition: background .1s;
+/* Headings escalados para o modal estreito */
+.kanban-qedit-body.md-preview h1 { font-size: 1.25rem; }
+.kanban-qedit-body.md-preview h2 { font-size: 1.05rem; }
+.kanban-qedit-body.md-preview h3 { font-size: .95rem; }
+/* Botão de expand/collapse de tasks nos cards */
+.kanban-card-expand-btn {
+  display: block; width: 100%; margin-top: .3rem;
+  background: none; border: none; cursor: pointer; text-align: left;
+  font-size: .65rem; color: var(--text-muted); padding: .15rem 0;
+  transition: color .15s;
 }
-.kanban-qedit-item:last-child { border-bottom: none; }
-.kanban-qedit-item:hover { background: var(--surface-hover); }
-.kanban-qedit-item input[type=checkbox] {
-  flex-shrink: 0; margin-top: .2rem; cursor: pointer;
-  accent-color: var(--primary); width: .95rem; height: .95rem;
-}
-.kanban-qedit-item label {
-  cursor: pointer; color: var(--text); font-size: .85rem; line-height: 1.45;
-  flex: 1;
-}
-.kanban-qedit-item.done label { text-decoration: line-through; color: var(--text-subtle); }
-.kanban-qedit-item.indent-1 { padding-left: 1.25rem; }
-.kanban-qedit-item.indent-2 { padding-left: 2.25rem; }
-.kanban-qedit-saving { font-size: .72rem; color: var(--text-muted); padding: .25rem 0; text-align: right; }
+.kanban-card-expand-btn:hover { color: var(--primary); }
 
 /* ── Search panel ────────────────────────────────────────────────── */
 .panel-search-box { padding: 0 .625rem .375rem; flex-shrink: 0; }

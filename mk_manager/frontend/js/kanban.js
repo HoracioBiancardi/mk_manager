@@ -4,6 +4,7 @@ import { st } from "./state.js";
 import { esc, toast } from "./utils.js";
 import { apiFetch } from "./api.js";
 import { setView } from "./editor.js";
+import { renderMarkdown, toggleCheckboxAt } from "./preview.js";
 
 // ── Callbacks injetados por app.js para evitar dependência circular ────────────
 let _openFile = null;
@@ -61,6 +62,16 @@ export function updateStatusSelect() {
   sel.value = cur;
 }
 
+// ── Estado de expansão dos cards ──────────────────────────────────────────────
+const _expandedCards = new Set();
+
+export function toggleKanbanCardExpand(id, event) {
+  event?.stopPropagation();
+  if (_expandedCards.has(id)) _expandedCards.delete(id);
+  else _expandedCards.add(id);
+  renderKanban();
+}
+
 // ── Renderização do board ──────────────────────────────────────────────────────
 export function renderKanban() {
   const board = document.getElementById("kanban-board");
@@ -92,17 +103,25 @@ export function renderKanban() {
               .join("")}</div>`
           : "";
         const items = f.task_items || [];
-        const previewItems = items.slice(0, 3);
-        const taskPreview = previewItems.length
-          ? `<div class="kanban-card-tasks">${previewItems
-              .map(
-                (it) =>
-                  `<div class="kanban-card-task-item${it.done ? " done" : ""}">
-                  <span class="kanban-card-task-icon">${it.done ? "✓" : "○"}</span>
+        const PREVIEW_LIMIT = 3;
+        const isExpanded = _expandedCards.has(f.id);
+        const visibleItems = isExpanded ? items : items.slice(0, PREVIEW_LIMIT);
+        const hasMore = items.length > PREVIEW_LIMIT;
+        const taskPreview = visibleItems.length
+          ? `<div class="kanban-card-tasks">${visibleItems
+              .map((it) => {
+                const level = Math.min(Math.floor((it.indent || 0) / 2), 3);
+                const icon = it.done ? "✓" : (level > 0 ? "–" : "○");
+                return `<div class="kanban-card-task-item${it.done ? " done" : ""}" style="padding-left:${4 + level * 12}px">
+                  <span class="kanban-card-task-icon">${icon}</span>
                   <span>${esc(it.text)}</span>
-                </div>`,
-              )
-              .join("")}${items.length > 3 ? `<div class="kanban-card-task-more">+${items.length - 3} mais...</div>` : ""}</div>`
+                </div>`;
+              })
+              .join("")}${
+              hasMore
+                ? `<button class="kanban-card-expand-btn" onclick="toggleKanbanCardExpand('${f.id}',event)">${isExpanded ? "▲ Menos" : `▼ +${items.length - PREVIEW_LIMIT} mais`}</button>`
+                : ""
+            }</div>`
           : "";
         return `<div class="kanban-card" data-id="${f.id}"
         draggable="true"
@@ -301,6 +320,15 @@ export async function deleteKanbanCol(key) {
 // ── Quick-edit modal ───────────────────────────────────────────────────────────
 let _kqedit = { id: null, content: null, saving: false };
 
+function _rerenderQEditModal() {
+  const el = document.getElementById("kanban-qedit-body");
+  if (!el) return;
+  renderMarkdown(_kqedit.content, el, {
+    onCheckboxChange: (idx) => toggleKanbanQEditItem(idx),
+    enableCapture: false,
+  });
+}
+
 export async function openKanbanQEdit(id) {
   const file = st.files.find((f) => f.id === id);
   if (!file) return;
@@ -315,60 +343,17 @@ export async function openKanbanQEdit(id) {
     const r = await apiFetch(`/files/${id}`);
     const data = await r.json();
     _kqedit.content = data.content;
-    _renderQEditItems();
+    _rerenderQEditModal();
   } catch (e) {
     document.getElementById("kanban-qedit-body").innerHTML =
       `<p class="kanban-qedit-empty">Erro ao carregar: ${esc(e.message)}</p>`;
   }
 }
 
-function _renderQEditItems() {
-  const items = _parseTaskItems(_kqedit.content);
-  const body = document.getElementById("kanban-qedit-body");
-  if (!items.length) {
-    body.innerHTML =
-      '<p class="kanban-qedit-empty">Nenhuma tarefa encontrada.</p>';
-    return;
-  }
-  body.innerHTML = items
-    .map((item, i) => {
-      const indentClass =
-        item.indent >= 4 ? " indent-2" : item.indent >= 2 ? " indent-1" : "";
-      return `<div class="kanban-qedit-item${item.done ? " done" : ""}${indentClass}" onclick="toggleKanbanQEditItem(${i})">
-        <input type="checkbox" id="kqitem-${i}" ${item.done ? "checked" : ""}
-          onclick="event.stopPropagation();toggleKanbanQEditItem(${i})">
-        <label for="kqitem-${i}" onclick="event.preventDefault()">${esc(item.text)}</label>
-      </div>`;
-    })
-    .join("");
-}
-
-function _parseTaskItems(content) {
-  const items = [];
-  for (const m of (content || "").matchAll(/^(\s*)- \[([ x])\] (.+)/gm)) {
-    items.push({ text: m[3], done: m[2] === "x", indent: m[1].length });
-  }
-  return items;
-}
-
 export async function toggleKanbanQEditItem(index) {
   if (_kqedit.saving) return;
-  const lines = (_kqedit.content || "").split("\n");
-  let taskIdx = 0;
-  const newLines = lines.map((line) => {
-    const m = line.match(/^(\s*)- \[([ x])\] (.+)/);
-    if (m) {
-      if (taskIdx === index) {
-        const nowDone = m[2] !== "x";
-        taskIdx++;
-        return `${m[1]}- [${nowDone ? "x" : " "}] ${m[3]}`;
-      }
-      taskIdx++;
-    }
-    return line;
-  });
-  _kqedit.content = newLines.join("\n");
-  _renderQEditItems();
+  _kqedit.content = toggleCheckboxAt(_kqedit.content, index);
+  _rerenderQEditModal();
 
   _kqedit.saving = true;
   try {
@@ -410,3 +395,25 @@ export async function openEditorFromKanbanQEdit() {
   closeKanbanQEdit();
   await openFileFromKanban(id);
 }
+
+// ── Expor ao DOM (necessário para event handlers inline) ──────────────────────
+Object.assign(window, {
+  openFileFromKanban,
+  moveTaskStatus,
+  toggleKanbanCardExpand,
+  onKanbanCardDragStart,
+  onKanbanColDragOver,
+  onKanbanColDragLeave,
+  onKanbanColDrop,
+  startAddKanbanCol,
+  onKanbanColKey,
+  onKanbanColBlur,
+  confirmAddKanbanCol,
+  cancelAddKanbanCol,
+  deleteKanbanCol,
+  openKanbanQEdit,
+  closeKanbanQEdit,
+  onKanbanQEditOverlayClick,
+  toggleKanbanQEditItem,
+  openEditorFromKanbanQEdit,
+});

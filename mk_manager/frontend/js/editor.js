@@ -548,3 +548,19 @@ export function setSaveStatus(s) {
   el.textContent =
     s === "saving" ? "Salvando…" : s === "error" ? "Erro ao salvar" : "Salvo";
 }
+
+// ── Expor ao DOM (necessário para event handlers inline) ──────────────────────
+Object.assign(window, {
+  onEditorInput,
+  onTitleChange,
+  onEditorKeydown,
+  onTagKey,
+  removeTag,
+  fmt,
+  ins,
+  insCodeBlock,
+  insMermaid,
+  insTable,
+  formatTable,
+  setView,
+});

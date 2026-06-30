@@ -3,9 +3,9 @@
 import { toast } from "./utils.js";
 import { onEditorInput } from "./editor.js";
 
-// ── Preview markdown ──────────────────────────────────────────────────────────
+// ── Renderização de markdown (compartilhada com o modal do kanban) ────────────
 
-function toggleCheckboxAt(content, idx) {
+export function toggleCheckboxAt(content, idx) {
   let count = 0;
   return content.replace(/^([ \t]*[-*+] \[)([ xX])(\] )/gm, (m, a, ch, b) => {
     if (count++ === idx) return a + (ch === " " ? "x" : " ") + b;
@@ -13,9 +13,13 @@ function toggleCheckboxAt(content, idx) {
   });
 }
 
-export function renderPreview() {
-  const content = document.getElementById("md-editor").value;
-  const el = document.getElementById("md-preview");
+/**
+ * Renderiza markdown em qualquer container.
+ * @param {string} content  — source markdown
+ * @param {HTMLElement} el  — container de destino
+ * @param {{ onCheckboxChange?: (idx:number)=>void, enableCapture?: boolean }} opts
+ */
+export function renderMarkdown(content, el, { onCheckboxChange, enableCapture = true } = {}) {
   el.innerHTML = marked.parse(content);
 
   const diagrams = el.querySelectorAll(".mermaid");
@@ -35,16 +39,30 @@ export function renderPreview() {
       li.classList.add("task-list-item");
       if (cb.checked) li.classList.add("done");
     }
-    cb.addEventListener("change", () => {
-      const ta = document.getElementById("md-editor");
-      ta.value = toggleCheckboxAt(ta.value, idx);
-      if (li) li.classList.toggle("done", cb.checked);
-      onEditorInput();
-    });
+    if (onCheckboxChange) {
+      cb.addEventListener("change", () => {
+        if (li) li.classList.toggle("done", cb.checked);
+        onCheckboxChange(idx);
+      });
+    }
   });
 
-  // Aguarda mermaid renderizar antes de injetar botões
-  setTimeout(() => addCaptureButtons(el), 300);
+  if (enableCapture) setTimeout(() => addCaptureButtons(el), 300);
+}
+
+// ── Preview do editor ─────────────────────────────────────────────────────────
+
+export function renderPreview() {
+  const content = document.getElementById("md-editor").value;
+  const el = document.getElementById("md-preview");
+  renderMarkdown(content, el, {
+    onCheckboxChange: (idx) => {
+      const ta = document.getElementById("md-editor");
+      ta.value = toggleCheckboxAt(ta.value, idx);
+      onEditorInput();
+    },
+    enableCapture: true,
+  });
 }
 
 // ── Corrige labels cortados em nós mermaid ────────────────────────────────────
