@@ -19,6 +19,7 @@ relative to the notes root if not present in the frontmatter.
 from __future__ import annotations
 
 import re
+import threading
 import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
@@ -66,6 +67,13 @@ class MarkdownFileRepository(AbstractFileRepository):
     def __init__(self, notes_dir: Path) -> None:
         self._dir: Path = notes_dir
         self._dir.mkdir(parents=True, exist_ok=True)
+        # In-memory cache keyed by path, invalidated per-entry via mtime so a
+        # request only re-reads/re-parses files that changed since the last
+        # scan. ``_id_to_path`` shortcuts single-file lookups (get/update/
+        # delete) that would otherwise need a full ``rglob`` per call.
+        self._cache: dict[Path, tuple[int, FileRecord]] = {}
+        self._id_to_path: dict[str, Path] = {}
+        self._lock = threading.Lock()
         self._migrate_flat_files()
 
     def _migrate_flat_files(self) -> None:
@@ -85,6 +93,44 @@ class MarkdownFileRepository(AbstractFileRepository):
                     path.rename(target)
             except Exception:
                 continue
+
+    # ── Cache helpers ────────────────────────────────────────────────────────
+
+    def _parse_cached(self, path: Path) -> FileRecord:
+        """Return the parsed record for *path*, reusing the cache when fresh."""
+        mtime_ns = path.stat().st_mtime_ns
+        with self._lock:
+            cached = self._cache.get(path)
+            if cached is not None and cached[0] == mtime_ns:
+                return cached[1]
+        record = self._parse(path)
+        with self._lock:
+            self._cache[path] = (mtime_ns, record)
+            self._id_to_path[record.id] = path
+        return record
+
+    def _remember(self, path: Path, record: FileRecord) -> None:
+        """Populate the cache directly after a write, skipping a re-read."""
+        with self._lock:
+            self._cache[path] = (path.stat().st_mtime_ns, record)
+            self._id_to_path[record.id] = path
+
+    def _forget(self, path: Path, file_id: str | None = None) -> None:
+        """Evict *path* (and optionally *file_id*) from the cache."""
+        with self._lock:
+            self._cache.pop(path, None)
+            if file_id is not None:
+                self._id_to_path.pop(file_id, None)
+
+    def _evict_stale(self, existing_paths: set[Path]) -> None:
+        """Drop cache entries for paths no longer present on disk."""
+        with self._lock:
+            stale = [p for p in self._cache if p not in existing_paths]
+            for p in stale:
+                del self._cache[p]
+            stale_ids = [i for i, p in self._id_to_path.items() if p not in existing_paths]
+            for i in stale_ids:
+                del self._id_to_path[i]
 
     # ── Private helpers ────────────────────────────────────────────────────
 
@@ -114,15 +160,28 @@ class MarkdownFileRepository(AbstractFileRepository):
         return self._dir / f"{file_id}.md"
 
     def _require_path(self, file_id: str) -> Path:
-        """Find an existing file by ID anywhere under the notes tree.
+        """Find an existing file by ID, preferring the cached path.
+
+        Falls back to a full tree scan on a cache miss (or if the cached
+        path was deleted from under us), and repopulates the cache either
+        way so repeated lookups of the same ID (e.g. autosave) stay O(1).
 
         Raises:
             FileNotFoundError: If the file does not exist.
         """
+        cached_path = self._id_to_path.get(file_id)
+        if cached_path is not None and cached_path.is_file():
+            return cached_path
+
         matches = list(self._dir.rglob(f"{file_id}.md"))
         if not matches:
+            with self._lock:
+                self._id_to_path.pop(file_id, None)
             raise FileNotFoundError(f"File not found: '{file_id}'")
-        return matches[0]
+        path = matches[0]
+        with self._lock:
+            self._id_to_path[file_id] = path
+        return path
 
     def _parse(self, path: Path) -> FileRecord:
         text = path.read_text("utf-8")
@@ -188,13 +247,14 @@ class MarkdownFileRepository(AbstractFileRepository):
         records: list[FileRecord] = []
         for p in paths:
             try:
-                records.append(self._parse(p))
+                records.append(self._parse_cached(p))
             except (OSError, ValueError, yaml.YAMLError):
                 continue
+        self._evict_stale(set(paths))
         return records
 
     def get_by_id(self, file_id: str) -> FileRecord:
-        return self._parse(self._require_path(file_id))
+        return self._parse_cached(self._require_path(file_id))
 
     def create(
         self,
@@ -225,7 +285,9 @@ class MarkdownFileRepository(AbstractFileRepository):
             folder=folder,
             status=status,
         )
-        self._write(self._build_path(actual_id, folder), record)
+        path = self._build_path(actual_id, folder)
+        self._write(path, record)
+        self._remember(path, record)
         return record
 
     def update(
@@ -240,7 +302,7 @@ class MarkdownFileRepository(AbstractFileRepository):
         status: str | None = None,
     ) -> FileRecord:
         old_path = self._require_path(file_id)
-        existing = self._parse(old_path)
+        existing = self._parse_cached(old_path)
 
         new_title = title if title is not None else existing.title
         new_folder = folder.strip("/") if folder is not None else existing.folder
@@ -273,15 +335,18 @@ class MarkdownFileRepository(AbstractFileRepository):
             self._write(new_path, updated)
             old_path.unlink()
             _cleanup_empty_dirs(old_path.parent, self._dir)
+            self._forget(old_path, file_id if file_id != new_id else None)
         else:
             self._write(old_path, updated)
 
+        self._remember(new_path, updated)
         return updated
 
     def delete(self, file_id: str) -> None:
         path = self._require_path(file_id)
         path.unlink()
         _cleanup_empty_dirs(path.parent, self._dir)
+        self._forget(path, file_id)
 
     def count_by_type(self) -> dict[str, int]:
         counts: dict[str, int] = {}

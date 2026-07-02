@@ -15,22 +15,32 @@ Example:
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 from mk_manager.config import get_settings
 from mk_manager.repositories.markdown import MarkdownFileRepository
 from mk_manager.services.file_service import FileService
 
 
-def get_file_service() -> FileService:
-    """Construct and return a ``FileService`` wired to the configured repository.
+@lru_cache
+def _get_repository() -> MarkdownFileRepository:
+    """Return the process-wide ``MarkdownFileRepository`` singleton.
 
-    Called by FastAPI's dependency injection system on each request.
-    Construction is lightweight (no I/O at instantiation time) so no
-    per-request caching is needed.
-
-    Returns:
-        ``FileService`` backed by a ``MarkdownFileRepository`` pointing to
-        the directory defined in ``Settings.notes_dir``.
+    Cached so the repository (and its in-memory parse cache) survives across
+    requests instead of being rebuilt — and re-scanning the whole notes tree
+    for migration — on every single call.
     """
     settings = get_settings()
-    repository = MarkdownFileRepository(settings.notes_dir)
-    return FileService(repository)
+    return MarkdownFileRepository(settings.notes_dir)
+
+
+def get_file_service() -> FileService:
+    """Construct and return a ``FileService`` wired to the shared repository.
+
+    Called by FastAPI's dependency injection system on each request.
+
+    Returns:
+        ``FileService`` backed by the singleton ``MarkdownFileRepository``
+        pointing to the directory defined in ``Settings.notes_dir``.
+    """
+    return FileService(_get_repository())
