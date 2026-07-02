@@ -10,7 +10,7 @@
 import { toast, initBackground } from "./utils.js";
 import { initSidebarActions, hideFileTooltip } from "./sidebar.js";
 import { setSaveCallback, initResizer } from "./editor.js";
-import "./preview.js";
+import { initPreviewSourceSync } from "./preview.js";
 import {
   initKanban,
   loadKanbanColumns,
@@ -29,6 +29,7 @@ import { closeDeleteModal } from "./delete-modal.js";
 import "./export.js";
 import "./assets.js";
 import "./search-filter.js";
+import "./diagram-builder.js";
 
 // ── Conexão ───────────────────────────────────────────────────────────────────
 async function checkConn() {
@@ -79,6 +80,7 @@ document.addEventListener("keydown", (e) => {
   if (treeEl) treeEl.innerHTML = '<div class="tree-empty">⏳ Carregando…</div>';
   initBackground();
   initResizer();
+  initPreviewSourceSync();
   const ok = await checkConn();
   if (ok) await loadFiles();
   else toast("API offline. Inicie o servidor: uv run mk-manager", "error");

@@ -1,7 +1,8 @@
 // Responsabilidade: renderização do preview markdown/mermaid e exportação de imagens
 
 import { toast } from "./utils.js";
-import { onEditorInput } from "./editor.js";
+import { onEditorInput, jumpToSourceLine } from "./editor.js";
+import { openDiagramBuilder } from "./diagram-builder.js";
 
 // ── Renderização de markdown (compartilhada com o modal do kanban) ────────────
 
@@ -13,14 +14,35 @@ export function toggleCheckboxAt(content, idx) {
   });
 }
 
+// Renderiza bloco a bloco (via marked.lexer) marcando cada wrapper com a linha
+// de origem em que o bloco começa, para permitir navegação preview → editor.
+// ``.md-block`` usa `display: contents` (ver style.css) para não afetar o
+// layout/CSS existente — os wrappers ficam invisíveis à árvore de renderização.
+function renderBlocksWithLineMap(content) {
+  const tokens = marked.lexer(content);
+  let line = 0;
+  let html = "";
+  for (const token of tokens) {
+    const raw = token.raw ?? "";
+    const newlines = (raw.match(/\n/g) || []).length;
+    if (token.type === "space") {
+      line += newlines;
+      continue;
+    }
+    html += `<div class="md-block" data-line="${line}">${marked.parser([token])}</div>`;
+    line += newlines;
+  }
+  return html;
+}
+
 /**
  * Renderiza markdown em qualquer container.
  * @param {string} content  — source markdown
  * @param {HTMLElement} el  — container de destino
- * @param {{ onCheckboxChange?: (idx:number)=>void, enableCapture?: boolean }} opts
+ * @param {{ onCheckboxChange?: (idx:number)=>void, enableCapture?: boolean, trackSourceLines?: boolean }} opts
  */
-export function renderMarkdown(content, el, { onCheckboxChange, enableCapture = true } = {}) {
-  el.innerHTML = marked.parse(content);
+export function renderMarkdown(content, el, { onCheckboxChange, enableCapture = true, trackSourceLines = false } = {}) {
+  el.innerHTML = trackSourceLines ? renderBlocksWithLineMap(content) : marked.parse(content);
 
   const diagrams = el.querySelectorAll(".mermaid");
   if (diagrams.length && typeof mermaid !== "undefined") {
@@ -62,6 +84,21 @@ export function renderPreview() {
       onEditorInput();
     },
     enableCapture: true,
+    trackSourceLines: true,
+  });
+}
+
+// Duplo-clique num bloco do preview leva o cursor do editor até a linha de
+// origem correspondente (troca para split se estiver em "só preview").
+export function initPreviewSourceSync() {
+  const el = document.getElementById("md-preview");
+  if (!el) return;
+  el.addEventListener("dblclick", (e) => {
+    const block = e.target.closest("[data-line]");
+    if (!block) return;
+    const line = parseInt(block.dataset.line, 10);
+    if (Number.isNaN(line)) return;
+    jumpToSourceLine(line);
   });
 }
 
@@ -163,10 +200,28 @@ function addCaptureButtons(container) {
         makeCaptureBtn(() => captureMermaid(wrap, `diagrama-${i + 1}.png`)),
       );
     }
+    if (!wrap.querySelector(".mermaid-edit-btn")) {
+      wrap.appendChild(makeEditBtn(() => editMermaidBlock(wrap)));
+    }
     if (!wrap.querySelector(".mermaid-modal-btn")) {
       wrap.appendChild(makeExpandBtn(() => openMermaidModal(wrap)));
     }
   });
+}
+
+// Manda o cursor do editor para a linha de origem do bloco ```mermaid``` que
+// gerou este .mermaid-wrap (via data-line do .md-block ancestral, o mesmo
+// mecanismo usado pelo dblclick de sincronização preview→editor) e então abre
+// o construtor visual, que detecta o bloco na posição do cursor e o carrega.
+function editMermaidBlock(wrap) {
+  const block = wrap.closest("[data-line]");
+  const line = block ? parseInt(block.dataset.line, 10) : NaN;
+  if (Number.isNaN(line)) {
+    toast("Não foi possível localizar este diagrama no texto.", "error");
+    return;
+  }
+  jumpToSourceLine(line);
+  openDiagramBuilder();
 }
 
 function wrapInCapture(el) {
@@ -201,6 +256,18 @@ function makeCopyBtn(pre) {
       btn.textContent = "✓ Copiado!";
       setTimeout(() => { btn.textContent = "⎘ Copiar"; }, 1500);
     }).catch(() => toast("Erro ao copiar.", "error"));
+  });
+  return btn;
+}
+
+function makeEditBtn(onClick) {
+  const btn = document.createElement("button");
+  btn.className = "mermaid-edit-btn";
+  btn.title = "Editar no construtor visual de diagramas";
+  btn.textContent = "✏️ Editar";
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    onClick();
   });
   return btn;
 }

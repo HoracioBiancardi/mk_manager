@@ -138,6 +138,22 @@ export function setView(v) {
   }
 }
 
+// ── Preview → editor: navega até a linha de origem correspondente ─────────────
+
+export function jumpToSourceLine(lineNumber) {
+  if (st.view === "preview") setView("split");
+  const ta = document.getElementById("md-editor");
+  const lines = ta.value.split("\n");
+  let pos = 0;
+  for (let i = 0; i < lineNumber && i < lines.length; i++) {
+    pos += lines[i].length + 1;
+  }
+  ta.focus();
+  ta.setSelectionRange(pos, pos);
+  const lineHeight = parseFloat(getComputedStyle(ta).lineHeight) || 20;
+  ta.scrollTop = Math.max(0, lineHeight * lineNumber - ta.clientHeight / 2);
+}
+
 // ── Resize handle ─────────────────────────────────────────────────────────────
 
 export function initResizer() {
@@ -414,17 +430,6 @@ export function insTable() {
   onEditorInput();
 }
 
-export function insMermaid() {
-  const ta = document.getElementById("md-editor");
-  const s = ta.selectionStart;
-  const before = ta.value.slice(0, s);
-  const prefix = before && !before.endsWith("\n") ? "\n" : "";
-  const block = `${prefix}\`\`\`mermaid\nflowchart TD\n    A[Início] --> B[Passo]\n    B --> C{Decisão?}\n    C -->|Sim| D[Resultado]\n    C -->|Não| E[Outro]\n\`\`\``;
-  replaceRange(ta, s, ta.selectionEnd, block);
-  ta.focus();
-  onEditorInput();
-}
-
 export function insRaw(text) {
   const ta = document.getElementById("md-editor");
   const pos = ta.selectionStart;
@@ -559,7 +564,6 @@ Object.assign(window, {
   fmt,
   ins,
   insCodeBlock,
-  insMermaid,
   insTable,
   formatTable,
   setView,
