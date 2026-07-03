@@ -1,7 +1,7 @@
 // Responsabilidade: renderização do preview markdown/mermaid e exportação de imagens
 
 import { toast } from "./utils.js";
-import { onEditorInput, jumpToSourceLine } from "./editor.js";
+import { onEditorInput, jumpToSourceLine, replaceRange } from "./editor.js";
 import { openDiagramBuilder } from "./diagram-builder.js";
 
 // ── Renderização de markdown (compartilhada com o modal do kanban) ────────────
@@ -12,6 +12,18 @@ export function toggleCheckboxAt(content, idx) {
     if (count++ === idx) return a + (ch === " " ? "x" : " ") + b;
     return m;
   });
+}
+
+// Posição (índice) do caractere "[ ]"/"[x]" do idx-ésimo checkbox, para trocar
+// só esse caractere via replaceRange (preserva undo nativo do textarea).
+function checkboxCharIndex(content, idx) {
+  const re = /^[ \t]*[-*+] \[[ xX]\] /gm;
+  let count = 0;
+  let m;
+  while ((m = re.exec(content))) {
+    if (count++ === idx) return m.index + m[0].indexOf("[") + 1;
+  }
+  return -1;
 }
 
 // Renderiza bloco a bloco (via marked.lexer) marcando cada wrapper com a linha
@@ -47,7 +59,14 @@ export function renderMarkdown(content, el, { onCheckboxChange, enableCapture = 
   const diagrams = el.querySelectorAll(".mermaid");
   if (diagrams.length && typeof mermaid !== "undefined") {
     diagrams.forEach((d) => d.removeAttribute("data-processed"));
-    mermaid.run({ nodes: diagrams }).then(() => {
+    // Espera a fonte (Google Fonts "Inter", carregada com font-display:swap)
+    // terminar de carregar antes de medir/renderizar. Sem isso, o mermaid mede
+    // os labels com a fonte de fallback, e quando a Inter chega depois o texto
+    // reflui para uma largura maior — os títulos de subgraph (que já ficaram
+    // com white-space:normal fixado em px por fixMermaidLabels) quebram linha
+    // e ficam cortados atrás das caixas.
+    const fontsReady = document.fonts?.ready ?? Promise.resolve();
+    fontsReady.then(() => mermaid.run({ nodes: diagrams })).then(() => {
       el.querySelectorAll(".mermaid-wrap svg").forEach(fixMermaidLabels);
     }).catch(() => {});
   }
@@ -80,7 +99,11 @@ export function renderPreview() {
   renderMarkdown(content, el, {
     onCheckboxChange: (idx) => {
       const ta = document.getElementById("md-editor");
-      ta.value = toggleCheckboxAt(ta.value, idx);
+      const pos = checkboxCharIndex(ta.value, idx);
+      if (pos !== -1) {
+        const ch = ta.value[pos];
+        replaceRange(ta, pos, pos + 1, /[xX]/.test(ch) ? " " : "x");
+      }
       onEditorInput();
     },
     enableCapture: true,
@@ -128,7 +151,11 @@ function fixMermaidLabels(svgEl) {
     // scrollWidth arredonda para inteiros. Usar Math.ceil garante que nunca
     // ficamos 1 pixel abaixo do necessário, evitando word-break quebrando
     // palavras como "Invoice" → "Invoic/e" por margem de fração de pixel.
-    const naturalW = Math.ceil(div.getBoundingClientRect().width);
+    // Soma 2px de folga: white-space:normal + largura fixa em px é sensível a
+    // qualquer diferença de métrica entre a medição e o paint final (ex.: a
+    // fonte Inter do Google Fonts ainda trocando de fallback→Inter), e sem
+    // essa margem a última palavra pode quebrar linha por 1px de sobra.
+    const naturalW = Math.ceil(div.getBoundingClientRect().width) + 2;
     const finalW = Math.max(foW, naturalW);
     div.style.width = finalW + "px";
 

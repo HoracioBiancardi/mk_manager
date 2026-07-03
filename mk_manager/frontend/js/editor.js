@@ -23,7 +23,7 @@ function makeTableSep(cols) {
 }
 
 // Substitui [start, end) por text preservando o undo stack nativo do browser
-function replaceRange(ta, start, end, text) {
+export function replaceRange(ta, start, end, text) {
   ta.focus();
   ta.setSelectionRange(start, end);
   if (!document.execCommand("insertText", false, text)) {
@@ -249,11 +249,33 @@ export function onEditorKeydown(e) {
   if (e.key === "Tab") {
     e.preventDefault();
     const pos = ta.selectionStart;
+    const selEnd = ta.selectionEnd;
     const lineStart = ta.value.lastIndexOf("\n", pos - 1) + 1;
     const currentLine = ta.value.slice(lineStart).split("\n")[0];
     const lineEnd = lineStart + currentLine.length;
     const isTable = /^\s*\|/.test(currentLine);
     const isList = /^\s*(- \[[ x]\] |- |\* |\d+\. )/.test(currentLine);
+
+    // Seleção cobrindo várias linhas: indenta/desindenta o bloco inteiro em
+    // vez de substituir a seleção inteira por 2 espaços (o que apagava as
+    // linhas selecionadas).
+    const isMultiLine = pos !== selEnd && ta.value.slice(pos, selEnd).includes("\n");
+    if (isMultiLine && !isTable) {
+      const blockStart = lineStart;
+      let blockEnd = selEnd;
+      // Se a seleção termina bem no início de uma linha (ex.: shift+down),
+      // essa última linha não entra no bloco a indentar.
+      if (blockEnd > blockStart && ta.value[blockEnd - 1] === "\n") blockEnd -= 1;
+      const lines = ta.value.slice(blockStart, blockEnd).split("\n");
+      const newLines = e.shiftKey
+        ? lines.map((l) => l.replace(/^(  |\t| )/, ""))
+        : lines.map((l) => "  " + l);
+      const newBlock = newLines.join("\n");
+      replaceRange(ta, blockStart, blockEnd, newBlock);
+      ta.setSelectionRange(blockStart, blockStart + newBlock.length);
+      onEditorInput();
+      return;
+    }
 
     if (isTable) {
       // Tab: pula para a próxima célula; Shift+Tab: célula anterior

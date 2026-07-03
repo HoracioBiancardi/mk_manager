@@ -6,7 +6,7 @@
 // .mermaid-zoom-toolbar/.mermaid-zoom-ctrl (style.css) para o chrome do
 // modal, definindo só o necessário para o canvas de nós/setas.
 
-import { ins, onEditorInput } from "./editor.js";
+import { ins, onEditorInput, replaceRange } from "./editor.js";
 import { toast } from "./utils.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -27,18 +27,49 @@ const TYPE_BY_ARROW = { "-->": "arrow", "-.->": "dashed", "---": "line", "<-->":
 
 const HISTORY_LIMIT = 50;
 
-let state = null; // { nodes, edges, direction, nextId, nextEdgeType, sourceRange }
+let state = null; // { nodes, edges, groups, direction, nextId, nextGroupId, nextEdgeType, sourceRange }
 let els = null; // { overlay, canvas, svg, btnDir, btnEdgeType, btnUndo, btnRedo, btnInsert }
 let history = { past: [], future: [] };
 
+function sanitizeText(text, fallback) {
+  return String(text ?? "").replace(/"/g, "'").replace(/\s*\n\s*/g, " ").trim() || fallback;
+}
 function sanitizeLabel(text) {
-  return String(text ?? "").replace(/"/g, "'").replace(/\s*\n\s*/g, " ").trim() || "Nó";
+  return sanitizeText(text, "Nó");
+}
+
+// Um nó pertence a um grupo se seu centro cai dentro do retângulo do grupo
+// no canvas — a posição visual é a fonte da verdade, não um vínculo salvo,
+// então arrastar uma caixa para dentro/fora de um grupo já muda a saída.
+function groupRect(group) {
+  const el = group.el;
+  return { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight };
+}
+function nodeInGroup(node, group) {
+  const r = groupRect(group);
+  const el = node.el;
+  const cx = el.offsetLeft + el.offsetWidth / 2;
+  const cy = el.offsetTop + el.offsetHeight / 2;
+  return cx >= r.x && cx <= r.x + r.w && cy >= r.y && cy <= r.y + r.h;
 }
 
 function toMermaidSyntax(s) {
   if (!s.nodes.length) return "";
   const lines = [`flowchart ${s.direction}`];
+  const placed = new Set();
+  for (const g of s.groups) {
+    const members = s.nodes.filter((n) => nodeInGroup(n, g));
+    if (!members.length) continue;
+    lines.push(`    subgraph ${g.id} ["${sanitizeText(g.title, "Grupo")}"]`);
+    for (const n of members) {
+      placed.add(n.id);
+      const wrap = SHAPE_WRAP[n.shape] || SHAPE_WRAP.rect;
+      lines.push(`        ${n.id}${wrap(sanitizeLabel(n.label))}`);
+    }
+    lines.push("    end");
+  }
   for (const n of s.nodes) {
+    if (placed.has(n.id)) continue;
     const wrap = SHAPE_WRAP[n.shape] || SHAPE_WRAP.rect;
     lines.push(`    ${n.id}${wrap(sanitizeLabel(n.label))}`);
   }
@@ -65,6 +96,15 @@ function unquote(s) {
   return t.startsWith('"') && t.endsWith('"') ? t.slice(1, -1) : t;
 }
 
+// `subgraph ID [Título]`, `subgraph ID ["Título"]` ou `subgraph ID` (sem título)
+function parseSubgraphHeader(line) {
+  const m = /^subgraph\s+([^\s[]+)\s*(?:\[\s*(.*?)\s*\])?\s*$/i.exec(line);
+  if (!m) return null;
+  const id = m[1];
+  const title = m[2] !== undefined ? unquote(m[2]) : id;
+  return { id, title };
+}
+
 function findMermaidBlockAt(text, pos) {
   const re = /```mermaid\n([\s\S]*?)```/g;
   let m;
@@ -81,37 +121,58 @@ function parseMermaid(body) {
   const direction = /^flowchart\s+LR/i.test(lines[0]) ? "LR" : "TD";
   const bodyLines = lines.slice(1);
 
+  // Separa marcadores subgraph/end do resto: cada linha "normal" carrega o id
+  // do grupo em que está aninhada (se houver), pra atribuir os nós a ele.
+  // Subgraphs aninhados colapsam no grupo mais interno (não suportamos
+  // hierarquia de grupos no builder visual).
+  const groups = [];
+  const groupStack = [];
+  const flatLines = [];
+  for (const line of bodyLines) {
+    if (/^end$/i.test(line)) { groupStack.pop(); continue; }
+    const sg = parseSubgraphHeader(line);
+    if (sg) { groups.push(sg); groupStack.push(sg.id); continue; }
+    flatLines.push({ line, groupId: groupStack[groupStack.length - 1] || null });
+  }
+
   const nodeMap = new Map();
-  const registerNode = (id, shape, rawLabel) => {
-    if (!nodeMap.has(id)) nodeMap.set(id, { id, label: unquote(rawLabel) || id, shape });
+  const nodeGroupId = new Map();
+  const registerNode = (id, shape, rawLabel, groupId) => {
+    if (!nodeMap.has(id)) {
+      nodeMap.set(id, { id, label: unquote(rawLabel) || id, shape });
+      if (groupId) nodeGroupId.set(id, groupId);
+    } else if (groupId && !nodeGroupId.has(id)) {
+      nodeGroupId.set(id, groupId);
+    }
   };
 
-  for (const line of bodyLines) {
+  for (const { line, groupId } of flatLines) {
     const re = nodeDeclRegex();
     let m;
     while ((m = re.exec(line))) {
-      if (m[3] !== undefined) registerNode(m[1], "circle", m[3]);
-      else if (m[4] !== undefined) registerNode(m[1], "rect", m[4]);
-      else if (m[5] !== undefined) registerNode(m[1], "rhombus", m[5]);
-      else if (m[6] !== undefined) registerNode(m[1], "round", m[6]);
+      if (m[3] !== undefined) registerNode(m[1], "circle", m[3], groupId);
+      else if (m[4] !== undefined) registerNode(m[1], "rect", m[4], groupId);
+      else if (m[5] !== undefined) registerNode(m[1], "rhombus", m[5], groupId);
+      else if (m[6] !== undefined) registerNode(m[1], "round", m[6], groupId);
     }
   }
 
   const edges = [];
-  for (const rawLine of bodyLines) {
+  for (const { line: rawLine, groupId } of flatLines) {
     const cleaned = rawLine.replace(nodeDeclRegex(), (_, id) => id);
     const re = edgeRegex();
     let m;
     while ((m = re.exec(cleaned))) {
       const [, from, arrow, label, to] = m;
-      registerNode(from, "rect", from);
-      registerNode(to, "rect", to);
+      registerNode(from, "rect", from, groupId);
+      registerNode(to, "rect", to, groupId);
       edges.push({ from, to, label: (label || "").trim(), type: TYPE_BY_ARROW[arrow] || "arrow" });
     }
   }
 
   if (!nodeMap.size) return null;
-  return { direction, nodes: [...nodeMap.values()], edges };
+  const nodes = [...nodeMap.values()].map((n) => ({ ...n, groupId: nodeGroupId.get(n.id) || null }));
+  return { direction, nodes, groups, edges };
 }
 
 // ── Histórico (undo/redo) ───────────────────────────────────────────────────
@@ -120,8 +181,13 @@ function snapshot() {
   return {
     direction: state.direction,
     nextId: state.nextId,
+    nextGroupId: state.nextGroupId,
     nodes: state.nodes.map((n) => ({ id: n.id, label: n.label, shape: n.shape, x: n.el.offsetLeft, y: n.el.offsetTop })),
     edges: state.edges.map((e) => ({ from: e.from, to: e.to, label: e.label, type: e.type })),
+    groups: state.groups.map((g) => ({
+      id: g.id, title: g.title,
+      x: g.el.offsetLeft, y: g.el.offsetTop, w: g.el.offsetWidth, h: g.el.offsetHeight,
+    })),
   };
 }
 
@@ -145,10 +211,14 @@ function pushHistory() {
 function restoreSnapshot(snap) {
   state.nodes.slice().forEach((n) => n.el.remove());
   state.edges.slice().forEach((e) => e.g.remove());
+  state.groups.slice().forEach((g) => g.el.remove());
   state.direction = snap.direction;
   state.nextId = snap.nextId;
+  state.nextGroupId = snap.nextGroupId;
+  state.groups = snap.groups.map((g) => ({ ...g }));
   state.nodes = snap.nodes.map((n) => ({ ...n }));
   state.edges = snap.edges.map((e) => ({ ...e }));
+  state.groups.forEach(makeGroupElement);
   state.nodes.forEach(makeNodeElement);
   state.edges.forEach(makeEdgeElement);
   updateDirectionBtnLabel();
@@ -231,6 +301,134 @@ function removeNode(node) {
   state.edges.filter((e) => e.from === node.id || e.to === node.id).forEach(removeEdge);
   node.el.remove();
   state.nodes = state.nodes.filter((n) => n !== node);
+}
+
+// ── Grupos (subgraph) ────────────────────────────────────────────────────────
+
+function removeGroup(group) {
+  // Remove só a caixa do grupo — as caixas dentro dela continuam soltas.
+  group.el.remove();
+  state.groups = state.groups.filter((g) => g !== group);
+}
+
+function startGroupDrag(group, downEvent) {
+  downEvent.preventDefault();
+  const startLeft = group.el.offsetLeft, startTop = group.el.offsetTop;
+  // Membros são decididos uma vez, no início do arraste: move junto quem
+  // estava visualmente dentro do grupo nesse instante.
+  const members = state.nodes
+    .filter((n) => nodeInGroup(n, group))
+    .map((n) => ({ node: n, left: n.el.offsetLeft, top: n.el.offsetTop }));
+  const preSnapshot = snapshot();
+  let dx = 0, dy = 0, moved = false;
+
+  const onMove = (e) => {
+    dx += e.movementX; dy += e.movementY;
+    moved = true;
+    group.el.style.left = `${startLeft + dx}px`;
+    group.el.style.top = `${startTop + dy}px`;
+    members.forEach(({ node, left, top }) => {
+      node.el.style.left = `${left + dx}px`;
+      node.el.style.top = `${top + dy}px`;
+      updateEdgesFor(node.id);
+    });
+  };
+  const onUp = () => {
+    document.removeEventListener("pointermove", onMove);
+    document.removeEventListener("pointerup", onUp);
+    if (moved) commitHistory(preSnapshot);
+  };
+  document.addEventListener("pointermove", onMove);
+  document.addEventListener("pointerup", onUp);
+}
+
+const GROUP_MIN_W = 160;
+const GROUP_MIN_H = 110;
+
+function startGroupResize(group, downEvent) {
+  downEvent.preventDefault();
+  downEvent.stopPropagation();
+  const startW = group.el.offsetWidth, startH = group.el.offsetHeight;
+  const preSnapshot = snapshot();
+  let dw = 0, dh = 0, moved = false;
+
+  const onMove = (e) => {
+    dw += e.movementX; dh += e.movementY;
+    moved = true;
+    group.el.style.width = `${Math.max(GROUP_MIN_W, startW + dw)}px`;
+    group.el.style.height = `${Math.max(GROUP_MIN_H, startH + dh)}px`;
+  };
+  const onUp = () => {
+    document.removeEventListener("pointermove", onMove);
+    document.removeEventListener("pointerup", onUp);
+    if (moved) commitHistory(preSnapshot);
+  };
+  document.addEventListener("pointermove", onMove);
+  document.addEventListener("pointerup", onUp);
+}
+
+function makeGroupElement(group) {
+  const div = document.createElement("div");
+  div.className = "db-group";
+  div.style.left = `${group.x}px`;
+  div.style.top = `${group.y}px`;
+  div.style.width = `${group.w}px`;
+  div.style.height = `${group.h}px`;
+
+  const titleBar = document.createElement("div");
+  titleBar.className = "db-group-title";
+  titleBar.title = "Arraste para mover o grupo (e as caixas dentro dele)";
+
+  const titleText = document.createElement("div");
+  titleText.className = "db-group-title-text";
+  titleText.contentEditable = "true";
+  titleText.spellcheck = false;
+  titleText.textContent = group.title;
+  titleText.addEventListener("pointerdown", (e) => e.stopPropagation());
+  titleText.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); titleText.blur(); }
+  });
+  titleText.addEventListener("blur", () => {
+    const next = titleText.textContent.trim() || "Grupo";
+    if (next !== group.title) pushHistory();
+    group.title = next;
+    titleText.textContent = group.title;
+  });
+
+  const del = document.createElement("button");
+  del.className = "db-group-delete";
+  del.title = "Remover grupo (mantém as caixas)";
+  del.textContent = "✕";
+  del.addEventListener("pointerdown", (e) => e.stopPropagation());
+  del.addEventListener("click", (e) => { e.stopPropagation(); pushHistory(); removeGroup(group); });
+
+  titleBar.append(titleText, del);
+  titleBar.addEventListener("pointerdown", (e) => startGroupDrag(group, e));
+
+  const resize = document.createElement("div");
+  resize.className = "db-group-resize";
+  resize.title = "Arraste para redimensionar o grupo";
+  resize.addEventListener("pointerdown", (e) => startGroupResize(group, e));
+
+  div.append(titleBar, resize);
+
+  group.el = div;
+  els.canvas.appendChild(div);
+}
+
+function addGroup() {
+  pushHistory();
+  const i = state.groups.length;
+  const group = {
+    id: `g${state.nextGroupId++}`,
+    title: `Grupo ${i + 1}`,
+    x: 60 + (i % 4) * 24,
+    y: 60 + (i % 4) * 24,
+    w: 320,
+    h: 220,
+  };
+  state.groups.push(group);
+  makeGroupElement(group);
 }
 
 function applyEdgeTypeVisual(edge) {
@@ -434,9 +632,10 @@ function addNode() {
 }
 
 function clearAll() {
-  if (!state.nodes.length && !state.edges.length) return;
+  if (!state.nodes.length && !state.edges.length && !state.groups.length) return;
   pushHistory();
   state.nodes.slice().forEach(removeNode);
+  state.groups.slice().forEach(removeGroup);
 }
 
 function updateDirectionBtnLabel() {
@@ -482,6 +681,7 @@ function buildModal() {
   };
 
   const btnAdd = mkBtn("+ Caixa", "Adicionar uma caixa");
+  const btnAddGroup = mkBtn("+ Grupo", "Adicionar um grupo (vira um subgraph no Mermaid)");
   const btnDir = mkBtn("↕ Vertical", "Alternar direção do fluxo");
   const btnEdgeType = mkBtn(EDGE_TYPE_LABEL.arrow, "Tipo de seta usado nas próximas conexões");
   const btnUndo = mkBtn("↶ Desfazer", "Desfazer (Ctrl+Z)");
@@ -490,14 +690,14 @@ function buildModal() {
   const hint = document.createElement("span");
   hint.className = "mermaid-zoom-label";
   hint.style.color = "var(--text-subtle)";
-  hint.textContent = "Arraste ● para conectar · clique numa seta muda o tipo · duplo-clique edita o rótulo · shift+clique remove";
+  hint.textContent = "Arraste ● para conectar · clique numa seta muda o tipo · duplo-clique edita o rótulo · shift+clique remove · arraste caixas para dentro de um grupo";
   const btnInsert = mkBtn("Inserir no editor", "Gerar Mermaid e inserir no texto");
   btnInsert.style.marginLeft = "auto";
   btnInsert.style.color = "var(--primary)";
   btnInsert.style.borderColor = "var(--primary)";
   const btnClose = mkBtn("✕ Fechar", "Fechar sem inserir (Esc)");
 
-  toolbar.append(title, btnAdd, btnDir, btnEdgeType, btnUndo, btnRedo, btnClear, hint, btnInsert, btnClose);
+  toolbar.append(title, btnAdd, btnAddGroup, btnDir, btnEdgeType, btnUndo, btnRedo, btnClear, hint, btnInsert, btnClose);
 
   const canvasWrap = document.createElement("div");
   canvasWrap.className = "db-canvas-wrap";
@@ -523,6 +723,7 @@ function buildModal() {
   els = { overlay, canvas, svg, btnDir, btnEdgeType, btnUndo, btnRedo, btnInsert };
 
   btnAdd.addEventListener("click", addNode);
+  btnAddGroup.addEventListener("click", addGroup);
   btnDir.addEventListener("click", toggleDirection);
   btnEdgeType.addEventListener("click", cycleNextEdgeType);
   btnUndo.addEventListener("click", undo);
@@ -550,7 +751,10 @@ export function openDiagramBuilder() {
   const block = ta ? findMermaidBlockAt(ta.value, ta.selectionStart) : null;
   const parsed = block ? parseMermaid(block.body) : null;
 
-  state = { nodes: [], edges: [], direction: "TD", nextId: 1, nextEdgeType: "arrow", sourceRange: null };
+  state = {
+    nodes: [], edges: [], groups: [],
+    direction: "TD", nextId: 1, nextGroupId: 1, nextEdgeType: "arrow", sourceRange: null,
+  };
   history = { past: [], future: [] };
   buildModal();
 
@@ -558,20 +762,68 @@ export function openDiagramBuilder() {
     state.direction = parsed.direction;
     state.sourceRange = { start: block.start, end: block.end };
     let maxN = 0;
-    parsed.nodes.forEach((n, i) => {
+    let maxG = 0;
+
+    const nodesByGroup = new Map();
+    const ungrouped = [];
+    parsed.nodes.forEach((n) => {
+      if (n.groupId) {
+        if (!nodesByGroup.has(n.groupId)) nodesByGroup.set(n.groupId, []);
+        nodesByGroup.get(n.groupId).push(n);
+      } else {
+        ungrouped.push(n);
+      }
+    });
+
+    // Grupos empilhados verticalmente, cada um com seus nós num mini-grid
+    // dentro do próprio retângulo — assim a filiação espacial (nodeInGroup)
+    // já nasce correta ao reabrir um diagrama existente.
+    let y = 40;
+    parsed.groups.forEach((g) => {
+      const members = nodesByGroup.get(g.id) || [];
+      if (!members.length) return; // grupo vazio no texto original: descarta
+      const cols = Math.min(3, members.length);
+      const rows = Math.ceil(members.length / cols);
+      const w = Math.max(280, cols * 150 + 40);
+      const h = Math.max(150, rows * 110 + 60);
+      const group = { id: g.id, title: g.title, x: 40, y, w, h };
+      state.groups.push(group);
+      makeGroupElement(group);
+
+      members.forEach((n, i) => {
+        const node = {
+          id: n.id,
+          label: n.label,
+          shape: n.shape,
+          x: group.x + 20 + (i % cols) * 150,
+          y: group.y + 54 + Math.floor(i / cols) * 110,
+        };
+        state.nodes.push(node);
+        makeNodeElement(node);
+        const mm = /^n(\d+)$/.exec(n.id);
+        if (mm) maxN = Math.max(maxN, Number(mm[1]));
+      });
+      const gm = /^g(\d+)$/.exec(g.id);
+      if (gm) maxG = Math.max(maxG, Number(gm[1]));
+      y += h + 30;
+    });
+
+    ungrouped.forEach((n, i) => {
       const node = {
         id: n.id,
         label: n.label,
         shape: n.shape,
         x: 40 + (i % 5) * 150,
-        y: 40 + Math.floor(i / 5) * 110,
+        y: y + Math.floor(i / 5) * 110,
       };
       state.nodes.push(node);
       makeNodeElement(node);
       const mm = /^n(\d+)$/.exec(n.id);
       if (mm) maxN = Math.max(maxN, Number(mm[1]));
     });
+
     state.nextId = maxN + 1;
+    state.nextGroupId = maxG + 1;
     parsed.edges.forEach((e) => {
       const edge = { from: e.from, to: e.to, label: e.label, type: e.type };
       state.edges.push(edge);
@@ -604,7 +856,7 @@ function insertAndClose() {
   if (state.sourceRange) {
     const ta = document.getElementById("md-editor");
     const { start, end } = state.sourceRange;
-    ta.value = ta.value.slice(0, start) + block + ta.value.slice(end);
+    replaceRange(ta, start, end, block);
     ta.selectionStart = ta.selectionEnd = start + block.length;
     ta.focus();
     onEditorInput();

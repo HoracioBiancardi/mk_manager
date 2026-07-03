@@ -30,6 +30,7 @@ import "./export.js";
 import "./assets.js";
 import "./search-filter.js";
 import "./diagram-builder.js";
+import "./format-code.js";
 
 // ── Conexão ───────────────────────────────────────────────────────────────────
 async function checkConn() {
