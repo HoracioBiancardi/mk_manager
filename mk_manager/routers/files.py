@@ -18,8 +18,10 @@ from mk_manager.models.schemas import (
     FileDetailResponse,
     FileMetaResponse,
     FileUpdateRequest,
+    FolderChangeResponse,
+    FolderRenameRequest,
 )
-from mk_manager.services.file_service import FileService
+from mk_manager.services.file_service import FileService, extract_inline_tags
 
 router = APIRouter(prefix="/api/files", tags=["files"])
 
@@ -30,17 +32,24 @@ router = APIRouter(prefix="/api/files", tags=["files"])
 def _to_meta(record: FileRecord) -> FileMetaResponse:
     """Convert a ``FileRecord`` to a metadata-only response (no content).
 
+    ``tags`` here is the *browsing* view: frontmatter tags plus any inline
+    ``#tag`` references found in the body, merged for the sidebar/tags panel.
+    This is deliberately NOT reused for the edit view (see ``_to_detail``) —
+    round-tripping the merged set through a save would silently promote
+    inline tags into frontmatter.
+
     Args:
         record: Domain entity to convert.
 
     Returns:
         ``FileMetaResponse`` populated from the record's fields.
     """
+    inline_tags = [t for t in extract_inline_tags(record.content) if t not in record.tags]
     return FileMetaResponse(
         id=record.id,
         title=record.title,
         type=record.type,
-        tags=record.tags,
+        tags=record.tags + inline_tags,
         filename=record.filename,
         created=record.created,
         modified=record.modified,
@@ -56,13 +65,32 @@ def _to_meta(record: FileRecord) -> FileMetaResponse:
 def _to_detail(record: FileRecord) -> FileDetailResponse:
     """Convert a ``FileRecord`` to a full detail response including content.
 
+    ``tags`` here is the raw frontmatter list only (no inline tags merged
+    in) — this feeds the editable tag-chip UI, and a save round-trips
+    whatever it holds straight back into frontmatter.
+
     Args:
         record: Domain entity to convert.
 
     Returns:
         ``FileDetailResponse`` with all metadata fields plus ``content``.
     """
-    return FileDetailResponse(**_to_meta(record).model_dump(), content=record.content)
+    return FileDetailResponse(
+        id=record.id,
+        title=record.title,
+        type=record.type,
+        tags=record.tags,
+        filename=record.filename,
+        created=record.created,
+        modified=record.modified,
+        word_count=record.word_count,
+        task_total=record.task_total,
+        task_done=record.task_done,
+        task_items=record.task_items,
+        folder=record.folder,
+        status=record.status,
+        content=record.content,
+    )
 
 
 # ── Route handlers ─────────────────────────────────────────────────────────
@@ -113,6 +141,53 @@ def create_file(
         Full detail of the newly created file.
     """
     return _to_detail(service.create_file(body))
+
+
+@router.put(
+    "/folder",
+    response_model=FolderChangeResponse,
+    summary="Rename/move a folder (and everything nested under it)",
+)
+def rename_folder(
+    body: FolderRenameRequest,
+    service: FileService = Depends(get_file_service),
+) -> FolderChangeResponse:
+    """Move every file under ``old_path`` to ``new_path``, preserving nesting.
+
+    Args:
+        body: Source and destination folder paths.
+        service: Injected ``FileService`` instance.
+
+    Returns:
+        Count of files relocated.
+    """
+    count = service.rename_folder(body.old_path, body.new_path)
+    return FolderChangeResponse(updated_count=count)
+
+
+@router.delete(
+    "/folder",
+    response_model=FolderChangeResponse,
+    summary="Delete a folder by moving its contents to the parent folder",
+)
+def delete_folder(
+    path: Annotated[str, Query(description="Folder path to remove")],
+    service: FileService = Depends(get_file_service),
+) -> FolderChangeResponse:
+    """Relocate every file under ``path`` to its parent folder, then drop it.
+
+    Never destroys file content — there's no undo yet, so "deleting" a
+    folder only ever moves its contents up one level.
+
+    Args:
+        path: Folder path to remove.
+        service: Injected ``FileService`` instance.
+
+    Returns:
+        Count of files relocated.
+    """
+    count = service.delete_folder(path)
+    return FolderChangeResponse(updated_count=count)
 
 
 @router.get(

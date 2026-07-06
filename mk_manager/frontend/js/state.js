@@ -15,16 +15,19 @@ export const st = {
   tagFilters: [],
   tagSearch: "",
   expandedFolders: new Set(),
-  activePanel: "explorer",
+  expandedTags: new Set(),
+  // Tela grande ativa no painel principal: 'editor' | 'kanban' | 'tags' | 'search'.
+  // Substitui o antigo kanbanMode — generaliza pra qualquer view em tela cheia.
+  mainView: "editor",
   sidebarOpen: true,
   saveTimer: null,
   searchTimer: null,
   pendingDelete: null,
   renamingId: null,
+  renamingFolderPath: null,
   emptyFolders: new Set(),
   draggingFileId: null,
   creatingFolder: false,
-  kanbanMode: false,
   kanbanColumns: null,
   addingKanbanCol: false,
 };

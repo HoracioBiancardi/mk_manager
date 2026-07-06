@@ -1,7 +1,12 @@
 // Responsabilidade: utilitários reutilizáveis
-// toast e initBackground vêm do design system compartilhado
 
-export { toast, initBackground } from '/ds/js/utils.js';
+export function toast(msg, type = 'info', duration = 3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} visible`;
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => { t.className = 'toast'; }, duration);
+}
 
 // esc local: inclui aspas simples (necessário para atributos onclick inline)
 export function esc(s) {

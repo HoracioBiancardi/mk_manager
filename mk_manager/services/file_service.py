@@ -20,6 +20,9 @@ from mk_manager.domain.entities import FileRecord, SearchResult
 from mk_manager.models.schemas import (
     FileCreateRequest,
     FileUpdateRequest,
+    GraphEdge,
+    GraphNode,
+    GraphResponse,
     StatsResponse,
 )
 from mk_manager.repositories.base import AbstractFileRepository
@@ -44,6 +47,73 @@ def _id_for_title(title: str) -> str:
         return slug
     now = datetime.now(timezone.utc)
     return f"nota-{now.strftime('%Y%m%d-%H%M%S')}"
+
+
+_FENCE_RE = re.compile(r"```.*?```", re.DOTALL)
+_INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
+_URL_RE = re.compile(r"https?://\S+")
+# Requires a letter immediately after "#" (no space), so markdown headings
+# ("# Title") never match — headings always have a space after the hashes,
+# tags never do. Also excludes "#" preceded by a word char, another "#", or
+# "/" so it doesn't fire mid-word or inside an already-matched path segment.
+_TAG_RE = re.compile(r"(?<![\w#/])#([A-Za-z][\w/-]*)")
+# [[Target]], [[Target|Alias]], [[Target#heading]] (heading fragment ignored —
+# there's no in-note heading anchor navigation, only note-to-note links).
+_WIKILINK_RE = re.compile(r"\[\[([^\[\]|#]+)(?:#[^\[\]|]*)?(?:\|([^\[\]]+))?\]\]")
+
+
+def _strip_code_and_urls(content: str) -> str:
+    """Blank out fenced code, inline code, and URLs before scanning prose.
+
+    Shared by tag and wikilink extraction so neither picks up matches from
+    inside a code sample or a URL fragment (e.g. ``http://x.com/#section``).
+    """
+    return _URL_RE.sub(" ", _INLINE_CODE_RE.sub(" ", _FENCE_RE.sub(" ", content)))
+
+
+def extract_inline_tags(content: str) -> list[str]:
+    """Extract ``#tag`` references from markdown body content.
+
+    Mirrors Obsidian's inline-tag convention: a tag is a "#" immediately
+    followed by a letter, found anywhere in the prose. Matches inside fenced
+    code blocks, inline code spans, and URLs are ignored so code comments,
+    hex-like tokens, and URL fragments don't get treated as tags.
+
+    Args:
+        content: Raw markdown body (frontmatter already stripped).
+
+    Returns:
+        Unique tag strings (without the "#"), in first-seen order.
+    """
+    stripped = _strip_code_and_urls(content)
+    seen: list[str] = []
+    for m in _TAG_RE.finditer(stripped):
+        tag = m.group(1)
+        if tag not in seen:
+            seen.append(tag)
+    return seen
+
+
+def extract_wikilink_targets(content: str) -> list[str]:
+    """Extract ``[[Note Title]]`` link targets from markdown body content.
+
+    Supports ``[[Target]]``, ``[[Target|Alias]]`` (alias ignored — only the
+    target matters for graph/resolution purposes), and ``[[Target#heading]]``
+    (heading fragment dropped, links resolve at note granularity).
+
+    Args:
+        content: Raw markdown body (frontmatter already stripped).
+
+    Returns:
+        Unique, trimmed target strings, in first-seen order.
+    """
+    stripped = _strip_code_and_urls(content)
+    seen: list[str] = []
+    for m in _WIKILINK_RE.finditer(stripped):
+        target = m.group(1).strip()
+        if target and target not in seen:
+            seen.append(target)
+    return seen
 
 
 def _build_snippet(content: str, query: str, radius: int = 120) -> str:
@@ -161,7 +231,15 @@ class FileService:
         if type_filter:
             records = [r for r in records if r.type == type_filter]
         if tag_filter:
-            records = [r for r in records if all(t in r.tags for t in tag_filter)]
+            # Hierarchical match: a filter on "area" also covers "area/sub"
+            # (mirrors the tag tree in the sidebar, where "area" is the parent).
+            records = [
+                r for r in records
+                if all(
+                    any(t == f or t.startswith(f + "/") for t in r.tags)
+                    for f in tag_filter
+                )
+            ]
 
         q_lower = query.strip().lower()
         results: list[SearchResult] = []
@@ -204,6 +282,55 @@ class FileService:
             tasks=counts.get("task", 0),
             size_bytes=self._repo.total_size_bytes(),
         )
+
+    def build_graph(self) -> GraphResponse:
+        """Build the notes graph from ``[[wikilink]]`` references in every file.
+
+        Link targets are resolved by title (case-insensitive, matching how
+        the user actually writes ``[[Note Title]]``). A target that doesn't
+        match any file becomes a "phantom" node — mirrors Obsidian showing
+        unresolved links as dangling nodes rather than silently dropping them.
+        Bidirectional links between the same two notes collapse into a
+        single edge (the graph is undirected).
+
+        Returns:
+            ``GraphResponse`` with every file as a node plus any phantom
+            nodes, and one edge per unique resolved link.
+        """
+        records = self._repo.list_all()
+        id_by_title: dict[str, str] = {}
+        for r in records:
+            id_by_title.setdefault((r.title or r.id).strip().lower(), r.id)
+
+        nodes = [
+            GraphNode(id=r.id, title=r.title or r.id, type=r.type, tags=r.tags, folder=r.folder)
+            for r in records
+        ]
+        phantom_ids: dict[str, str] = {}
+        edges: list[GraphEdge] = []
+        seen_edges: set[tuple[str, str]] = set()
+
+        for r in records:
+            for target_title in extract_wikilink_targets(r.content):
+                key = target_title.lower()
+                target_id = id_by_title.get(key)
+                if target_id is None:
+                    target_id = phantom_ids.get(key)
+                    if target_id is None:
+                        target_id = f"phantom:{key}"
+                        phantom_ids[key] = target_id
+                        nodes.append(
+                            GraphNode(id=target_id, title=target_title, type="phantom", tags=[], folder="")
+                        )
+                if target_id == r.id:
+                    continue  # self-link
+                edge_key = tuple(sorted((r.id, target_id)))
+                if edge_key in seen_edges:
+                    continue
+                seen_edges.add(edge_key)
+                edges.append(GraphEdge(source=r.id, target=target_id))
+
+        return GraphResponse(nodes=nodes, edges=edges)
 
     # ── Commands ───────────────────────────────────────────────────────────
 
@@ -288,6 +415,58 @@ class FileService:
             )
             updated_count += 1
         return updated_count
+
+    def rename_folder(self, old_folder: str, new_folder: str) -> int:
+        """Move every file under *old_folder* (including subfolders) to *new_folder*.
+
+        Preserves relative nesting: a file in ``old_folder/sub`` ends up in
+        ``new_folder/sub``. Used both for an explicit folder rename/move and,
+        via `delete_folder`, for "deleting" a folder by relocating its
+        contents to the parent folder instead of destroying data.
+
+        Args:
+            old_folder: Folder path to move from (with or without nesting).
+            new_folder: Destination folder path (``""`` for the root).
+
+        Returns:
+            Number of files moved.
+        """
+        old_folder = old_folder.strip("/")
+        new_folder = new_folder.strip("/")
+        updated_count = 0
+        for record in self._repo.list_all():
+            if record.folder != old_folder and not record.folder.startswith(old_folder + "/"):
+                continue
+            suffix = record.folder[len(old_folder):]  # "" or "/nested/path"
+            target_folder = (new_folder + suffix).strip("/")
+            self._repo.update(
+                record.id,
+                title=None,
+                tags=None,
+                content=None,
+                modified=_utc_now(),
+                folder=target_folder,
+                status=None,
+            )
+            updated_count += 1
+        return updated_count
+
+    def delete_folder(self, folder: str) -> int:
+        """"Delete" a folder by moving its contents up to the parent folder.
+
+        There is no separate trash/undo yet, so this intentionally never
+        destroys file content — only the (now-empty) folder itself
+        disappears from the tree.
+
+        Args:
+            folder: Folder path to remove.
+
+        Returns:
+            Number of files relocated to the parent folder.
+        """
+        folder = folder.strip("/")
+        parent = folder.rsplit("/", 1)[0] if "/" in folder else ""
+        return self.rename_folder(folder, parent)
 
     def delete_file(self, file_id: str) -> None:
         """Permanently delete a file.

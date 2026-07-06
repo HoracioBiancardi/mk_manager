@@ -3,16 +3,13 @@
 import { st } from "./state.js";
 import { esc, toast } from "./utils.js";
 import { apiFetch } from "./api.js";
-import { setView } from "./editor.js";
 import { renderMarkdown, toggleCheckboxAt } from "./preview.js";
 
-// ── Callbacks injetados por app.js para evitar dependência circular ────────────
+// ── Callback injetado por app.js para evitar dependência circular ─────────────
 let _openFile = null;
-let _hideFileTooltip = null;
 
-export function initKanban({ openFile, hideFileTooltip }) {
+export function initKanban({ openFile }) {
   _openFile = openFile;
-  _hideFileTooltip = hideFileTooltip;
 }
 
 // ── Configuração de colunas ────────────────────────────────────────────────────
@@ -87,7 +84,7 @@ export function renderKanban() {
   const cols = st.kanbanColumns.map((col) => {
     const colTasks = tasks.filter((f) => (f.status || "") === col.key);
     const cards = colTasks
-      .map((f) => {
+      .map((f, i) => {
         const pct = f.task_total
           ? Math.round((f.task_done / f.task_total) * 100)
           : -1;
@@ -124,6 +121,7 @@ export function renderKanban() {
             }</div>`
           : "";
         return `<div class="kanban-card" data-id="${f.id}"
+        style="animation-delay:${Math.min(i * 25, 250)}ms"
         draggable="true"
         onclick="openKanbanQEdit('${f.id}')"
         ondragstart="onKanbanCardDragStart(event,'${f.id}')">
@@ -165,38 +163,13 @@ export function renderKanban() {
   }
 }
 
-// ── Entrada/saída do modo Kanban ───────────────────────────────────────────────
-export function enterKanbanMode() {
-  if (st.kanbanMode) return;
-  st.kanbanMode = true;
-  _hideFileTooltip?.();
-  document.getElementById("empty-panel").style.display = "none";
-  document.getElementById("editor-area").style.display = "none";
-  document.getElementById("kanban-pane").style.display = "flex";
-  renderKanban();
-}
-
-export function exitKanbanMode() {
-  if (!st.kanbanMode) return;
-  st.kanbanMode = false;
+// Chamado por views.js ao sair da tela do Kanban, pra não deixar o formulário
+// de "nova coluna" pendurado aberto na próxima vez que o Kanban for reaberto.
+export function resetKanbanUiState() {
   st.addingKanbanCol = false;
-  document.getElementById("kanban-pane").style.display = "none";
-  if (st.activeId) {
-    document.getElementById("empty-panel").style.display = "none";
-    document.getElementById("editor-area").style.display = "flex";
-    setView(st.view);
-  } else {
-    document.getElementById("empty-panel").style.display = "flex";
-  }
 }
 
 export async function openFileFromKanban(id) {
-  exitKanbanMode();
-  document
-    .querySelectorAll(".activity-btn")
-    .forEach((b) =>
-      b.classList.toggle("active", b.dataset.panel === st.activePanel),
-    );
   await _openFile?.(id);
 }
 

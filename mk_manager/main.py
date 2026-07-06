@@ -17,16 +17,16 @@ from pathlib import Path
 from typing import AsyncGenerator
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from mk_manager.config import get_settings
-from mk_manager.routers import assets, files, search, stats, tags
+from mk_manager.routers import assets, files, graph, search, stats, tags
+from mk_manager.routers import settings as settings_router
 
 _FRONTEND_DIR: Path = Path(__file__).parent / "frontend"
-_DS_DIR: Path = Path(__file__).parent.parent / "design-system"
 
 
 @asynccontextmanager
@@ -76,6 +76,8 @@ def create_app() -> FastAPI:
     app.include_router(stats.router)
     app.include_router(assets.router)
     app.include_router(tags.router)
+    app.include_router(settings_router.router)
+    app.include_router(graph.router)
 
     @app.get("/", include_in_schema=False)
     @app.get("/index.html", include_in_schema=False)
@@ -88,12 +90,17 @@ def create_app() -> FastAPI:
         return FileResponse(_FRONTEND_DIR / "favicon.svg")
 
     app.mount("/static", StaticFiles(directory=str(_FRONTEND_DIR)), name="static")
-    app.mount("/ds", StaticFiles(directory=str(_DS_DIR)), name="design-system")
 
-    # Serve uploaded assets; create dir eagerly so StaticFiles doesn't error
-    _assets_dir = get_settings().notes_dir / "assets"
-    _assets_dir.mkdir(parents=True, exist_ok=True)
-    app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="assets")
+    # Resolved per-request (not mounted once) so uploaded assets keep being
+    # served correctly after the notes directory is changed at runtime via
+    # the settings endpoint.
+    @app.get("/assets/{asset_path:path}", include_in_schema=False)
+    async def serve_asset(asset_path: str) -> FileResponse:
+        assets_dir = (get_settings().notes_dir / "assets").resolve()
+        target = (assets_dir / asset_path).resolve()
+        if not target.is_relative_to(assets_dir) or not target.is_file():
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Asset not found")
+        return FileResponse(target)
 
     return app
 

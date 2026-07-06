@@ -6,7 +6,7 @@ import { apiFetch } from "./api.js";
 import { saveFile } from "./files.js";
 
 // ── Export .md ─────────────────────────────────────────────────────────────────
-export async function exportFile(id, title) {
+async function exportFile(id) {
   try {
     const r = await apiFetch(`/files/${id}`);
     const file = await r.json();
@@ -39,15 +39,6 @@ export async function exportCurrent() {
   if (!st.activeId) return;
   await saveFile();
   await exportFile(st.activeId);
-}
-
-export async function exportAll() {
-  if (!st.files.length) {
-    toast("Nenhum arquivo para exportar.", "info");
-    return;
-  }
-  for (const f of st.files) await exportFile(f.id, f.title);
-  toast(`${st.files.length} arquivo(s) exportado(s).`, "success");
 }
 
 // ── Export PDF ────────────────────────────────────────────────────────────────
@@ -148,8 +139,6 @@ window.addEventListener('load', function() {
 
 // ── Expor ao DOM (necessário para event handlers inline) ──────────────────────
 Object.assign(window, {
-  exportFile,
   exportCurrent,
-  exportAll,
   printPDF,
 });

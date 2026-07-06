@@ -1,11 +1,10 @@
-// Responsabilidade: busca, filtros de tipo/tag e navegação entre painéis laterais
+// Responsabilidade: busca full-text e filtros de tipo/tag (tela de Busca e painel de Tags)
 
 import { st } from "./state.js";
 import { toast } from "./utils.js";
 import { apiFetch } from "./api.js";
 import { renderSearchResults, renderTagsPanel } from "./sidebar.js";
 import { doSearch, loadFiles } from "./files.js";
-import { enterKanbanMode, exitKanbanMode } from "./kanban.js";
 
 // ── Busca ──────────────────────────────────────────────────────────────────────
 export function onSearch(v) {
@@ -56,59 +55,6 @@ export async function renameTagPrompt(oldTag) {
   }
 }
 
-// ── Navegação entre painéis (activity bar) ─────────────────────────────────────
-export function switchPanel(panel) {
-  if (panel === "kanban") {
-    if (st.kanbanMode) {
-      exitKanbanMode();
-      document
-        .querySelectorAll(".activity-btn")
-        .forEach((b) =>
-          b.classList.toggle(
-            "active",
-            b.dataset.panel === st.activePanel && st.sidebarOpen,
-          ),
-        );
-    } else {
-      enterKanbanMode();
-      document
-        .querySelectorAll(".activity-btn")
-        .forEach((b) =>
-          b.classList.toggle("active", b.dataset.panel === "kanban"),
-        );
-    }
-    return;
-  }
-
-  if (st.kanbanMode) exitKanbanMode();
-
-  const sidebarEl = document.querySelector(".sidebar-panel");
-
-  if (st.activePanel === panel && st.sidebarOpen) {
-    st.sidebarOpen = false;
-    sidebarEl.classList.add("collapsed");
-    document
-      .querySelectorAll(".activity-btn")
-      .forEach((b) => b.classList.remove("active"));
-    return;
-  }
-
-  st.activePanel = panel;
-  st.sidebarOpen = true;
-  sidebarEl.classList.remove("collapsed");
-  document
-    .querySelectorAll(".activity-btn")
-    .forEach((b) => b.classList.toggle("active", b.dataset.panel === panel));
-  document
-    .querySelectorAll(".panel-content")
-    .forEach((p) => p.classList.toggle("active", p.id === "panel-" + panel));
-  if (panel === "search") {
-    setTimeout(() => document.getElementById("sidebar-search")?.focus(), 60);
-    renderSearchResults();
-  }
-  if (panel === "tags") renderTagsPanel();
-}
-
 // ── Expor ao DOM (necessário para event handlers inline) ──────────────────────
 Object.assign(window, {
   onSearch,
@@ -116,5 +62,4 @@ Object.assign(window, {
   setTagFilter,
   onTagSearchInput,
   renameTagPrompt,
-  switchPanel,
 });

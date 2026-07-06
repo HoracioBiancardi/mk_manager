@@ -36,6 +36,8 @@ def _to_search_response(result: SearchResult) -> SearchResultResponse:
         task_total=record.task_total,
         task_done=record.task_done,
         task_items=record.task_items,
+        folder=record.folder,
+        status=record.status,
         snippet=result.snippet,
     )
 

@@ -166,5 +166,18 @@ export async function formatDocument() {
   );
 }
 
+// Botão único da toolbar: formata só o bloco de código sob o cursor quando
+// há um, senão cai para o documento inteiro — cobre os dois casos de uso
+// que antes exigiam dois botões separados (🧹 Bloco / 🧹 Doc).
+export async function formatSmart() {
+  const ta = document.getElementById("md-editor");
+  const fence = findFenceAt(ta.value, ta.selectionStart);
+  if (fence) {
+    await formatCodeBlockAtCursor();
+  } else {
+    await formatDocument();
+  }
+}
+
 // ── Expor ao DOM (necessário para os botões da toolbar) ────────────────────
-Object.assign(window, { formatCodeBlockAtCursor, formatDocument });
+Object.assign(window, { formatCodeBlockAtCursor, formatDocument, formatSmart });

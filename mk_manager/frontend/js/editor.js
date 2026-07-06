@@ -574,6 +574,12 @@ export function setSaveStatus(s) {
   el.className = "save-status " + s;
   el.textContent =
     s === "saving" ? "Salvando…" : s === "error" ? "Erro ao salvar" : "Salvo";
+  if (s === "saved") {
+    // className foi resetado acima, então forçar reflow antes de adicionar
+    // "pulse" garante que a animação reinicia mesmo em saves consecutivos.
+    void el.offsetWidth;
+    el.classList.add("pulse");
+  }
 }
 
 // ── Expor ao DOM (necessário para event handlers inline) ──────────────────────

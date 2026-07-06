@@ -3,15 +3,24 @@
 
 import { st } from './state.js';
 import { esc, timeAgo } from './utils.js';
+import { showContextMenu } from './contextmenu.js';
 
-// ── Ações injetadas por files.js (evita import circular: files.js precisa de
-// renderSidebar/renderTree daqui, então este módulo não importa files.js de volta) ──
+// ── Ações injetadas por files.js/delete-modal.js (evita import circular: files.js
+// precisa de renderSidebar/renderTree daqui, então este módulo não importa de volta) ──
 let _moveFileToFolder = null;
 let _confirmRenameFile = null;
+let _renameFolder = null;
+let _deleteFolder = null;
+let _newFile = null;
+let _openDeleteModal = null;
 
-export function initSidebarActions({ moveFileToFolder, confirmRenameFile }) {
+export function initSidebarActions({ moveFileToFolder, confirmRenameFile, renameFolder, deleteFolder, newFile, openDeleteModal }) {
   _moveFileToFolder = moveFileToFolder;
   _confirmRenameFile = confirmRenameFile;
+  _renameFolder = renameFolder;
+  _deleteFolder = deleteFolder;
+  _newFile = newFile;
+  _openDeleteModal = openDeleteModal;
 }
 
 // ── SVG icons ─────────────────────────────────────────────────────────────────
@@ -48,8 +57,8 @@ export function getDisplayFiles() {
 
 export function renderSidebar() {
   renderTree();
-  if (st.activePanel === 'search') renderSearchResults();
-  else if (st.activePanel === 'tags') renderTagsPanel();
+  if (st.mainView === 'search') renderSearchResults();
+  else if (st.mainView === 'tags') renderTagsPanel();
 }
 
 // ── Explorer panel — file tree ────────────────────────────────────────────────
@@ -134,8 +143,22 @@ export function renderTree() {
 function treeFolderHtml(path, name, depth, isOpen, fileCount, hasContent) {
   const indent = (0.5 + depth * 0.875).toFixed(2);
   const ep = esc(path);
+
+  if (st.renamingFolderPath === path) {
+    return `<div class="tree-folder-row" data-folder-path="${ep}" style="padding-left:${indent}rem">
+      <span class="tree-caret-gap"></span>
+      ${FOLDER_ICON}
+      <input class="rename-input" id="rename-folder-input" style="flex:1"
+        value="${esc(name)}"
+        onkeydown="onRenameFolderKey(event,'${ep}')"
+        onblur="onRenameFolderBlur('${ep}',this.value)"
+        onclick="event.stopPropagation()">
+    </div>`;
+  }
+
   return `<div class="tree-folder-row" data-folder-path="${ep}" style="padding-left:${indent}rem"
     onclick="toggleTreeFolder('${ep}')"
+    oncontextmenu="onFolderContextMenu(event,'${ep}')"
     ondragover="onFolderDragOver(event,'${ep}')"
     ondrop="onFolderDrop(event,'${ep}')"
     ondragleave="onFolderDragLeave(event)">
@@ -145,6 +168,10 @@ function treeFolderHtml(path, name, depth, isOpen, fileCount, hasContent) {
     ${FOLDER_ICON}
     <span class="tree-name">${esc(name)}</span>
     ${fileCount ? `<span class="tree-count">${fileCount}</span>` : ''}
+    <div class="tree-item-actions" onclick="event.stopPropagation()">
+      <button class="icon-btn" onclick="startRenameFolder('${ep}')" title="Renomear pasta">✏</button>
+      <button class="icon-btn del" onclick="deleteFolderPrompt('${ep}')" title="Excluir pasta">✕</button>
+    </div>
   </div>`;
 }
 
@@ -168,6 +195,7 @@ function treeFileHtml(f, depth) {
 
   return `<div class="tree-item${active}" style="padding-left:${indent}rem" data-id="${f.id}"
     onclick="openFile('${f.id}')"
+    oncontextmenu="onFileContextMenu(event,'${f.id}')"
     draggable="true" ondragstart="onFileDragStart(event,'${f.id}')"
     onmouseenter="showFileTooltip(event,'${f.id}')" onmouseleave="hideFileTooltip()">
     <span class="tree-caret-gap"></span>
@@ -187,6 +215,56 @@ export function toggleTreeFolder(path) {
 }
 
 export const toggleFolder = toggleTreeFolder;
+
+// ── Renomear/excluir pasta ─────────────────────────────────────────────────────
+
+export function startRenameFolder(path) {
+  st.renamingFolderPath = path;
+  renderTree();
+}
+
+export function cancelRenameFolder() {
+  st.renamingFolderPath = null;
+  renderTree();
+}
+
+export function onRenameFolderKey(e, path) {
+  e.stopPropagation();
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    confirmRenameFolderInput(path, e.target.value);
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    cancelRenameFolder();
+  }
+}
+
+export function onRenameFolderBlur(path, value) {
+  if (st.renamingFolderPath === path) confirmRenameFolderInput(path, value);
+}
+
+function confirmRenameFolderInput(path, newName) {
+  st.renamingFolderPath = null;
+  const trimmed = newName.trim().replace(/\//g, '');
+  const currentName = path.includes('/') ? path.split('/').pop() : path;
+  if (!trimmed || trimmed === currentName) {
+    renderTree();
+    return;
+  }
+  _renameFolder?.(path, trimmed);
+}
+
+export function deleteFolderPrompt(path) {
+  const affected = st.files.filter(f =>
+    (f.folder || '') === path || (f.folder || '').startsWith(path + '/')
+  );
+  const name = path.includes('/') ? path.split('/').pop() : path;
+  const msg = affected.length
+    ? `Excluir a pasta "${name}"?\n${affected.length} arquivo(s) serão movidos para a pasta pai (nada é apagado).`
+    : `Excluir a pasta "${name}"?`;
+  if (!window.confirm(msg)) return;
+  _deleteFolder?.(path);
+}
 
 // ── Search panel ──────────────────────────────────────────────────────────────
 
@@ -217,11 +295,76 @@ export function renderSearchResults() {
   }).join('');
 }
 
-// ── Tags panel ────────────────────────────────────────────────────────────────
+// ── Tags panel (árvore hierárquica, tipo Obsidian: #area/sub) ─────────────────
+
+// Uma tag "area" cobre notas com exatamente "area" OU qualquer "area/..." aninhada.
+function tagMatchesFilter(tag, filter) {
+  return tag === filter || tag.startsWith(filter + '/');
+}
+
+function buildTagTree(tagCounts) {
+  const root = { name: '', path: '', children: new Map(), ownCount: 0, count: 0 };
+  for (const [tag, count] of tagCounts) {
+    const parts = tag.split('/').filter(Boolean);
+    let node = root;
+    let acc = '';
+    for (const part of parts) {
+      acc = acc ? `${acc}/${part}` : part;
+      if (!node.children.has(part)) {
+        node.children.set(part, { name: part, path: acc, children: new Map(), ownCount: 0, count: 0 });
+      }
+      node = node.children.get(part);
+    }
+    node.ownCount = count;
+  }
+  (function aggregate(node) {
+    let total = node.ownCount;
+    for (const child of node.children.values()) total += aggregate(child);
+    node.count = total;
+    return total;
+  })(root);
+  return root;
+}
+
+function renderTagTreeChildren(node, depth) {
+  const children = [...node.children.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  return children.map(child => renderTagTreeNode(child, depth)).join('');
+}
+
+function renderTagTreeNode(node, depth) {
+  const indent = (0.25 + depth * 0.875).toFixed(2);
+  const hasChildren = node.children.size > 0;
+  const isOpen = st.expandedTags.has(node.path);
+  const isActive = st.tagFilters.includes(node.path);
+  const ep = esc(node.path);
+
+  let html = `<div class="tagtree-row${isActive ? ' active' : ''}" style="padding-left:${indent}rem" onclick="setTagFilter('${ep}')">
+    ${hasChildren
+      ? `<span class="tree-caret${isOpen ? ' open' : ''}" onclick="event.stopPropagation(); toggleTagTreeNode('${ep}')">${CARET_SVG}</span>`
+      : '<span class="tree-caret-gap"></span>'}
+    <span class="tagtree-name">${esc(node.name)}</span>
+    <span class="tagtree-count">${node.count}</span>
+    ${node.ownCount > 0
+      ? `<button class="icon-btn" onclick="event.stopPropagation(); renameTagPrompt('${ep}')" title="Renomear / unificar tag">✎</button>`
+      : ''}
+  </div>`;
+
+  if (hasChildren && isOpen) {
+    html += `<div class="tagtree-children">${renderTagTreeChildren(node, depth + 1)}</div>`;
+  }
+  return html;
+}
+
+export function toggleTagTreeNode(path) {
+  if (st.expandedTags.has(path)) st.expandedTags.delete(path);
+  else st.expandedTags.add(path);
+  renderTagsPanel();
+}
 
 export function renderTagsPanel() {
-  const el = document.getElementById('tags-panel-body');
-  if (!el) return;
+  const treeEl = document.getElementById('tagtree-list');
+  const detailEl = document.getElementById('tagtree-detail');
+  if (!treeEl || !detailEl) return;
 
   const tagCounts = new Map();
   for (const f of st.files) {
@@ -230,71 +373,76 @@ export function renderTagsPanel() {
     }
   }
   if (!tagCounts.size) {
-    el.innerHTML = '<div class="tags-empty">Nenhuma tag ainda.<br>Adicione tags na barra do editor.</div>';
+    treeEl.innerHTML = '<div class="tags-empty">Nenhuma tag ainda.<br>Adicione tags na barra do editor ou #tags no texto.</div>';
+    detailEl.innerHTML = '';
     return;
   }
-  const sortedTags = [...tagCounts.keys()].sort((a, b) => tagCounts.get(b) - tagCounts.get(a) || a.localeCompare(b));
+
   const visibleTags = st.tagSearch
-    ? sortedTags.filter(t => t.toLowerCase().includes(st.tagSearch))
-    : sortedTags;
+    ? [...tagCounts.keys()].filter(t => t.toLowerCase().includes(st.tagSearch))
+    : [...tagCounts.keys()];
 
   const activeTags = st.tagFilters;
-  let html = `<div class="tags-cloud">`;
-  html += visibleTags.length
-    ? visibleTags.map(t =>
-        `<span class="tag-browse-wrap">
-          <button class="tag-browse-chip${activeTags.includes(t) ? ' active' : ''}" onclick="setTagFilter('${esc(t)}')" title="${tagCounts.get(t)} nota${tagCounts.get(t) === 1 ? '' : 's'}">${esc(t)}</button>
-          <button class="tag-rename-btn" onclick="event.stopPropagation(); renameTagPrompt('${esc(t)}')" title="Renomear / unificar tag">✎</button>
-        </span>`
-      ).join('')
-    : '<div class="tags-empty">Nenhuma tag encontrada.</div>';
-  html += '</div>';
-
-  if (activeTags.length) {
-    const filtered = st.files.filter(f => activeTags.every(t => (f.tags || []).includes(t)));
-    const label = activeTags.map(t => `"${esc(t)}"`).join(' + ');
-
-    html += `<div class="tags-lineage">`;
-    html += activeTags.map((t, i) =>
-      `${i > 0 ? '<span class="tags-lineage-sep">›</span>' : ''}<button class="tags-lineage-crumb" onclick="setTagFilter('${esc(t)}')" title="Remover do filtro">${esc(t)} ×</button>`
-    ).join('');
-    html += `</div>`;
-
-    const relatedCounts = new Map();
-    for (const f of filtered) {
-      for (const t of f.tags || []) {
-        if (activeTags.includes(t)) continue;
-        relatedCounts.set(t, (relatedCounts.get(t) || 0) + 1);
-      }
-    }
-    const relatedTags = [...relatedCounts.keys()].sort((a, b) => relatedCounts.get(b) - relatedCounts.get(a) || a.localeCompare(b));
-    if (relatedTags.length) {
-      html += `<div class="tags-panel-divider">tags relacionadas</div>`;
-      html += `<div class="tags-cloud">`;
-      html += relatedTags.map(t =>
-        `<button class="tag-browse-chip tag-related-chip" onclick="setTagFilter('${esc(t)}')" title="${relatedCounts.get(t)} nota${relatedCounts.get(t) === 1 ? '' : 's'} em comum">${esc(t)} <span class="tag-related-count">${relatedCounts.get(t)}</span></button>`
-      ).join('');
-      html += `</div>`;
-    }
-
-    if (filtered.length) {
-      html += `<div class="tags-panel-divider">com tag ${label}</div>`;
-      html += `<div class="tags-panel-files">`;
-      html += filtered.map(f => {
-        const a = f.id === st.activeId ? ' active' : '';
-        return `<div class="tree-item${a}" onclick="openFile('${f.id}')" data-id="${f.id}" style="padding-left:.5rem">
-          <span class="tree-caret-gap"></span>
-          ${f.type === 'task' ? TASK_ICON : NOTE_ICON}
-          <span class="tree-name">${esc(f.title || 'Sem título')}</span>
-        </div>`;
-      }).join('');
-      html += '</div>';
-    } else {
-      html += `<div class="tags-panel-divider">nenhuma nota com ${label}</div>`;
-    }
+  if (visibleTags.length) {
+    const filteredCounts = visibleTags.map(t => [t, tagCounts.get(t)]);
+    const tree = buildTagTree(filteredCounts);
+    treeEl.innerHTML = renderTagTreeChildren(tree, 0);
+  } else {
+    treeEl.innerHTML = '<div class="tags-empty">Nenhuma tag encontrada.</div>';
   }
 
-  el.innerHTML = html;
+  if (!activeTags.length) {
+    detailEl.innerHTML = '<div class="tagtree-detail-empty">Selecione uma tag para ver as notas relacionadas.</div>';
+    return;
+  }
+
+  const filtered = st.files.filter(f =>
+    activeTags.every(t => (f.tags || []).some(tag => tagMatchesFilter(tag, t)))
+  );
+  const label = activeTags.map(t => `"${esc(t)}"`).join(' + ');
+
+  let html = `<div class="tags-lineage">`;
+  html += activeTags.map((t, i) =>
+    `${i > 0 ? '<span class="tags-lineage-sep">›</span>' : ''}<button class="tags-lineage-crumb" onclick="setTagFilter('${esc(t)}')" title="Remover do filtro">${esc(t)} ×</button>`
+  ).join('');
+  html += `</div>`;
+
+  const relatedCounts = new Map();
+  for (const f of filtered) {
+    for (const t of f.tags || []) {
+      if (activeTags.some(af => tagMatchesFilter(t, af))) continue;
+      relatedCounts.set(t, (relatedCounts.get(t) || 0) + 1);
+    }
+  }
+  const relatedTags = [...relatedCounts.keys()].sort((a, b) => relatedCounts.get(b) - relatedCounts.get(a) || a.localeCompare(b));
+  if (relatedTags.length) {
+    html += `<div class="tags-panel-divider">tags relacionadas</div>`;
+    html += `<div class="tags-cloud">`;
+    html += relatedTags.map(t =>
+      `<button class="tag-browse-chip tag-related-chip" onclick="setTagFilter('${esc(t)}')" title="${relatedCounts.get(t)} nota${relatedCounts.get(t) === 1 ? '' : 's'} em comum">${esc(t)} <span class="tag-related-count">${relatedCounts.get(t)}</span></button>`
+    ).join('');
+    html += `</div>`;
+  }
+
+  if (filtered.length) {
+    html += `<div class="tags-panel-divider">com tag ${label}</div>`;
+    html += `<div class="tags-panel-files">`;
+    html += filtered.map(f => {
+      const a = f.id === st.activeId ? ' active' : '';
+      const folder = f.folder ? `<span class="tagtree-file-folder">${esc(f.folder)}</span>` : '';
+      return `<div class="tree-item${a}" onclick="openFile('${f.id}')" data-id="${f.id}">
+        <span class="tree-caret-gap"></span>
+        ${f.type === 'task' ? TASK_ICON : NOTE_ICON}
+        <span class="tree-name">${esc(f.title || 'Sem título')}</span>
+        ${folder}
+      </div>`;
+    }).join('');
+    html += '</div>';
+  } else {
+    html += `<div class="tags-panel-divider">nenhuma nota com ${label}</div>`;
+  }
+
+  detailEl.innerHTML = html;
 }
 
 // ── Tooltip de preview no explorador ─────────────────────────────────────────
@@ -355,6 +503,43 @@ export function onFolderDrop(e, path) {
   const id = st.draggingFileId;
   st.draggingFileId = null;
   if (id) _moveFileToFolder?.(id, path);
+}
+
+// ── Menu de contexto (clique direito) ──────────────────────────────────────────
+
+export function onFileContextMenu(e, id) {
+  e.preventDefault();
+  e.stopPropagation();
+  hideFileTooltip();
+  const f = st.files.find((x) => x.id === id);
+  if (!f) return;
+  showContextMenu(e.clientX, e.clientY, [
+    { icon: '✏', label: 'Renomear', onClick: () => startRenameFile(id) },
+    { icon: '✕', label: 'Excluir', danger: true, onClick: () => _openDeleteModal?.(id, f.title || 'Sem título', f.filename) },
+  ]);
+}
+
+export function onFolderContextMenu(e, path) {
+  e.preventDefault();
+  e.stopPropagation();
+  showContextMenu(e.clientX, e.clientY, [
+    { icon: '📄', label: 'Nova nota aqui', onClick: () => _newFile?.('note', path) },
+    { icon: '☑', label: 'Nova task aqui', onClick: () => _newFile?.('task', path) },
+    { separator: true },
+    { icon: '✏', label: 'Renomear pasta', onClick: () => startRenameFolder(path) },
+    { icon: '✕', label: 'Excluir pasta', danger: true, onClick: () => deleteFolderPrompt(path) },
+  ]);
+}
+
+export function onTreeBackgroundContextMenu(e) {
+  if (e.target.closest('.tree-item, .tree-folder-row')) return;
+  e.preventDefault();
+  e.stopPropagation();
+  showContextMenu(e.clientX, e.clientY, [
+    { icon: '📄', label: 'Nova nota', onClick: () => _newFile?.('note') },
+    { icon: '☑', label: 'Nova task', onClick: () => _newFile?.('task') },
+    { icon: '📁', label: 'Nova pasta', onClick: () => startNewFolderInput() },
+  ]);
 }
 
 // ── Nova pasta inline ──────────────────────────────────────────────────────────
@@ -439,4 +624,13 @@ Object.assign(window, {
   cancelRename,
   onRenameKey,
   onRenameBlur,
+  startRenameFolder,
+  cancelRenameFolder,
+  onRenameFolderKey,
+  onRenameFolderBlur,
+  deleteFolderPrompt,
+  onFileContextMenu,
+  onFolderContextMenu,
+  onTreeBackgroundContextMenu,
+  toggleTagTreeNode,
 });

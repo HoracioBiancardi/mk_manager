@@ -13,7 +13,8 @@ import {
   setSaveStatus,
   updateStatusVis,
 } from "./editor.js";
-import { exitKanbanMode, updateStatusSelect } from "./kanban.js";
+import { updateStatusSelect } from "./kanban.js";
+import { setMainView } from "./views.js";
 
 // ── Storage info ───────────────────────────────────────────────────────────────
 async function updateStorageInfo() {
@@ -97,7 +98,7 @@ export async function saveFile() {
 }
 
 export async function openFile(id) {
-  if (st.kanbanMode) exitKanbanMode();
+  if (st.mainView !== "editor") setMainView("editor");
   if (st.isDirty && st.activeId) await saveFile();
   try {
     const r = await apiFetch(`/files/${id}`);
@@ -133,8 +134,8 @@ export async function openFile(id) {
   }
 }
 
-export async function newFile(type) {
-  if (st.kanbanMode) exitKanbanMode();
+export async function newFile(type, folder = "", title = "") {
+  if (st.mainView !== "editor") setMainView("editor");
   const defaultContent =
     type === "task"
       ? "- [ ] Primeira tarefa\n- [ ] Segunda tarefa\n- [ ] Terceira tarefa\n"
@@ -144,11 +145,11 @@ export async function newFile(type) {
     const r = await apiFetch("/files", {
       method: "POST",
       body: JSON.stringify({
-        title: "",
+        title,
         type,
         tags: [],
         content: defaultContent,
-        folder: "",
+        folder,
         status: "",
       }),
     });
@@ -156,11 +157,26 @@ export async function newFile(type) {
     st.files.unshift(file);
     renderSidebar();
     await openFile(file.id);
-    setTimeout(() => document.getElementById("title-input").focus(), 60);
+    if (title) document.getElementById("md-editor").focus();
+    else setTimeout(() => document.getElementById("title-input").focus(), 60);
   } catch (e) {
     toast("Erro ao criar arquivo: " + e.message, "error");
   } finally {
     document.getElementById(`btn-new-${type}`).disabled = false;
+  }
+}
+
+// Usado por links internos [[Nota]] (preview) e por cliques em nós "fantasma"
+// no grafo — resolve por título e abre, ou oferece criar a nota na hora.
+export async function openOrCreateByTitle(title) {
+  const key = title.trim().toLowerCase();
+  const match = st.files.find((f) => (f.title || f.id).trim().toLowerCase() === key);
+  if (match) {
+    await openFile(match.id);
+    return;
+  }
+  if (window.confirm(`A nota "${title}" ainda não existe. Criar agora?`)) {
+    await newFile("note", "", title);
   }
 }
 
@@ -202,6 +218,70 @@ export async function moveFileToFolder(fileId, folderPath) {
     toast(`Movido para "${folderPath}".`, "success");
   } catch (e) {
     toast("Erro ao mover arquivo: " + e.message, "error");
+  }
+}
+
+// ── Renomear/excluir pasta ─────────────────────────────────────────────────────
+function remapFolderSet(set, oldPath, newPath) {
+  const remapped = new Set();
+  for (const p of set) {
+    if (p === oldPath) {
+      if (newPath) remapped.add(newPath);
+    } else if (p.startsWith(oldPath + "/")) {
+      const suffix = p.slice(oldPath.length + 1);
+      remapped.add(newPath ? `${newPath}/${suffix}` : suffix);
+    } else {
+      remapped.add(p);
+    }
+  }
+  return remapped;
+}
+
+function syncActiveFolderFromState() {
+  if (!st.activeId) return;
+  const active = st.files.find((f) => f.id === st.activeId);
+  if (!active) return;
+  st.activeFolder = active.folder || "";
+  const folderInput = document.getElementById("folder-input");
+  if (folderInput) folderInput.value = active.folder || "";
+}
+
+export async function renameFolder(oldPath, newName) {
+  const parent = oldPath.includes("/") ? oldPath.slice(0, oldPath.lastIndexOf("/")) : "";
+  const newPath = parent ? `${parent}/${newName}` : newName;
+  try {
+    const r = await apiFetch("/files/folder", {
+      method: "PUT",
+      body: JSON.stringify({ old_path: oldPath, new_path: newPath }),
+    });
+    const { updated_count } = await r.json();
+    st.expandedFolders = remapFolderSet(st.expandedFolders, oldPath, newPath);
+    st.emptyFolders = remapFolderSet(st.emptyFolders, oldPath, newPath);
+    await loadFiles();
+    syncActiveFolderFromState();
+    toast(`Pasta renomeada (${updated_count} arquivo(s)).`, "success");
+  } catch (e) {
+    toast("Erro ao renomear pasta: " + e.message, "error");
+  }
+}
+
+export async function deleteFolder(path) {
+  const parent = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
+  try {
+    const r = await apiFetch(`/files/folder?path=${encodeURIComponent(path)}`, {
+      method: "DELETE",
+    });
+    const { updated_count } = await r.json();
+    st.expandedFolders = remapFolderSet(st.expandedFolders, path, parent);
+    st.emptyFolders = remapFolderSet(st.emptyFolders, path, parent);
+    await loadFiles();
+    syncActiveFolderFromState();
+    toast(
+      updated_count ? `Pasta excluída. ${updated_count} arquivo(s) movido(s) para a pasta pai.` : "Pasta excluída.",
+      "success",
+    );
+  } catch (e) {
+    toast("Erro ao excluir pasta: " + e.message, "error");
   }
 }
 
@@ -256,5 +336,8 @@ Object.assign(window, {
   saveFile,
   moveFileToFolder,
   confirmRenameFile,
+  renameFolder,
+  deleteFolder,
+  openOrCreateByTitle,
   onMetaChange,
 });

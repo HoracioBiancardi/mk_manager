@@ -44,3 +44,13 @@ def get_file_service() -> FileService:
         pointing to the directory defined in ``Settings.notes_dir``.
     """
     return FileService(_get_repository())
+
+
+def reset_repository_cache() -> None:
+    """Drop the cached repository singleton.
+
+    Called after ``Settings.notes_dir`` changes at runtime so the next
+    request rebuilds the repository against the new directory instead of
+    reusing the one pointed at the old path.
+    """
+    _get_repository.cache_clear()

@@ -1,8 +1,61 @@
 // Responsabilidade: renderização do preview markdown/mermaid e exportação de imagens
 
-import { toast } from "./utils.js";
+import { st } from "./state.js";
+import { esc, toast } from "./utils.js";
 import { onEditorInput, jumpToSourceLine, replaceRange } from "./editor.js";
 import { openDiagramBuilder } from "./diagram-builder.js";
+
+// ── Links internos [[Nota]] / [[Nota|Apelido]] ─────────────────────────────────
+// Extensão inline do marked: resolve o alvo só no clique (não no render), pra
+// sempre refletir o estado atual de st.files mesmo que uma nota tenha sido
+// criada/renomeada entre um render e outro.
+const WIKILINK_RE = /^\[\[([^[\]|#]+)(?:#[^[\]|]*)?(?:\|([^[\]]+))?\]\]/;
+
+marked.use({
+  extensions: [
+    {
+      name: "wikilink",
+      level: "inline",
+      start(src) {
+        const idx = src.indexOf("[[");
+        return idx === -1 ? undefined : idx;
+      },
+      tokenizer(src) {
+        const match = WIKILINK_RE.exec(src);
+        if (!match) return undefined;
+        return {
+          type: "wikilink",
+          raw: match[0],
+          target: match[1].trim(),
+          label: (match[2] || match[1]).trim(),
+        };
+      },
+      renderer(token) {
+        return `<a href="#" class="wikilink" data-target="${esc(token.target)}">${esc(token.label)}</a>`;
+      },
+    },
+  ],
+});
+
+function findFileByTitle(target) {
+  const key = target.trim().toLowerCase();
+  return st.files.find((f) => (f.title || f.id).trim().toLowerCase() === key);
+}
+
+async function onWikilinkClick(e, target) {
+  e.preventDefault();
+  await window.openOrCreateByTitle?.(target);
+}
+
+function wireWikilinks(container) {
+  container.querySelectorAll("a.wikilink").forEach((a) => {
+    const target = a.dataset.target;
+    const resolved = !!findFileByTitle(target);
+    a.classList.toggle("phantom", !resolved);
+    a.title = resolved ? `Abrir "${target}"` : `Criar nota "${target}"`;
+    a.addEventListener("click", (e) => onWikilinkClick(e, target));
+  });
+}
 
 // ── Renderização de markdown (compartilhada com o modal do kanban) ────────────
 
@@ -87,6 +140,8 @@ export function renderMarkdown(content, el, { onCheckboxChange, enableCapture = 
       });
     }
   });
+
+  wireWikilinks(el);
 
   if (enableCapture) setTimeout(() => addCaptureButtons(el), 300);
 }

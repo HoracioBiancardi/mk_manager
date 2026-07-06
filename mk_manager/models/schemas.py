@@ -119,6 +119,28 @@ class TagRenameResponse(BaseModel):
     updated_count: int
 
 
+class FolderRenameRequest(BaseModel):
+    """Request body for renaming/moving a folder (and everything nested under it).
+
+    Attributes:
+        old_path: Existing folder path.
+        new_path: Destination folder path (``""`` moves contents to the root).
+    """
+
+    old_path: str
+    new_path: str
+
+
+class FolderChangeResponse(BaseModel):
+    """Result of a folder rename or delete operation.
+
+    Attributes:
+        updated_count: Number of files relocated.
+    """
+
+    updated_count: int
+
+
 class SearchResultResponse(FileMetaResponse):
     """Search result enriched with a content excerpt around the match.
 
@@ -128,6 +150,49 @@ class SearchResultResponse(FileMetaResponse):
     """
 
     snippet: str
+
+
+class GraphNode(BaseModel):
+    """A single node in the notes graph (a real file, or a "phantom" placeholder.
+
+    Attributes:
+        id: Real file id, or a synthetic ``"phantom:<title>"`` id for a
+            ``[[link]]`` target that doesn't resolve to any existing file.
+        title: Display title.
+        type: ``"note"``, ``"task"``, or ``"phantom"`` (unresolved link target).
+        tags: Tag list (empty for phantom nodes).
+        folder: Folder path (empty for phantom nodes).
+    """
+
+    id: str
+    title: str
+    type: str
+    tags: list[str]
+    folder: str
+
+
+class GraphEdge(BaseModel):
+    """An undirected connection between two graph nodes (one resolved ``[[link]]``).
+
+    Attributes:
+        source: Id of the linking file.
+        target: Id of the link target (real file id or phantom id).
+    """
+
+    source: str
+    target: str
+
+
+class GraphResponse(BaseModel):
+    """The whole notes graph, built from ``[[wikilink]]`` references.
+
+    Attributes:
+        nodes: Every file plus any phantom (unresolved link target) nodes.
+        edges: One entry per unique resolved link between two nodes.
+    """
+
+    nodes: list[GraphNode]
+    edges: list[GraphEdge]
 
 
 class StatsResponse(BaseModel):
@@ -144,3 +209,57 @@ class StatsResponse(BaseModel):
     notes: int
     tasks: int
     size_bytes: int
+
+
+class SettingsResponse(BaseModel):
+    """Current application configuration exposed to the frontend.
+
+    Attributes:
+        notes_dir: Absolute path where markdown files are stored.
+        host: Bind address the server is listening on (read-only; requires
+            a restart to change).
+        port: TCP port the server is listening on (read-only; requires a
+            restart to change).
+    """
+
+    notes_dir: str
+    host: str
+    port: int
+
+
+class SettingsUpdateRequest(BaseModel):
+    """Payload to change the notes directory at runtime.
+
+    Attributes:
+        notes_dir: New directory path where markdown files should be stored.
+            Created automatically if it doesn't exist yet.
+    """
+
+    notes_dir: str
+
+
+class DirEntry(BaseModel):
+    """A single subdirectory entry returned by the folder browser.
+
+    Attributes:
+        name: Directory's own name (no path segments).
+        path: Absolute path to the directory.
+    """
+
+    name: str
+    path: str
+
+
+class BrowseResponse(BaseModel):
+    """A directory listing used by the notes-folder picker in Settings.
+
+    Attributes:
+        path: Absolute path currently being browsed.
+        parent: Absolute path of the parent directory, or ``None`` at the
+            filesystem root.
+        dirs: Immediate subdirectories, sorted by name.
+    """
+
+    path: str
+    parent: str | None
+    dirs: list[DirEntry]
