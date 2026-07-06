@@ -11,6 +11,7 @@ import { toast } from "./utils.js";
 import { initSidebarActions } from "./sidebar.js";
 import { setSaveCallback, initResizer } from "./editor.js";
 import { initPreviewSourceSync } from "./preview.js";
+import { initAssetDropZone } from "./assets.js";
 import {
   initKanban,
   loadKanbanColumns,
@@ -33,7 +34,6 @@ import { openQuickOpen, closeQuickOpen } from "./quickopen.js";
 import { applyPrefsOnBoot } from "./prefs.js";
 import "./views.js";
 import "./export.js";
-import "./assets.js";
 import "./search-filter.js";
 import "./diagram-builder.js";
 import "./format-code.js";
@@ -99,6 +99,7 @@ document.addEventListener("keydown", (e) => {
   // dão a sensação de "vivo" sem esse custo contínuo de CPU)
   initResizer();
   initPreviewSourceSync();
+  initAssetDropZone();
   const ok = await checkConn();
   if (ok) await loadFiles();
   else toast("API offline. Inicie o servidor: uv run mk-manager", "error");

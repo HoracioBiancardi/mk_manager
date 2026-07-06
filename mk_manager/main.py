@@ -96,7 +96,7 @@ def create_app() -> FastAPI:
     # the settings endpoint.
     @app.get("/assets/{asset_path:path}", include_in_schema=False)
     async def serve_asset(asset_path: str) -> FileResponse:
-        assets_dir = (get_settings().notes_dir / "assets").resolve()
+        assets_dir = get_settings().resolved_assets_dir().resolve()
         target = (assets_dir / asset_path).resolve()
         if not target.is_relative_to(assets_dir) or not target.is_file():
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Asset not found")

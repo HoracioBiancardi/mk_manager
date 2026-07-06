@@ -16,8 +16,10 @@ router = APIRouter(prefix="/api/assets", tags=["assets"])
 async def upload_asset(file: UploadFile) -> dict[str, str]:
     """Upload a file to the assets directory and return its public URL.
 
-    Files are saved to ``{notes_dir}/assets/``.  If a file with the same
-    name already exists, a numeric suffix is appended to avoid collision.
+    Files are saved to the configured assets directory (``{notes_dir}/assets``
+    by default, or ``Settings.assets_dir`` when set independently). If a file
+    with the same name already exists, a numeric suffix is appended to avoid
+    collision.
 
     Args:
         file: The uploaded file (multipart/form-data).
@@ -26,7 +28,7 @@ async def upload_asset(file: UploadFile) -> dict[str, str]:
         ``{"url": "/assets/<name>", "filename": "<name>"}``
     """
     settings = get_settings()
-    assets_dir = settings.notes_dir / "assets"
+    assets_dir = settings.resolved_assets_dir()
     assets_dir.mkdir(parents=True, exist_ok=True)
 
     # Sanitise: take only the basename to prevent path traversal

@@ -5,9 +5,13 @@ import { apiFetch } from "./api.js";
 import { loadFiles } from "./files.js";
 import { applyEditorFontSize, getDefaultView, getEditorFontSize, setDefaultView, setEditorFontSize } from "./prefs.js";
 
+let _assetsDirLoaded = "";
+let _assetsDirWasDefault = true;
+
 export async function openSettingsModal() {
   document.getElementById("settings-overlay").classList.add("open");
   document.getElementById("settings-notes-dir").value = "Carregando…";
+  document.getElementById("settings-assets-dir").value = "";
   document.getElementById("settings-server-info").textContent = "–";
   document.getElementById("settings-storage-info").textContent = "–";
   document.getElementById("settings-default-view").value = getDefaultView();
@@ -23,6 +27,13 @@ export async function openSettingsModal() {
     const stats = await statsRes.json();
 
     document.getElementById("settings-notes-dir").value = settingsData.notes_dir;
+    _assetsDirWasDefault = settingsData.assets_dir_is_default;
+    _assetsDirLoaded = settingsData.assets_dir;
+    document.getElementById("settings-assets-dir").value = _assetsDirWasDefault
+      ? ""
+      : _assetsDirLoaded;
+    document.getElementById("settings-assets-dir").placeholder =
+      `Padrão: ${settingsData.assets_dir}`;
     document.getElementById("settings-server-info").textContent =
       `${settingsData.host}:${settingsData.port} (mude via .env / MK_HOST, MK_PORT — requer reiniciar o servidor)`;
     document.getElementById("settings-storage-info").textContent =
@@ -63,13 +74,20 @@ export function downloadBackup() {
 // ── Navegador de pastas (evita ter que digitar caminho absoluto) ───────────────
 let _browsePath = null;
 let _browseParent = null;
+let _browseTarget = "notes";
 
-export async function toggleFolderBrowser() {
+export async function toggleFolderBrowser(target = "notes") {
   const panel = document.getElementById("folder-browser");
-  const opening = panel.style.display === "none";
+  const targetInput = document.getElementById(
+    target === "assets" ? "settings-assets-dir" : "settings-notes-dir",
+  );
+  const opening = panel.style.display === "none" || _browseTarget !== target;
+  _browseTarget = target;
   panel.style.display = opening ? "block" : "none";
   if (opening) {
-    const current = document.getElementById("settings-notes-dir").value.trim();
+    document.getElementById("folder-browser-target").textContent =
+      target === "assets" ? "Selecionando: pasta dos assets" : "Selecionando: pasta dos arquivos";
+    const current = targetInput.value.trim();
     await loadFolderBrowser(current || null);
   }
 }
@@ -110,7 +128,9 @@ export function folderBrowserGoUp() {
 
 export function folderBrowserSelect() {
   if (!_browsePath) return;
-  document.getElementById("settings-notes-dir").value = _browsePath;
+  const targetId =
+    _browseTarget === "assets" ? "settings-assets-dir" : "settings-notes-dir";
+  document.getElementById(targetId).value = _browsePath;
   document.getElementById("folder-browser").style.display = "none";
 }
 
@@ -122,6 +142,14 @@ export async function saveSettings() {
     return;
   }
 
+  const assetsInput = document.getElementById("settings-assets-dir").value.trim();
+  let assetsDir; // undefined = não enviar (mantém como está)
+  if (_assetsDirWasDefault) {
+    if (assetsInput && assetsInput !== _assetsDirLoaded) assetsDir = assetsInput;
+  } else {
+    assetsDir = assetsInput; // "" reseta para o padrão; valor novo troca o override
+  }
+
   setDefaultView(document.getElementById("settings-default-view").value);
   setEditorFontSize(parseInt(document.getElementById("settings-font-size").value, 10));
 
@@ -130,10 +158,20 @@ export async function saveSettings() {
   try {
     const r = await apiFetch("/settings", {
       method: "PUT",
-      body: JSON.stringify({ notes_dir: notesDir }),
+      body: JSON.stringify({
+        notes_dir: notesDir,
+        ...(assetsDir !== undefined ? { assets_dir: assetsDir } : {}),
+      }),
     });
     const updated = await r.json();
     input.value = updated.notes_dir;
+    _assetsDirWasDefault = updated.assets_dir_is_default;
+    _assetsDirLoaded = updated.assets_dir;
+    document.getElementById("settings-assets-dir").value = _assetsDirWasDefault
+      ? ""
+      : _assetsDirLoaded;
+    document.getElementById("settings-assets-dir").placeholder =
+      `Padrão: ${updated.assets_dir}`;
     toast("Configurações salvas!", "success");
     closeSettingsModal();
     await loadFiles();

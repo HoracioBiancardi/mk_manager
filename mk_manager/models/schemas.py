@@ -216,6 +216,10 @@ class SettingsResponse(BaseModel):
 
     Attributes:
         notes_dir: Absolute path where markdown files are stored.
+        assets_dir: Absolute path where uploaded/pasted assets are stored
+            (defaults to ``{notes_dir}/assets`` when not set separately).
+        assets_dir_is_default: Whether *assets_dir* is the derived default
+            (``{notes_dir}/assets``) rather than an explicit override.
         host: Bind address the server is listening on (read-only; requires
             a restart to change).
         port: TCP port the server is listening on (read-only; requires a
@@ -223,19 +227,26 @@ class SettingsResponse(BaseModel):
     """
 
     notes_dir: str
+    assets_dir: str
+    assets_dir_is_default: bool
     host: str
     port: int
 
 
 class SettingsUpdateRequest(BaseModel):
-    """Payload to change the notes directory at runtime.
+    """Payload to change the notes and/or assets directory at runtime.
 
     Attributes:
         notes_dir: New directory path where markdown files should be stored.
             Created automatically if it doesn't exist yet.
+        assets_dir: New directory path for uploaded/pasted assets. Pass an
+            empty string to reset back to the default (``{notes_dir}/assets``).
+            Omit (or leave ``None``) to keep the current assets setting
+            unchanged.
     """
 
     notes_dir: str
+    assets_dir: str | None = None
 
 
 class DirEntry(BaseModel):

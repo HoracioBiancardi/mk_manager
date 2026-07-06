@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     Attributes:
         notes_dir: Directory where markdown files are stored.
             Defaults to ``./notes`` relative to the working directory.
+        assets_dir: Directory where uploaded/pasted assets (images, PDFs,
+            etc.) are stored. When unset, defaults to ``{notes_dir}/assets``
+            — set explicitly to keep assets separate from a notes folder
+            that may itself point elsewhere (e.g. a synced vault).
         host: Bind address for the uvicorn server. Defaults to ``"0.0.0.0"``.
         port: TCP port for the uvicorn server. Defaults to ``8888``.
         debug: Enable uvicorn ``--reload`` and FastAPI debug mode.
@@ -30,6 +34,7 @@ class Settings(BaseSettings):
     """
 
     notes_dir: Path = Path("./notes")
+    assets_dir: Path | None = None
     host: str = "0.0.0.0"
     port: int = 8099
     debug: bool = True
@@ -39,6 +44,14 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
     )
+
+    def resolved_assets_dir(self) -> Path:
+        """Return the effective assets directory.
+
+        Falls back to ``{notes_dir}/assets`` when ``assets_dir`` isn't
+        explicitly configured.
+        """
+        return self.assets_dir if self.assets_dir else self.notes_dir / "assets"
 
 
 @lru_cache(maxsize=1)

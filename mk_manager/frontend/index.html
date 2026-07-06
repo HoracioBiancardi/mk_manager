@@ -383,10 +383,11 @@
         <label class="form-label" for="settings-notes-dir">Pasta dos arquivos</label>
         <div class="folder-picker-row">
           <input id="settings-notes-dir" type="text" class="form-input" placeholder="/caminho/para/notes" autocomplete="off">
-          <button class="btn btn-ghost btn-sm" type="button" onclick="toggleFolderBrowser()">📁 Procurar</button>
+          <button class="btn btn-ghost btn-sm" type="button" onclick="toggleFolderBrowser('notes')">📁 Procurar</button>
         </div>
         <div class="form-hint">Notas e tasks (.md) passam a ser lidas/salvas aqui imediatamente. A pasta é criada automaticamente se não existir.</div>
         <div id="folder-browser" class="folder-browser" style="display:none">
+          <div class="folder-browser-target" id="folder-browser-target"></div>
           <div class="folder-browser-path" id="folder-browser-path">–</div>
           <div class="folder-browser-list" id="folder-browser-list" onclick="onFolderBrowserListClick(event)"></div>
           <div class="folder-browser-actions">
@@ -394,6 +395,14 @@
             <button class="btn btn-primary btn-sm" type="button" onclick="folderBrowserSelect()">Usar esta pasta</button>
           </div>
         </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="settings-assets-dir">Pasta dos assets (imagens, PDFs…)</label>
+        <div class="folder-picker-row">
+          <input id="settings-assets-dir" type="text" class="form-input" placeholder="Padrão: pasta dos arquivos + /assets" autocomplete="off">
+          <button class="btn btn-ghost btn-sm" type="button" onclick="toggleFolderBrowser('assets')">📁 Procurar</button>
+        </div>
+        <div class="form-hint">Onde arquivos colados/arrastados/importados no editor são salvos. Deixe em branco para usar "{pasta dos arquivos}/assets".</div>
       </div>
       <div class="form-group">
         <span class="form-label">Servidor</span>

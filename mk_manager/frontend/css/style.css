@@ -709,6 +709,11 @@ kbd {
   margin-top: .6rem; border: 1px solid var(--border); border-radius: var(--r-md);
   background: var(--bg); overflow: hidden;
 }
+.folder-browser-target {
+  padding: .4rem .6rem; font-size: .7rem; font-weight: 600;
+  color: var(--primary); background: var(--primary-dim);
+  border-bottom: 1px solid var(--border);
+}
 .folder-browser-path {
   padding: .45rem .6rem; font-size: .72rem; color: var(--text-muted);
   border-bottom: 1px solid var(--border); white-space: nowrap; overflow: hidden;
@@ -1162,6 +1167,11 @@ kbd {
   flex: 1; display: flex; flex-direction: column; overflow: hidden;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--r-md);
+  transition: background .12s, border-color .12s;
+}
+.editor-pane.drag-over {
+  background: rgba(16,185,129,.08); border-color: var(--primary);
+  outline: 1px dashed var(--primary); outline-offset: -3px;
 }
 
 /* Toolbar */

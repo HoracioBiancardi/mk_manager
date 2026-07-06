@@ -1,9 +1,10 @@
 """HTTP routes for reading and updating application settings.
 
-Currently exposes the notes directory, which can be changed at runtime
-without restarting the server: the change is applied immediately (cached
-repository is rebuilt against the new path) and persisted to ``.env`` so it
-survives the next restart too.
+Exposes the notes directory and the (optionally independent) assets
+directory, both of which can be changed at runtime without restarting the
+server: the change is applied immediately (cached repository is rebuilt
+against the new notes path) and persisted to ``.env`` so it survives the
+next restart too.
 """
 
 from __future__ import annotations
@@ -29,17 +30,19 @@ router = APIRouter(prefix="/api/settings", tags=["settings"])
 
 _ENV_FILE = Path(".env")
 _NOTES_DIR_KEY = "MK_NOTES_DIR"
+_ASSETS_DIR_KEY = "MK_ASSETS_DIR"
 
 
-def _persist_notes_dir(path: Path) -> None:
-    """Write or update ``MK_NOTES_DIR`` in ``.env`` so a restart keeps *path*."""
+def _persist_env(key: str, value: str | None) -> None:
+    """Write, update, or remove *key* in ``.env`` so a restart keeps the value.
+
+    Removes the line entirely when *value* is ``None`` (used to reset
+    ``assets_dir`` back to its default, derived from ``notes_dir``).
+    """
     lines = _ENV_FILE.read_text("utf-8").splitlines() if _ENV_FILE.exists() else []
-    for i, line in enumerate(lines):
-        if line.startswith(f"{_NOTES_DIR_KEY}="):
-            lines[i] = f"{_NOTES_DIR_KEY}={path}"
-            break
-    else:
-        lines.append(f"{_NOTES_DIR_KEY}={path}")
+    lines = [line for line in lines if not line.startswith(f"{key}=")]
+    if value is not None:
+        lines.append(f"{key}={value}")
     _ENV_FILE.write_text("\n".join(lines) + "\n", "utf-8")
 
 
@@ -49,10 +52,12 @@ def _persist_notes_dir(path: Path) -> None:
     summary="Read current settings",
 )
 def read_settings() -> SettingsResponse:
-    """Return the notes directory and server bind address currently in use."""
+    """Return the notes/assets directories and server bind address in use."""
     settings = get_settings()
     return SettingsResponse(
         notes_dir=str(settings.notes_dir.resolve()),
+        assets_dir=str(settings.resolved_assets_dir().resolve()),
+        assets_dir_is_default=settings.assets_dir is None,
         host=settings.host,
         port=settings.port,
     )
@@ -61,19 +66,23 @@ def read_settings() -> SettingsResponse:
 @router.put(
     "/",
     response_model=SettingsResponse,
-    summary="Change the notes directory",
+    summary="Change the notes and/or assets directory",
 )
 def update_settings(body: SettingsUpdateRequest) -> SettingsResponse:
-    """Point the app at a new notes directory, effective immediately.
+    """Point the app at a new notes directory and/or assets directory.
+
+    Both changes are effective immediately (no restart needed).
 
     Args:
-        body: New notes directory path (created if missing).
+        body: New notes directory path (created if missing), and optionally
+            a new assets directory path (empty string resets it to the
+            default ``{notes_dir}/assets``; ``None``/omitted leaves it as-is).
 
     Returns:
         ``SettingsResponse`` reflecting the applied change.
 
     Raises:
-        HTTPException: 400 if *body.notes_dir* can't be created/used as a
+        HTTPException: 400 if a given path can't be created/used as a
             directory.
     """
     new_dir = Path(body.notes_dir).expanduser()
@@ -88,10 +97,31 @@ def update_settings(body: SettingsUpdateRequest) -> SettingsResponse:
     settings = get_settings()
     settings.notes_dir = new_dir
     reset_repository_cache()
-    _persist_notes_dir(new_dir)
+    _persist_env(_NOTES_DIR_KEY, str(new_dir))
+
+    if body.assets_dir is not None:
+        stripped = body.assets_dir.strip()
+        if stripped:
+            new_assets_dir = Path(stripped).expanduser()
+            try:
+                new_assets_dir.mkdir(parents=True, exist_ok=True)
+            except OSError as exc:
+                raise HTTPException(
+                    status.HTTP_400_BAD_REQUEST,
+                    f"Não foi possível usar essa pasta de assets: {exc}",
+                ) from None
+            settings.assets_dir = new_assets_dir
+            _persist_env(_ASSETS_DIR_KEY, str(new_assets_dir))
+        else:
+            settings.assets_dir = None
+            _persist_env(_ASSETS_DIR_KEY, None)
 
     return SettingsResponse(
-        notes_dir=str(new_dir.resolve()), host=settings.host, port=settings.port
+        notes_dir=str(new_dir.resolve()),
+        assets_dir=str(settings.resolved_assets_dir().resolve()),
+        assets_dir_is_default=settings.assets_dir is None,
+        host=settings.host,
+        port=settings.port,
     )
 
 
