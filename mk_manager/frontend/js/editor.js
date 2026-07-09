@@ -49,7 +49,11 @@ export function showEmptyPanel() {
 export function updateStatusVis(type) {
   const el = document.getElementById("status-row-part");
   if (el) el.style.display = type === "task" ? "contents" : "none";
+  const datesEl = document.getElementById("task-dates-part");
+  if (datesEl) datesEl.style.display = type === "task" ? "contents" : "none";
 }
+
+// ── Tags ──────────────────────────────────────────────────────────────────────
 
 // ── Tags ──────────────────────────────────────────────────────────────────────
 
@@ -60,18 +64,67 @@ export function renderTags(tags) {
         `<span class="tag-chip">${esc(t)}<button onclick="removeTag(${i})" title="Remover">×</button></span>`,
     )
     .join("");
-  renderTagSuggestions(tags);
+  
+  const dropdown = document.getElementById("retro-tag-suggestions");
+  if (dropdown && dropdown.classList.contains("open")) {
+    rebuildRetroTagSuggestions();
+  }
 }
 
-function renderTagSuggestions(activeTags) {
-  const datalist = document.getElementById("tag-suggestions");
-  if (!datalist) return;
+export function showRetroTagSuggestions() {
+  const dropdown = document.getElementById("retro-tag-suggestions");
+  if (!dropdown) return;
+  rebuildRetroTagSuggestions();
+  dropdown.classList.add("open");
+}
+
+export function closeRetroTagSuggestions() {
+  const dropdown = document.getElementById("retro-tag-suggestions");
+  if (dropdown) dropdown.classList.remove("open");
+}
+
+export function selectRetroTag(tag) {
+  const input = document.getElementById("tag-input");
+  if (tag && !st.activeTags.includes(tag)) {
+    st.activeTags.push(tag);
+    renderTags(st.activeTags);
+    st.isDirty = true;
+    scheduleSave();
+  }
+  if (input) {
+    input.value = "";
+    input.focus();
+  }
+  closeRetroTagSuggestions();
+}
+
+export function filterRetroTagSuggestions() {
+  rebuildRetroTagSuggestions();
+}
+
+function rebuildRetroTagSuggestions() {
+  const dropdown = document.getElementById("retro-tag-suggestions");
+  const input = document.getElementById("tag-input");
+  if (!dropdown || !input) return;
+
+  const val = input.value.trim().toLowerCase();
   const known = new Set(st.files.flatMap((f) => f.tags || []));
-  for (const t of activeTags) known.delete(t);
-  datalist.innerHTML = [...known]
+  for (const t of st.activeTags) known.delete(t);
+
+  const filtered = [...known]
     .sort()
-    .map((t) => `<option value="${esc(t)}"></option>`)
-    .join("");
+    .filter((t) => !val || t.toLowerCase().includes(val));
+
+  if (filtered.length === 0) {
+    dropdown.innerHTML = `<div class="retro-tag-suggestion-item" style="cursor: default; color: var(--text-subtle);">Nenhuma sugestão</div>`;
+  } else {
+    dropdown.innerHTML = filtered
+      .map(
+        (t) =>
+          `<div class="retro-tag-suggestion-item" onclick="selectRetroTag('${esc(t)}')">${esc(t)}</div>`,
+      )
+      .join("");
+  }
 }
 
 export function onTagKey(e) {
@@ -86,12 +139,17 @@ export function onTagKey(e) {
       scheduleSave();
     }
     input.value = "";
+    closeRetroTagSuggestions();
   }
   if (e.key === "Backspace" && !e.target.value && st.activeTags.length) {
     st.activeTags.pop();
     renderTags(st.activeTags);
     st.isDirty = true;
     scheduleSave();
+    showRetroTagSuggestions();
+  }
+  if (e.key === "Escape") {
+    closeRetroTagSuggestions();
   }
 }
 
@@ -595,4 +653,94 @@ Object.assign(window, {
   insTable,
   formatTable,
   setView,
+  toggleRetroSelect,
+  closeAllRetroSelects,
+  selectRetroOption,
+  updateRetroStatusLabel,
+  showRetroTagSuggestions,
+  selectRetroTag,
+  filterRetroTagSuggestions,
+  updateTaskDuration,
 });
+
+export function updateTaskDuration() {
+  const execVal = document.getElementById("date-execution")?.value;
+  const conclVal = document.getElementById("date-conclusion")?.value;
+  const badge = document.getElementById("task-duration-badge");
+  if (!badge) return;
+
+  if (execVal && conclVal) {
+    const execDate = new Date(execVal);
+    const conclDate = new Date(conclVal);
+    const diffMs = conclDate - execDate;
+    if (diffMs >= 0) {
+      const diffHours = diffMs / (1000 * 60 * 60);
+      const formatted = diffHours % 1 === 0 ? diffHours : diffHours.toFixed(1);
+      badge.textContent = `⏱ ${formatted}h`;
+      badge.style.display = "inline-flex";
+      return;
+    }
+  }
+  badge.style.display = "none";
+}
+
+/* ── Custom select dropdown functions (Pip-Boy themed status selector) ── */
+export function toggleRetroSelect(event) {
+  event.stopPropagation();
+  const dropdown = document.getElementById("retro-status-dropdown");
+  if (!dropdown) return;
+  const isOpen = dropdown.classList.contains("open");
+  closeAllRetroSelects();
+  if (!isOpen) {
+    rebuildRetroSelectOptions();
+    dropdown.classList.add("open");
+  }
+}
+
+export function closeAllRetroSelects() {
+  const dropdown = document.getElementById("retro-status-dropdown");
+  if (dropdown) dropdown.classList.remove("open");
+}
+
+export function selectRetroOption(value, text) {
+  const sel = document.getElementById("status-select");
+  if (sel) {
+    sel.value = value;
+    sel.dispatchEvent(new Event("change"));
+  }
+  updateRetroStatusLabel();
+  closeAllRetroSelects();
+}
+
+export function updateRetroStatusLabel() {
+  const sel = document.getElementById("status-select");
+  const labelEl = document.getElementById("retro-status-label");
+  if (sel && labelEl) {
+    const selectedOption = sel.options[sel.selectedIndex];
+    labelEl.textContent = selectedOption ? selectedOption.textContent : "—";
+  }
+}
+
+function rebuildRetroSelectOptions() {
+  const sel = document.getElementById("status-select");
+  const dropdown = document.getElementById("retro-status-dropdown");
+  if (!sel || !dropdown) return;
+  
+  const curValue = sel.value;
+  dropdown.innerHTML = Array.from(sel.options).map(opt => {
+    const isSelected = opt.value === curValue;
+    return `<div class="retro-select-option ${isSelected ? "selected" : ""}" 
+                 onclick="selectRetroOption('${esc(opt.value)}', '${esc(opt.textContent)}')">
+              ${esc(opt.textContent)}
+            </div>`;
+  }).join("");
+}
+
+document.addEventListener("click", (e) => {
+  closeAllRetroSelects();
+  
+  if (!e.target.closest(".retro-tag-input-wrap")) {
+    closeRetroTagSuggestions();
+  }
+});
+

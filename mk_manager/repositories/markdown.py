@@ -217,6 +217,9 @@ class MarkdownFileRepository(AbstractFileRepository):
             modified=_coerce_str(meta.get("modified", now)),
             folder=_coerce_str(meta.get("folder", path_folder)),
             status=_coerce_str(meta.get("status", "")),
+            date_planning=_coerce_str(meta.get("date_planning", "")),
+            date_execution=_coerce_str(meta.get("date_execution", "")),
+            date_conclusion=_coerce_str(meta.get("date_conclusion", "")),
         )
 
     def _write(self, path: Path, record: FileRecord) -> None:
@@ -230,6 +233,9 @@ class MarkdownFileRepository(AbstractFileRepository):
             "modified": record.modified,
             "folder": record.folder,
             "status": record.status,
+            "date_planning": record.date_planning,
+            "date_execution": record.date_execution,
+            "date_conclusion": record.date_conclusion,
         }
         frontmatter = yaml.dump(
             fm_data, allow_unicode=True, default_flow_style=False
@@ -268,6 +274,9 @@ class MarkdownFileRepository(AbstractFileRepository):
         modified: str,
         folder: str = "",
         status: str = "",
+        date_planning: str = "",
+        date_execution: str = "",
+        date_conclusion: str = "",
     ) -> FileRecord:
         folder = folder.strip("/")
         # Use slug of title as ID; fall back to whatever the caller provided
@@ -284,6 +293,9 @@ class MarkdownFileRepository(AbstractFileRepository):
             modified=modified,
             folder=folder,
             status=status,
+            date_planning=date_planning,
+            date_execution=date_execution,
+            date_conclusion=date_conclusion,
         )
         path = self._build_path(actual_id, folder)
         self._write(path, record)
@@ -300,6 +312,9 @@ class MarkdownFileRepository(AbstractFileRepository):
         modified: str,
         folder: str | None = None,
         status: str | None = None,
+        date_planning: str | None = None,
+        date_execution: str | None = None,
+        date_conclusion: str | None = None,
     ) -> FileRecord:
         old_path = self._require_path(file_id)
         existing = self._parse_cached(old_path)
@@ -328,6 +343,9 @@ class MarkdownFileRepository(AbstractFileRepository):
             modified=modified,
             folder=new_folder,
             status=status if status is not None else existing.status,
+            date_planning=date_planning if date_planning is not None else existing.date_planning,
+            date_execution=date_execution if date_execution is not None else existing.date_execution,
+            date_conclusion=date_conclusion if date_conclusion is not None else existing.date_conclusion,
         )
 
         new_path = self._build_path(new_id, new_folder)

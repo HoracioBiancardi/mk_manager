@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,7 +8,8 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Share+Tech+Mono&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="/static/css/style.css">
   <!-- marked deve ser carregado antes do módulo ES (scripts regulares são síncronos) -->
   <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
@@ -42,11 +44,11 @@
         const r = new marked.Renderer();
         r.code = (code, lang) => {
           const text = typeof code === 'object' ? code.text : code;
-          const l    = typeof code === 'object' ? (code.lang || lang || 'text') : (lang || 'text');
+          const l = typeof code === 'object' ? (code.lang || lang || 'text') : (lang || 'text');
           if (l === 'mermaid') {
             return `<div class="mermaid-wrap"><div class="mermaid">${text}</div></div>`;
           }
-          const language   = hljs.getLanguage(l) ? l : 'plaintext';
+          const language = hljs.getLanguage(l) ? l : 'plaintext';
           const highlighted = hljs.highlight(text, { language }).value;
           return `<pre><code class="hljs language-${l}">${highlighted}</code></pre>`;
         };
@@ -55,405 +57,508 @@
     });
   </script>
 </head>
-<body>
 
-<canvas id="bg-canvas"></canvas>
-<div class="aurora">
-  <div class="orb orb-1"></div>
-  <div class="orb orb-2"></div>
-  <div class="orb orb-3"></div>
-  <div class="orb orb-4"></div>
-</div>
+<body class="crt-enabled flicker-enabled theme-green">
+  <div class="crt-overlay"></div>
+  <div class="crt-vignette"></div>
+  <div class="crt-static"></div>
+  <div class="crt-turn-on-overlay"></div>
+  <div class="crt-transition-overlay"></div>
 
-<!-- TOPBAR -->
-<div class="topbar">
-  <div class="brand">
-    <div class="brand-icon">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#0d1117" stroke-width="2" stroke-linejoin="round" fill="rgba(0,0,0,.15)"/>
-        <path d="M14 2v6h6" stroke="#0d1117" stroke-width="2" stroke-linejoin="round"/>
-        <path d="M8 13h8M8 17h5" stroke="#0d1117" stroke-width="1.75" stroke-linecap="round"/>
-      </svg>
-    </div>
-    <div class="brand-text">
-      <span class="brand-name">MK Manager</span>
-      <span class="brand-tagline">Markdown Notes &amp; Tasks</span>
-    </div>
-    <div class="brand-divider"></div>
-    <div class="brand-by" title="SwordPower">
-      <svg class="brand-by-bg" viewBox="0 0 140 26" preserveAspectRatio="none" fill="none">
-        <circle cx="7" cy="13" r="3.5" fill="#d29922"/>
-        <rect x="11.5" y="10.5" width="7" height="5" rx="1.2" fill="#d29922"/>
-        <rect x="19.5" y="6" width="2.6" height="14" rx="1.2" fill="#e6edf3"/>
-        <path d="M22 11.5 L133 9.5 L139 13 L133 16.5 L22 14.5 Z" fill="#10b981" opacity=".9"/>
-        <path d="M22 12.2 L131 10.6 L131 15.4 L22 13.8 Z" fill="#5eead4" opacity=".4"/>
-      </svg>
-      <span class="brand-by-text">SwordPower</span>
-    </div>
+  <canvas id="bg-canvas"></canvas>
+  <div class="aurora">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="orb orb-4"></div>
   </div>
-<div class="topbar-right">
-    <div class="topbar-shortcuts">
-      <span><kbd>Ctrl+K</kbd> abrir</span>
-      <span><kbd>Ctrl+N</kbd> nota</span>
-      <span><kbd>Ctrl+⇧N</kbd> task</span>
-      <span><kbd>Ctrl+S</kbd> salvar</span>
-    </div>
-    <span id="conn-badge" class="conn-badge">● offline</span>
-    <button class="icon-btn" onclick="openSettingsModal()" title="Configurações">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/>
-        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-      </svg>
-    </button>
-  </div>
-</div>
 
-<!-- APP LAYOUT -->
-<div class="app-layout" id="app-layout">
-
-  <!-- ACTIVITY BAR -->
-  <nav class="activity-bar">
-    <button class="activity-btn active" data-panel="explorer" onclick="switchPanel('explorer')" title="Explorador">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-        <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-      </svg>
-    </button>
-    <button class="activity-btn" data-panel="search" onclick="switchPanel('search')" title="Buscar">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-        <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/>
-        <path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-      </svg>
-    </button>
-    <button class="activity-btn" data-panel="tags" onclick="switchPanel('tags')" title="Tags">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-        <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M7 7h.01" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-      </svg>
-    </button>
-    <button class="activity-btn" data-panel="kanban" onclick="switchPanel('kanban')" title="Kanban">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-        <rect x="3" y="3" width="5" height="18" rx="1.5" stroke="currentColor" stroke-width="1.8"/>
-        <rect x="9.5" y="3" width="5" height="12" rx="1.5" stroke="currentColor" stroke-width="1.8"/>
-        <rect x="16" y="3" width="5" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/>
-      </svg>
-    </button>
-    <button class="activity-btn" data-panel="graph" onclick="switchPanel('graph')" title="Grafo">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-        <circle cx="5" cy="6" r="2.5" stroke="currentColor" stroke-width="1.8"/>
-        <circle cx="19" cy="6" r="2.5" stroke="currentColor" stroke-width="1.8"/>
-        <circle cx="12" cy="13" r="2.5" stroke="currentColor" stroke-width="1.8"/>
-        <circle cx="6" cy="19" r="2.5" stroke="currentColor" stroke-width="1.8"/>
-        <circle cx="18" cy="19" r="2.5" stroke="currentColor" stroke-width="1.8"/>
-        <path d="M7.2 7.4L10 11.2M17 7.3l-3 4M10.3 14.9l-2.6 2.5M13.9 15l2.6 2.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-      </svg>
-    </button>
-  </nav>
-
-  <!-- SIDEBAR PANEL (só o Explorador — busca e tags viraram telas cheias) -->
-  <aside class="sidebar-panel">
-
-    <div class="panel-content active">
-      <div class="panel-header">
-        <span class="panel-title">Explorador</span>
-        <div class="panel-header-actions">
-          <button class="icon-btn" id="btn-new-note" onclick="newFile('note')" title="Nova Nota (Ctrl+N)">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-              <path d="M14 2v6h6" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-              <path d="M12 18v-6M9 15h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-            </svg>
-          </button>
-          <button class="icon-btn" id="btn-new-task" onclick="newFile('task')" title="Nova Task (Ctrl+⇧N)">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M9 11l3 3L22 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-          <button class="icon-btn" onclick="startNewFolderInput()" title="Nova Pasta">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-              <path d="M12 13v4M10 15h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-            </svg>
-          </button>
-        </div>
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#0d1117" stroke-width="2"
+            stroke-linejoin="round" fill="rgba(0,0,0,.15)" />
+          <path d="M14 2v6h6" stroke="#0d1117" stroke-width="2" stroke-linejoin="round" />
+          <path d="M8 13h8M8 17h5" stroke="#0d1117" stroke-width="1.75" stroke-linecap="round" />
+        </svg>
       </div>
-      <div id="file-tree" class="file-tree" oncontextmenu="onTreeBackgroundContextMenu(event)"></div>
-    </div>
-
-    <div class="sidebar-footer" id="storage-info">–</div>
-  </aside>
-
-  <!-- MAIN -->
-  <main class="main-panel">
-    <div id="empty-panel" class="empty-panel">
-      <div class="empty-state">
-        <div class="empty-icon">📝</div>
-        <p>Selecione um arquivo ou crie uma nova nota</p>
-        <div class="empty-hint">Arquivos .md salvos em <code class="path-hint">./notes/</code></div>
+      <div class="brand-text">
+        <span class="brand-name">MK Manager</span>
+        <span class="brand-tagline">Markdown Notes &amp; Tasks</span>
+      </div>
+      <div class="brand-divider"></div>
+      <div class="brand-by" title="SwordPower">
+        <svg class="brand-by-bg" viewBox="0 0 140 26" preserveAspectRatio="none" fill="none">
+          <circle cx="7" cy="13" r="3.5" fill="#d29922" />
+          <rect x="11.5" y="10.5" width="7" height="5" rx="1.2" fill="#d29922" />
+          <rect x="19.5" y="6" width="2.6" height="14" rx="1.2" fill="#e6edf3" />
+          <path d="M22 11.5 L133 9.5 L139 13 L133 16.5 L22 14.5 Z" fill="#10b981" opacity=".9" />
+          <path d="M22 12.2 L131 10.6 L131 15.4 L22 13.8 Z" fill="#5eead4" opacity=".4" />
+        </svg>
+        <span class="brand-by-text">SwordPower</span>
       </div>
     </div>
+    <div class="topbar-right">
+      <div class="topbar-shortcuts">
+        <span><kbd>Ctrl+K</kbd> abrir</span>
+        <span><kbd>Ctrl+N</kbd> nota</span>
+        <span><kbd>Ctrl+⇧N</kbd> task</span>
+        <span><kbd>Ctrl+S</kbd> salvar</span>
+      </div>
+      <span id="conn-badge" class="conn-badge">● offline</span>
+      <button class="icon-btn" onclick="openSettingsModal()" title="Configurações">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8" />
+          <path
+            d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"
+            stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+        </svg>
+      </button>
+    </div>
+  </div>
 
-    <div id="editor-area" style="display:none">
-      <div class="editor-topbar">
-        <div class="file-meta-bar">
-          <span id="type-badge" class="type-badge note">Note</span>
-          <input id="title-input" type="text" class="title-input" placeholder="Sem título…" oninput="onTitleChange(this.value)" autocomplete="off">
-        </div>
-        <div class="editor-topbar-right">
-          <span id="filename-label" class="filename-label"></span>
-          <button class="btn btn-ghost btn-sm" onclick="exportCurrent()">⬇ .md</button>
-          <button class="btn btn-ghost btn-sm" onclick="printPDF()" title="Exportar como PDF">🖨 PDF</button>
-          <div class="view-toggle">
-            <button class="view-btn" id="btn-edit" onclick="setView('edit')" title="Só editor">✏️</button>
-            <button class="view-btn active" id="btn-split" onclick="setView('split')" title="Split">⬚</button>
-            <button class="view-btn" id="btn-preview" onclick="setView('preview')" title="Só preview">👁</button>
+  <!-- APP LAYOUT -->
+  <div class="app-layout" id="app-layout">
+
+    <!-- ACTIVITY BAR -->
+    <nav class="activity-bar">
+      <button class="activity-btn active" data-panel="explorer" onclick="switchPanel('explorer')" title="Explorador">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" stroke="currentColor"
+            stroke-width="1.8" stroke-linejoin="round" />
+        </svg>
+      </button>
+      <button class="activity-btn" data-panel="search" onclick="switchPanel('search')" title="Buscar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8" />
+          <path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+        </svg>
+      </button>
+      <button class="activity-btn" data-panel="tags" onclick="switchPanel('tags')" title="Tags">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" stroke="currentColor"
+            stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M7 7h.01" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
+        </svg>
+      </button>
+      <button class="activity-btn" data-panel="kanban" onclick="switchPanel('kanban')" title="Kanban">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="3" width="5" height="18" rx="1.5" stroke="currentColor" stroke-width="1.8" />
+          <rect x="9.5" y="3" width="5" height="12" rx="1.5" stroke="currentColor" stroke-width="1.8" />
+          <rect x="16" y="3" width="5" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8" />
+        </svg>
+      </button>
+      <button class="activity-btn" data-panel="graph" onclick="switchPanel('graph')" title="Grafo">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <circle cx="5" cy="6" r="2.5" stroke="currentColor" stroke-width="1.8" />
+          <circle cx="19" cy="6" r="2.5" stroke="currentColor" stroke-width="1.8" />
+          <circle cx="12" cy="13" r="2.5" stroke="currentColor" stroke-width="1.8" />
+          <circle cx="6" cy="19" r="2.5" stroke="currentColor" stroke-width="1.8" />
+          <circle cx="18" cy="19" r="2.5" stroke="currentColor" stroke-width="1.8" />
+          <path d="M7.2 7.4L10 11.2M17 7.3l-3 4M10.3 14.9l-2.6 2.5M13.9 15l2.6 2.4" stroke="currentColor"
+            stroke-width="1.5" stroke-linecap="round" />
+        </svg>
+      </button>
+    </nav>
+
+    <!-- SIDEBAR PANEL (só o Explorador — busca e tags viraram telas cheias) -->
+    <aside class="sidebar-panel">
+
+      <div class="panel-content active">
+        <div class="panel-header">
+          <span class="panel-title">Explorador</span>
+          <div class="panel-header-actions">
+            <button class="icon-btn" id="btn-new-note" onclick="newFile('note')" title="Nova Nota (Ctrl+N)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="currentColor"
+                  stroke-width="1.8" stroke-linejoin="round" />
+                <path d="M14 2v6h6" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                <path d="M12 18v-6M9 15h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+              </svg>
+            </button>
+            <button class="icon-btn" id="btn-new-task" onclick="newFile('task')" title="Nova Task (Ctrl+⇧N)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M9 11l3 3L22 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round" />
+                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
+            <button class="icon-btn" onclick="startNewFolderInput()" title="Nova Pasta">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" stroke="currentColor"
+                  stroke-width="1.8" stroke-linejoin="round" />
+                <path d="M12 13v4M10 15h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+              </svg>
+            </button>
           </div>
         </div>
+        <div id="file-tree" class="file-tree" oncontextmenu="onTreeBackgroundContextMenu(event)"></div>
       </div>
 
-      <div class="editor-info-bar">
-        <div class="info-group">
-          <span class="info-label">Tags</span>
-          <div id="tags-container" class="tags-container"></div>
-          <input id="tag-input" type="text" class="tag-input" placeholder="+ tag" onkeydown="onTagKey(event)" autocomplete="off" list="tag-suggestions">
-          <datalist id="tag-suggestions"></datalist>
+      <div class="sidebar-footer" id="storage-info">–</div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main-panel">
+      <div id="empty-panel" class="empty-panel">
+        <div class="empty-state">
+          <div class="empty-icon">📝</div>
+          <p>Selecione um arquivo ou crie uma nova nota</p>
+          <div class="empty-hint">Arquivos .md salvos em <code class="path-hint">./notes/</code></div>
         </div>
-        <div class="info-sep"></div>
-        <div class="info-group">
-          <span class="info-label">📁</span>
-          <input id="folder-input" type="text" class="meta-input" placeholder="pasta/subpasta" oninput="onMetaChange()" autocomplete="off">
+      </div>
+
+      <div id="editor-area" style="display:none">
+        <div class="editor-topbar">
+          <div class="file-meta-bar">
+            <span id="type-badge" class="type-badge note">Note</span>
+            <input id="title-input" type="text" class="title-input" placeholder="Sem título…"
+              oninput="onTitleChange(this.value)" autocomplete="off">
+          </div>
+          <div class="editor-topbar-right">
+            <span id="filename-label" class="filename-label"></span>
+            <button class="btn btn-ghost btn-sm" onclick="exportCurrent()">⬇ .md</button>
+            <button class="btn btn-ghost btn-sm" onclick="printPDF()" title="Exportar como PDF">🖨 PDF</button>
+            <div class="view-toggle">
+              <button class="view-btn" id="btn-edit" onclick="setView('edit')" title="Só editor">✏️</button>
+              <button class="view-btn active" id="btn-split" onclick="setView('split')" title="Split">⬚</button>
+              <button class="view-btn" id="btn-preview" onclick="setView('preview')" title="Só preview">👁</button>
+            </div>
+          </div>
         </div>
-        <div id="status-row-part" style="display:contents">
+
+        <div class="editor-info-bar">
+          <div class="info-group" style="position: relative;">
+            <span class="info-label">Tags</span>
+            <div id="tags-container" class="tags-container"></div>
+            <div class="retro-tag-input-wrap">
+              <input id="tag-input" type="text" class="tag-input" placeholder="+ tag" onkeydown="onTagKey(event)"
+                onfocus="showRetroTagSuggestions()" oninput="filterRetroTagSuggestions()" autocomplete="off">
+              <div class="retro-tag-suggestions" id="retro-tag-suggestions"></div>
+            </div>
+          </div>
+          <div class="info-sep"></div>
+          <div class="info-group">
+            <span class="info-label">📁</span>
+            <input id="folder-input" type="text" class="meta-input" placeholder="pasta/subpasta"
+              oninput="onMetaChange()" autocomplete="off">
+          </div>
+          <div id="status-row-part" style="display:contents">
           <div class="info-sep"></div>
           <div class="info-group">
             <span class="info-label">Status</span>
-            <select id="status-select" class="status-select" onchange="onMetaChange()">
+            <select id="status-select" class="status-select" onchange="onMetaChange()" style="display: none !important;">
               <option value="">—</option>
               <option value="planning">Planejado</option>
               <option value="development">Em Dev</option>
               <option value="review">Em Review</option>
               <option value="done">Concluído</option>
             </select>
+            <div class="retro-select" id="retro-status-select">
+              <div class="retro-select-trigger" onclick="toggleRetroSelect(event)">
+                <span id="retro-status-label">—</span>
+                <span class="retro-select-arrow">▼</span>
+              </div>
+              <div class="retro-select-dropdown" id="retro-status-dropdown"></div>
+            </div>
           </div>
+        </div>
+          <div id="task-dates-part" style="display:contents">
+            <div class="info-sep"></div>
+            <div class="info-group">
+              <span class="info-label" title="Datas de Planejamento, Execução e Conclusão com Horas">Datas</span>
+              <input type="datetime-local" id="date-planning" class="meta-input date-input" onchange="onMetaChange()"
+                title="Planejado em">
+              <input type="datetime-local" id="date-execution" class="meta-input date-input" onchange="onMetaChange()"
+                title="Em Dev (Execução) em">
+              <input type="datetime-local" id="date-conclusion" class="meta-input date-input" onchange="onMetaChange()"
+                title="Concluído em">
+              <span id="task-duration-badge" class="task-duration-badge" style="display: none;" title="Duração total (da Execução até Conclusão)"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="editor-body">
+          <div id="editor-pane" class="editor-pane">
+            <div class="md-toolbar">
+              <button class="tool-btn" onclick="fmt('**','**')"><b>B</b></button>
+              <button class="tool-btn" onclick="fmt('*','*')"><i>I</i></button>
+              <button class="tool-btn" onclick="fmt('~~','~~')"><s>S</s></button>
+              <button class="tool-btn" onclick="fmt('`','`')">`c`</button>
+              <span class="tool-sep"></span>
+              <button class="tool-btn" onclick="ins('# ')">H1</button>
+              <button class="tool-btn" onclick="ins('## ')">H2</button>
+              <button class="tool-btn" onclick="ins('### ')">H3</button>
+              <span class="tool-sep"></span>
+              <button class="tool-btn" onclick="ins('- ')">• Lista</button>
+              <button class="tool-btn" onclick="ins('1. ')">1. Lista</button>
+              <button class="tool-btn" onclick="ins('- [ ] ')">☐ Task</button>
+              <button class="tool-btn" onclick="ins('  - [ ] ')" title="Sub-task (indentada)">↳ Sub</button>
+              <span class="tool-sep"></span>
+              <button class="tool-btn" onclick="fmt('[','](url)')" title="Link externo (URL)">🔗</button>
+              <button class="tool-btn" onclick="fmt('[[',']]')"
+                title="Link para outra nota — [[Título da nota]]">🔗📝</button>
+              <button class="tool-btn" onclick="ins('> ')">❝</button>
+              <button class="tool-btn" onclick="insCodeBlock()">```</button>
+              <button class="tool-btn" onclick="ins('\n---\n')">—</button>
+              <span class="tool-sep"></span>
+              <button class="tool-btn" onclick="insTable()" title="Inserir tabela">⊞ Tabela</button>
+              <button class="tool-btn" onclick="formatTable()"
+                title="Alinhar colunas da tabela (cursor deve estar dentro da tabela)">⊟ Alinhar</button>
+              <button class="tool-btn" onclick="openDiagramBuilder()"
+                title="Construtor visual: arraste caixas e setas, gera Mermaid sozinho">🧩 Diagrama</button>
+              <span class="tool-sep"></span>
+              <button class="tool-btn" onclick="formatSmart()"
+                title="Formata o bloco de código onde está o cursor; sem cursor num bloco, formata o documento inteiro (Prettier p/ JS/TS/JSON/CSS/HTML/YAML; limpeza de espaçamento nas demais linguagens)">🧹
+                Formatar</button>
+              <button class="tool-btn tool-btn-import" onclick="triggerAssetImport()"
+                title="Importar arquivo (imagem, PDF, MD…)">📎 Importar</button>
+            </div>
+            <textarea id="md-editor" class="md-textarea"
+              placeholder="Comece a escrever em Markdown…&#10;&#10;Use - [ ] para criar tasks interativas"
+              oninput="onEditorInput()" onkeydown="onEditorKeydown(event)"></textarea>
+          </div>
+          <div id="resize-handle" class="resize-handle" title="Arraste para redimensionar · Duplo-clique para 50/50">
+            <div class="rh-dots">
+              <div class="rh-dot"></div>
+              <div class="rh-dot"></div>
+              <div class="rh-dot"></div>
+              <div class="rh-dot"></div>
+              <div class="rh-dot"></div>
+            </div>
+          </div>
+          <div id="preview-pane" class="preview-pane">
+            <div id="md-preview" class="md-preview"></div>
+          </div>
+        </div>
+
+        <div class="editor-footer">
+          <span id="word-count">0 palavras</span>
+          <span id="task-stats"></span>
+          <span id="save-status" class="save-status saved">Salvo</span>
         </div>
       </div>
 
-      <div class="editor-body">
-        <div id="editor-pane" class="editor-pane">
-          <div class="md-toolbar">
-            <button class="tool-btn" onclick="fmt('**','**')"><b>B</b></button>
-            <button class="tool-btn" onclick="fmt('*','*')"><i>I</i></button>
-            <button class="tool-btn" onclick="fmt('~~','~~')"><s>S</s></button>
-            <button class="tool-btn" onclick="fmt('`','`')">`c`</button>
-            <span class="tool-sep"></span>
-            <button class="tool-btn" onclick="ins('# ')">H1</button>
-            <button class="tool-btn" onclick="ins('## ')">H2</button>
-            <button class="tool-btn" onclick="ins('### ')">H3</button>
-            <span class="tool-sep"></span>
-            <button class="tool-btn" onclick="ins('- ')">• Lista</button>
-            <button class="tool-btn" onclick="ins('1. ')">1. Lista</button>
-            <button class="tool-btn" onclick="ins('- [ ] ')">☐ Task</button>
-            <button class="tool-btn" onclick="ins('  - [ ] ')" title="Sub-task (indentada)">↳ Sub</button>
-            <span class="tool-sep"></span>
-            <button class="tool-btn" onclick="fmt('[','](url)')" title="Link externo (URL)">🔗</button>
-            <button class="tool-btn" onclick="fmt('[[',']]')" title="Link para outra nota — [[Título da nota]]">🔗📝</button>
-            <button class="tool-btn" onclick="ins('> ')">❝</button>
-            <button class="tool-btn" onclick="insCodeBlock()">```</button>
-            <button class="tool-btn" onclick="ins('\n---\n')">—</button>
-            <span class="tool-sep"></span>
-            <button class="tool-btn" onclick="insTable()" title="Inserir tabela">⊞ Tabela</button>
-            <button class="tool-btn" onclick="formatTable()" title="Alinhar colunas da tabela (cursor deve estar dentro da tabela)">⊟ Alinhar</button>
-            <button class="tool-btn" onclick="openDiagramBuilder()" title="Construtor visual: arraste caixas e setas, gera Mermaid sozinho">🧩 Diagrama</button>
-            <span class="tool-sep"></span>
-            <button class="tool-btn" onclick="formatSmart()" title="Formata o bloco de código onde está o cursor; sem cursor num bloco, formata o documento inteiro (Prettier p/ JS/TS/JSON/CSS/HTML/YAML; limpeza de espaçamento nas demais linguagens)">🧹 Formatar</button>
-            <button class="tool-btn tool-btn-import" onclick="triggerAssetImport()" title="Importar arquivo (imagem, PDF, MD…)">📎 Importar</button>
+      <!-- Kanban (irmão de editor-area, fora dele) -->
+      <div id="kanban-pane" class="kanban-pane">
+        <div id="kanban-board" class="kanban-board"></div>
+      </div>
+
+      <!-- Tags (tela cheia — árvore + detalhe lado a lado) -->
+      <div id="tags-pane" class="tags-pane">
+        <div class="tagtree-col">
+          <div class="pane-header">
+            <span class="pane-title">Tags</span>
+            <input id="tags-search-input" type="text" class="tag-search-input" placeholder="Buscar tag…"
+              oninput="onTagSearchInput(this.value)" autocomplete="off">
           </div>
-          <textarea id="md-editor" class="md-textarea"
-            placeholder="Comece a escrever em Markdown…&#10;&#10;Use - [ ] para criar tasks interativas"
-            oninput="onEditorInput()" onkeydown="onEditorKeydown(event)"></textarea>
+          <div id="tagtree-list" class="tagtree-list"></div>
         </div>
-        <div id="resize-handle" class="resize-handle" title="Arraste para redimensionar · Duplo-clique para 50/50">
-          <div class="rh-dots">
-            <div class="rh-dot"></div><div class="rh-dot"></div><div class="rh-dot"></div>
-            <div class="rh-dot"></div><div class="rh-dot"></div>
-          </div>
-        </div>
-        <div id="preview-pane" class="preview-pane">
-          <div id="md-preview" class="md-preview"></div>
+        <div id="tagtree-detail" class="tagtree-detail">
+          <div class="tagtree-detail-empty">Selecione uma tag para ver as notas relacionadas.</div>
         </div>
       </div>
 
-      <div class="editor-footer">
-        <span id="word-count">0 palavras</span>
-        <span id="task-stats"></span>
-        <span id="save-status" class="save-status saved">Salvo</span>
+      <!-- Busca (tela cheia) -->
+      <div id="search-pane" class="search-pane">
+        <div class="pane-header search-pane-header">
+          <input id="search-input" type="text" class="search-pane-input" placeholder="Buscar em notas e tasks…"
+            oninput="onSearch(this.value)" autocomplete="off">
+          <div class="panel-filters">
+            <button class="filter-tab active" data-filter="all" onclick="setFilter('all')">Todos</button>
+            <button class="filter-tab" data-filter="note" onclick="setFilter('note')">Notas</button>
+            <button class="filter-tab" data-filter="task" onclick="setFilter('task')">Tasks</button>
+          </div>
+        </div>
+        <div id="search-results" class="search-results"></div>
       </div>
-    </div>
 
-    <!-- Kanban (irmão de editor-area, fora dele) -->
-    <div id="kanban-pane" class="kanban-pane">
-      <div id="kanban-board" class="kanban-board"></div>
-    </div>
-
-    <!-- Tags (tela cheia — árvore + detalhe lado a lado) -->
-    <div id="tags-pane" class="tags-pane">
-      <div class="tagtree-col">
+      <!-- Grafo (tela cheia — nós = notas, arestas = [[links]]) -->
+      <div id="graph-pane" class="graph-pane">
         <div class="pane-header">
-          <span class="pane-title">Tags</span>
-          <input id="tags-search-input" type="text" class="tag-search-input" placeholder="Buscar tag…" oninput="onTagSearchInput(this.value)" autocomplete="off">
+          <span class="pane-title">Grafo</span>
+          <div class="panel-filters">
+            <button class="filter-tab active" data-filter="all" onclick="setGraphFilter('all')">Todos</button>
+            <button class="filter-tab" data-filter="note" onclick="setGraphFilter('note')">Notas</button>
+            <button class="filter-tab" data-filter="task" onclick="setGraphFilter('task')">Tasks</button>
+          </div>
+          <button class="btn btn-ghost btn-sm active" id="graph-orphans-btn" onclick="toggleGraphOrphans()"
+            title="Mostrar/esconder notas sem nenhum link">Sem conexão</button>
         </div>
-        <div id="tagtree-list" class="tagtree-list"></div>
+        <div id="graph-container" class="graph-container"></div>
       </div>
-      <div id="tagtree-detail" class="tagtree-detail">
-        <div class="tagtree-detail-empty">Selecione uma tag para ver as notas relacionadas.</div>
-      </div>
-    </div>
+    </main>
+  </div>
 
-    <!-- Busca (tela cheia) -->
-    <div id="search-pane" class="search-pane">
-      <div class="pane-header search-pane-header">
-        <input id="search-input" type="text" class="search-pane-input" placeholder="Buscar em notas e tasks…" oninput="onSearch(this.value)" autocomplete="off">
-        <div class="panel-filters">
-          <button class="filter-tab active" data-filter="all" onclick="setFilter('all')">Todos</button>
-          <button class="filter-tab" data-filter="note" onclick="setFilter('note')">Notas</button>
-          <button class="filter-tab" data-filter="task" onclick="setFilter('task')">Tasks</button>
-        </div>
+  <!-- KANBAN QUICK-EDIT MODAL -->
+  <div class="overlay" id="kanban-qedit-overlay" onclick="onKanbanQEditOverlayClick(event)">
+    <div class="modal kanban-qedit-modal">
+      <div class="modal-header">
+        <h2 id="kanban-qedit-title" class="kanban-qedit-title-text"></h2>
+        <button class="close-btn" onclick="closeKanbanQEdit()">✕</button>
       </div>
-      <div id="search-results" class="search-results"></div>
-    </div>
-
-    <!-- Grafo (tela cheia — nós = notas, arestas = [[links]]) -->
-    <div id="graph-pane" class="graph-pane">
-      <div class="pane-header">
-        <span class="pane-title">Grafo</span>
-        <div class="panel-filters">
-          <button class="filter-tab active" data-filter="all" onclick="setGraphFilter('all')">Todos</button>
-          <button class="filter-tab" data-filter="note" onclick="setGraphFilter('note')">Notas</button>
-          <button class="filter-tab" data-filter="task" onclick="setGraphFilter('task')">Tasks</button>
-        </div>
-        <button class="btn btn-ghost btn-sm active" id="graph-orphans-btn" onclick="toggleGraphOrphans()" title="Mostrar/esconder notas sem nenhum link">Sem conexão</button>
+      <div class="modal-body kanban-qedit-body md-preview" id="kanban-qedit-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="openEditorFromKanbanQEdit()">Abrir no editor</button>
+        <button class="btn btn-ghost" onclick="closeKanbanQEdit()">Fechar</button>
       </div>
-      <div id="graph-container" class="graph-container"></div>
-    </div>
-  </main>
-</div>
-
-<!-- KANBAN QUICK-EDIT MODAL -->
-<div class="overlay" id="kanban-qedit-overlay" onclick="onKanbanQEditOverlayClick(event)">
-  <div class="modal kanban-qedit-modal">
-    <div class="modal-header">
-      <h2 id="kanban-qedit-title" class="kanban-qedit-title-text"></h2>
-      <button class="close-btn" onclick="closeKanbanQEdit()">✕</button>
-    </div>
-    <div class="modal-body kanban-qedit-body md-preview" id="kanban-qedit-body"></div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="openEditorFromKanbanQEdit()">Abrir no editor</button>
-      <button class="btn btn-ghost" onclick="closeKanbanQEdit()">Fechar</button>
     </div>
   </div>
-</div>
 
-<!-- DELETE MODAL -->
-<div class="overlay" id="delete-overlay">
-  <div class="modal">
-    <div class="modal-header">
-      <h2>Excluir arquivo</h2>
-      <button class="close-btn" onclick="closeDeleteModal()">✕</button>
-    </div>
-    <div class="modal-body">
-      Deseja excluir <strong id="delete-filename">"Arquivo"</strong>?<br>
-      O arquivo <code id="delete-path" class="path-hint"></code> será removido do disco.
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeDeleteModal()">Cancelar</button>
-      <button class="btn btn-danger" id="confirm-del-btn" onclick="confirmDelete()">Excluir</button>
+  <!-- DELETE MODAL -->
+  <div class="overlay" id="delete-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Excluir arquivo</h2>
+        <button class="close-btn" onclick="closeDeleteModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        Deseja excluir <strong id="delete-filename">"Arquivo"</strong>?<br>
+        O arquivo <code id="delete-path" class="path-hint"></code> será removido do disco.
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeDeleteModal()">Cancelar</button>
+        <button class="btn btn-danger" id="confirm-del-btn" onclick="confirmDelete()">Excluir</button>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- SETTINGS MODAL -->
-<div class="overlay" id="settings-overlay" onclick="onSettingsOverlayClick(event)">
-  <div class="modal">
-    <div class="modal-header">
-      <h2>Configurações</h2>
-      <button class="close-btn" onclick="closeSettingsModal()">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label" for="settings-notes-dir">Pasta dos arquivos</label>
-        <div class="folder-picker-row">
-          <input id="settings-notes-dir" type="text" class="form-input" placeholder="/caminho/para/notes" autocomplete="off">
-          <button class="btn btn-ghost btn-sm" type="button" onclick="toggleFolderBrowser('notes')">📁 Procurar</button>
+  <!-- SETTINGS MODAL -->
+  <div class="overlay" id="settings-overlay" onclick="onSettingsOverlayClick(event)">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Configurações</h2>
+        <button class="close-btn" onclick="closeSettingsModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="settings-notes-dir">Pasta dos arquivos</label>
+          <div class="folder-picker-row">
+            <input id="settings-notes-dir" type="text" class="form-input" placeholder="/caminho/para/notes"
+              autocomplete="off">
+            <button class="btn btn-ghost btn-sm" type="button" onclick="toggleFolderBrowser('notes')">📁
+              Procurar</button>
+          </div>
+          <div class="form-hint">Notas e tasks (.md) passam a ser lidas/salvas aqui imediatamente. A pasta é criada
+            automaticamente se não existir.</div>
+          <div id="folder-browser" class="folder-browser" style="display:none">
+            <div class="folder-browser-target" id="folder-browser-target"></div>
+            <div class="folder-browser-path" id="folder-browser-path">–</div>
+            <div class="folder-browser-list" id="folder-browser-list" onclick="onFolderBrowserListClick(event)"></div>
+            <div class="folder-browser-actions">
+              <button class="btn btn-ghost btn-sm" type="button" id="folder-browser-up-btn"
+                onclick="folderBrowserGoUp()">⬆ Subir</button>
+              <button class="btn btn-primary btn-sm" type="button" onclick="folderBrowserSelect()">Usar esta
+                pasta</button>
+            </div>
+          </div>
         </div>
-        <div class="form-hint">Notas e tasks (.md) passam a ser lidas/salvas aqui imediatamente. A pasta é criada automaticamente se não existir.</div>
-        <div id="folder-browser" class="folder-browser" style="display:none">
-          <div class="folder-browser-target" id="folder-browser-target"></div>
-          <div class="folder-browser-path" id="folder-browser-path">–</div>
-          <div class="folder-browser-list" id="folder-browser-list" onclick="onFolderBrowserListClick(event)"></div>
-          <div class="folder-browser-actions">
-            <button class="btn btn-ghost btn-sm" type="button" id="folder-browser-up-btn" onclick="folderBrowserGoUp()">⬆ Subir</button>
-            <button class="btn btn-primary btn-sm" type="button" onclick="folderBrowserSelect()">Usar esta pasta</button>
+        <div class="form-group">
+          <label class="form-label" for="settings-assets-dir">Pasta dos assets (imagens, PDFs…)</label>
+          <div class="folder-picker-row">
+            <input id="settings-assets-dir" type="text" class="form-input"
+              placeholder="Padrão: pasta dos arquivos + /assets" autocomplete="off">
+            <button class="btn btn-ghost btn-sm" type="button" onclick="toggleFolderBrowser('assets')">📁
+              Procurar</button>
+          </div>
+          <div class="form-hint">Onde arquivos colados/arrastados/importados no editor são salvos. Deixe em branco para
+            usar "{pasta dos arquivos}/assets".</div>
+        </div>
+        <div class="form-group">
+          <span class="form-label">Servidor</span>
+          <div class="form-hint" id="settings-server-info">–</div>
+        </div>
+        <div class="form-group">
+          <span class="form-label">Armazenamento</span>
+          <div class="form-hint" id="settings-storage-info">–</div>
+          <button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick="downloadBackup()">⬇ Baixar backup
+            (.zip)</button>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="settings-default-view">Visualização padrão ao abrir um arquivo</label>
+          <select id="settings-default-view" class="form-input">
+            <option value="edit">Só editor</option>
+            <option value="split">Split (editor + preview)</option>
+            <option value="preview">Só preview</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="settings-font-size">Tamanho da fonte do editor — <span
+              id="settings-font-size-label">14px</span></label>
+          <input id="settings-font-size" type="range" min="11" max="24" step="1" oninput="onFontSizeInput(this.value)">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Aparência CRT Pip-Boy</label>
+          <div style="display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.5rem;">
+            <label
+              style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
+              <input type="checkbox" id="settings-scanlines" onchange="toggleScanlines(this.checked)">
+              <span>Ativar linhas de varredura (Scanlines CRT)</span>
+            </label>
+            <label
+              style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
+              <input type="checkbox" id="settings-flicker" onchange="toggleFlicker(this.checked)">
+              <span>Ativar cintilação de tela (Flicker)</span>
+            </label>
+            <label
+              style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
+              <input type="checkbox" id="settings-static" onchange="toggleStatic(this.checked)">
+              <span>Ativar estática analógica (Static Noise)</span>
+            </label>
+            <label
+              style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
+              <input type="checkbox" id="settings-curved" onchange="toggleCurved(this.checked)">
+              <span>Ativar curvatura de tela (Curved Screen)</span>
+            </label>
+            <label
+              style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
+              <input type="checkbox" id="settings-transition" onchange="toggleTransition(this.checked)">
+              <span>Ativar transição CRT de telas (Screen Transition)</span>
+            </label>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <label for="settings-theme" style="font-size: 0.8125rem; color: var(--text-muted);">Tema de Cor:</label>
+              <select id="settings-theme" class="form-input" style="flex: 1; padding: 0.25rem 0.5rem;"
+                onchange="changeTheme(this.value)">
+                <option value="green">Verde Fósforo (Classic Pip-Boy)</option>
+                <option value="amber">Âmbar Radiação (Fallout NV)</option>
+                <option value="blue">Azul HUD (Fallout 4)</option>
+                <option value="white">Branco Monocromático</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label" for="settings-assets-dir">Pasta dos assets (imagens, PDFs…)</label>
-        <div class="folder-picker-row">
-          <input id="settings-assets-dir" type="text" class="form-input" placeholder="Padrão: pasta dos arquivos + /assets" autocomplete="off">
-          <button class="btn btn-ghost btn-sm" type="button" onclick="toggleFolderBrowser('assets')">📁 Procurar</button>
-        </div>
-        <div class="form-hint">Onde arquivos colados/arrastados/importados no editor são salvos. Deixe em branco para usar "{pasta dos arquivos}/assets".</div>
-      </div>
-      <div class="form-group">
-        <span class="form-label">Servidor</span>
-        <div class="form-hint" id="settings-server-info">–</div>
-      </div>
-      <div class="form-group">
-        <span class="form-label">Armazenamento</span>
-        <div class="form-hint" id="settings-storage-info">–</div>
-        <button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick="downloadBackup()">⬇ Baixar backup (.zip)</button>
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="settings-default-view">Visualização padrão ao abrir um arquivo</label>
-        <select id="settings-default-view" class="form-input">
-          <option value="edit">Só editor</option>
-          <option value="split">Split (editor + preview)</option>
-          <option value="preview">Só preview</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="settings-font-size">Tamanho da fonte do editor — <span id="settings-font-size-label">14px</span></label>
-        <input id="settings-font-size" type="range" min="11" max="24" step="1" oninput="onFontSizeInput(this.value)">
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeSettingsModal()">Cancelar</button>
+        <button class="btn btn-primary" id="settings-save-btn" onclick="saveSettings()">Salvar</button>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeSettingsModal()">Cancelar</button>
-      <button class="btn btn-primary" id="settings-save-btn" onclick="saveSettings()">Salvar</button>
+  </div>
+
+  <!-- QUICK OPEN (Ctrl+K) -->
+  <div class="overlay" id="quickopen-overlay" onclick="onQuickOpenOverlayClick(event)">
+    <div class="modal quickopen-modal">
+      <input id="quickopen-input" type="text" class="quickopen-input" placeholder="Digite o nome de uma nota ou task…"
+        autocomplete="off" oninput="onQuickOpenInput()" onkeydown="onQuickOpenKeydown(event)">
+      <div id="quickopen-list" class="quickopen-list"></div>
     </div>
   </div>
-</div>
 
-<!-- QUICK OPEN (Ctrl+K) -->
-<div class="overlay" id="quickopen-overlay" onclick="onQuickOpenOverlayClick(event)">
-  <div class="modal quickopen-modal">
-    <input id="quickopen-input" type="text" class="quickopen-input" placeholder="Digite o nome de uma nota ou task…"
-      autocomplete="off" oninput="onQuickOpenInput()" onkeydown="onQuickOpenKeydown(event)">
-    <div id="quickopen-list" class="quickopen-list"></div>
-  </div>
-</div>
+  <div class="toast" id="toast"></div>
+  <div id="tree-tooltip" class="tree-tooltip"></div>
 
-<div class="toast" id="toast"></div>
-<div id="tree-tooltip" class="tree-tooltip"></div>
+  <!-- Input oculto para importar assets -->
+  <input type="file" id="asset-file-input" style="display:none" multiple onchange="onAssetFiles(this.files)">
 
-<!-- Input oculto para importar assets -->
-<input type="file" id="asset-file-input" style="display:none" multiple
-  onchange="onAssetFiles(this.files)">
+  <!-- html2canvas: captura de código/tabela como PNG (carregado sob demanda via CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
 
-<!-- html2canvas: captura de código/tabela como PNG (carregado sob demanda via CDN) -->
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
-
-<!-- Módulo principal (deferred automaticamente, marked já está carregado) -->
-<script type="module" src="/static/js/app.js"></script>
+  <!-- Módulo principal (deferred automaticamente, marked já está carregado) -->
+  <script type="module" src="/static/js/app.js"></script>
 
 </body>
+
 </html>

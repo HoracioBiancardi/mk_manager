@@ -3,7 +3,7 @@
 import { esc, toast } from "./utils.js";
 import { apiFetch } from "./api.js";
 import { loadFiles } from "./files.js";
-import { applyEditorFontSize, getDefaultView, getEditorFontSize, setDefaultView, setEditorFontSize } from "./prefs.js";
+import { applyEditorFontSize, getDefaultView, getEditorFontSize, setDefaultView, setEditorFontSize, getCrtScanlines, setCrtScanlines, getCrtFlicker, setCrtFlicker, getCrtTheme, setCrtTheme, getCrtStatic, setCrtStatic, getCrtCurved, setCrtCurved, getCrtTransition, setCrtTransition } from "./prefs.js";
 
 let _assetsDirLoaded = "";
 let _assetsDirWasDefault = true;
@@ -17,6 +17,14 @@ export async function openSettingsModal() {
   document.getElementById("settings-default-view").value = getDefaultView();
   document.getElementById("settings-font-size").value = getEditorFontSize();
   document.getElementById("settings-font-size-label").textContent = `${getEditorFontSize()}px`;
+  
+  // Inicializa inputs de aparência do Pip-Boy
+  document.getElementById("settings-scanlines").checked = getCrtScanlines();
+  document.getElementById("settings-flicker").checked = getCrtFlicker();
+  document.getElementById("settings-static").checked = getCrtStatic();
+  document.getElementById("settings-curved").checked = getCrtCurved();
+  document.getElementById("settings-transition").checked = getCrtTransition();
+  document.getElementById("settings-theme").value = getCrtTheme();
 
   try {
     const [settingsRes, statsRes] = await Promise.all([
@@ -194,4 +202,10 @@ Object.assign(window, {
   folderBrowserGoUp,
   folderBrowserSelect,
   saveSettings,
+  toggleScanlines: setCrtScanlines,
+  toggleFlicker: setCrtFlicker,
+  toggleStatic: setCrtStatic,
+  toggleCurved: setCrtCurved,
+  toggleTransition: setCrtTransition,
+  changeTheme: setCrtTheme,
 });

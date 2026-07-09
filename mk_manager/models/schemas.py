@@ -41,6 +41,9 @@ class FileMetaResponse(BaseModel):
     task_items: list[dict] = []
     folder: str = ""
     status: str = ""
+    date_planning: str = ""
+    date_execution: str = ""
+    date_conclusion: str = ""
 
     model_config = {"from_attributes": True}
 
@@ -77,6 +80,9 @@ class FileCreateRequest(BaseModel):
     content: str = Field(default="", description="Markdown body content")
     folder: str = Field(default="", description="Folder path, e.g. 'work/projects'")
     status: str = Field(default="", description="Kanban status: planning|development|review|done")
+    date_planning: str = Field(default="", description="Planning date")
+    date_execution: str = Field(default="", description="Execution date")
+    date_conclusion: str = Field(default="", description="Conclusion date")
 
 
 class FileUpdateRequest(BaseModel):
@@ -96,6 +102,9 @@ class FileUpdateRequest(BaseModel):
     content: str | None = Field(default=None, description="New markdown content")
     folder: str | None = Field(default=None, description="New folder path")
     status: str | None = Field(default=None, description="New kanban status")
+    date_planning: str | None = Field(default=None, description="New planning date")
+    date_execution: str | None = Field(default=None, description="New execution date")
+    date_conclusion: str | None = Field(default=None, description="New conclusion date")
 
 
 class TagRenameRequest(BaseModel):

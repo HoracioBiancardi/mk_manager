@@ -43,6 +43,9 @@ class FileRecord:
     modified: str
     folder: str = field(default="")
     status: str = field(default="")
+    date_planning: str = field(default="")
+    date_execution: str = field(default="")
+    date_conclusion: str = field(default="")
 
     @property
     def word_count(self) -> int:

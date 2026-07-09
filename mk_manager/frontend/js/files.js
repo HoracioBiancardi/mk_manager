@@ -12,6 +12,8 @@ import {
   updateFooter,
   setSaveStatus,
   updateStatusVis,
+  updateRetroStatusLabel,
+  updateTaskDuration,
 } from "./editor.js";
 import { updateStatusSelect } from "./kanban.js";
 import { setMainView } from "./views.js";
@@ -67,6 +69,9 @@ export async function saveFile() {
     document.getElementById("folder-input")?.value.trim() ?? st.activeFolder;
   const status =
     document.getElementById("status-select")?.value ?? st.activeStatus;
+  const datePlanning = document.getElementById("date-planning")?.value ?? "";
+  const dateExecution = document.getElementById("date-execution")?.value ?? "";
+  const dateConclusion = document.getElementById("date-conclusion")?.value ?? "";
   try {
     const prevId = st.activeId;
     const r = await apiFetch(`/files/${prevId}`, {
@@ -77,15 +82,29 @@ export async function saveFile() {
         tags: st.activeTags,
         folder,
         status,
+        date_planning: datePlanning,
+        date_execution: dateExecution,
+        date_conclusion: dateConclusion,
       }),
     });
     const updated = await r.json();
     const idx = st.files.findIndex((f) => f.id === prevId);
     if (idx !== -1) st.files[idx] = { ...updated };
+    
+    // Sincroniza inputs de data na tela com o retorno da API
+    const datePlanEl = document.getElementById("date-planning");
+    if (datePlanEl) datePlanEl.value = updated.date_planning || "";
+    const dateExecEl = document.getElementById("date-execution");
+    if (dateExecEl) dateExecEl.value = updated.date_execution || "";
+    const dateConclEl = document.getElementById("date-conclusion");
+    if (dateConclEl) dateConclEl.value = updated.date_conclusion || "";
+    updateTaskDuration();
+
     // The file may have been renamed on disk (ID = slug of title)
     if (updated.id !== prevId) st.activeId = updated.id;
     st.activeFolder = updated.folder || "";
     st.activeStatus = updated.status || "";
+    updateRetroStatusLabel();
     st.isDirty = false;
     document.getElementById("filename-label").textContent = updated.filename;
     renderSidebar();
@@ -117,6 +136,14 @@ export async function openFile(id) {
     updateStatusSelect();
     const statusSel = document.getElementById("status-select");
     if (statusSel) statusSel.value = file.status || "";
+    updateRetroStatusLabel();
+    const datePlanEl = document.getElementById("date-planning");
+    if (datePlanEl) datePlanEl.value = file.date_planning || "";
+    const dateExecEl = document.getElementById("date-execution");
+    if (dateExecEl) dateExecEl.value = file.date_execution || "";
+    const dateConclEl = document.getElementById("date-conclusion");
+    if (dateConclEl) dateConclEl.value = file.date_conclusion || "";
+    updateTaskDuration();
 
     const badge = document.getElementById("type-badge");
     badge.textContent = file.type === "task" ? "Task" : "Note";

@@ -7,6 +7,7 @@ import { setView, showEditorPanel, showEmptyPanel } from "./editor.js";
 import { renderKanban, resetKanbanUiState } from "./kanban.js";
 import { renderTagsPanel, renderSearchResults, hideFileTooltip } from "./sidebar.js";
 import { renderGraph } from "./graph.js";
+import { getCrtTransition } from "./prefs.js";
 
 const PANES = {
   kanban: "kanban-pane",
@@ -33,32 +34,52 @@ function updateActivityBarActive() {
 
 export function setMainView(view) {
   if (st.mainView === "kanban" && view !== "kanban") resetKanbanUiState();
-  st.mainView = view;
-  hideAllPanes();
+  
+  const performChange = () => {
+    st.mainView = view;
+    hideAllPanes();
 
-  if (view === "editor") {
-    if (st.activeId) {
-      showEditorPanel();
-      setView(st.view);
+    if (view === "editor") {
+      if (st.activeId) {
+        showEditorPanel();
+        setView(st.view);
+      } else {
+        showEmptyPanel();
+      }
     } else {
-      showEmptyPanel();
+      document.getElementById(PANES[view]).style.display = "flex";
+      if (view === "kanban") {
+        hideFileTooltip();
+        renderKanban();
+      } else if (view === "tags") {
+        renderTagsPanel();
+      } else if (view === "search") {
+        renderSearchResults();
+        setTimeout(() => document.getElementById("search-input")?.focus(), 60);
+      } else if (view === "graph") {
+        renderGraph();
+      }
     }
-  } else {
-    document.getElementById(PANES[view]).style.display = "flex";
-    if (view === "kanban") {
-      hideFileTooltip();
-      renderKanban();
-    } else if (view === "tags") {
-      renderTagsPanel();
-    } else if (view === "search") {
-      renderSearchResults();
-      setTimeout(() => document.getElementById("search-input")?.focus(), 60);
-    } else if (view === "graph") {
-      renderGraph();
-    }
-  }
 
-  updateActivityBarActive();
+    updateActivityBarActive();
+  };
+
+  const useTransition = getCrtTransition();
+  if (useTransition) {
+    // Inicia animação de transição CRT (desliga a tela rápido)
+    document.body.classList.add("crt-transition-active");
+
+    // Altera a visualização no meio da transição (quando a tela apagar, em 180ms)
+    setTimeout(performChange, 180);
+
+    // Remove a classe de transição quando a animação de religar terminar (400ms)
+    setTimeout(() => {
+      document.body.classList.remove("crt-transition-active");
+    }, 400);
+  } else {
+    // Troca de tela instantânea sem animações
+    performChange();
+  }
 }
 
 // ── Barra de atividades ─────────────────────────────────────────────────────

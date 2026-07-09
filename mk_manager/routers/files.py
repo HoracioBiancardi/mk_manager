@@ -59,6 +59,9 @@ def _to_meta(record: FileRecord) -> FileMetaResponse:
         task_items=record.task_items,
         folder=record.folder,
         status=record.status,
+        date_planning=record.date_planning,
+        date_execution=record.date_execution,
+        date_conclusion=record.date_conclusion,
     )
 
 
@@ -89,6 +92,9 @@ def _to_detail(record: FileRecord) -> FileDetailResponse:
         task_items=record.task_items,
         folder=record.folder,
         status=record.status,
+        date_planning=record.date_planning,
+        date_execution=record.date_execution,
+        date_conclusion=record.date_conclusion,
         content=record.content,
     )
 

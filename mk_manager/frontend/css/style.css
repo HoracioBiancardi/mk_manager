@@ -57,7 +57,286 @@
   --r-sm:            6px;
   --r-md:            8px;
   --r-lg:            12px;
-  --r-full:          9999px;
+}
+
+/* ── Pip-Boy Themes & CRT Overrides ────────────────────────────────────── */
+
+/* Theme Green Phosphor (Default) */
+body.theme-green {
+  --bg:              #030804;
+  --surface:         #061107;
+  --surface-alt:     #0b220e;
+  --surface-hover:   #113315;
+
+  --border:          rgba(26, 255, 128, 0.18);
+  --border-muted:    rgba(26, 255, 128, 0.08);
+  --border-bright:   rgba(26, 255, 128, 0.45);
+
+  --primary:         #1aff80;
+  --primary-hover:   #26ff8c;
+  --primary-dim:     rgba(26, 255, 128, 0.12);
+  --primary-glow:    rgba(26, 255, 128, 0.24);
+  --glow-ring:       0 0 0 3px rgba(26, 255, 128, 0.24);
+
+  --text:            #1aff80;
+  --text-muted:      #11b857;
+  --text-subtle:     #075927;
+
+  --glow-color:      rgba(26, 255, 128, 0.5);
+  --glow-text:       0 0 4px rgba(26, 255, 128, 0.5);
+  
+  --success:         #1aff80;
+  --warn:            #ff9900;
+  --danger:          #ff3333;
+  --danger-dim:      rgba(255, 51, 51, 0.12);
+  --info:            #00d2ff;
+}
+
+/* Theme Amber Rad (Fallout New Vegas) */
+body.theme-amber {
+  --bg:              #080400;
+  --surface:         #130a00;
+  --surface-alt:     #241200;
+  --surface-hover:   #371c00;
+
+  --border:          rgba(255, 170, 0, 0.18);
+  --border-muted:    rgba(255, 170, 0, 0.08);
+  --border-bright:   rgba(255, 170, 0, 0.45);
+
+  --primary:         #ffaa00;
+  --primary-hover:   #ffbb33;
+  --primary-dim:     rgba(255, 170, 0, 0.12);
+  --primary-glow:    rgba(255, 170, 0, 0.24);
+  --glow-ring:       0 0 0 3px rgba(255, 170, 0, 0.24);
+
+  --text:            #ffaa00;
+  --text-muted:      #cc8800;
+  --text-subtle:     #7f5500;
+
+  --glow-color:      rgba(255, 170, 0, 0.5);
+  --glow-text:       0 0 4px rgba(255, 170, 0, 0.5);
+  
+  --success:         #ffaa00;
+  --warn:            #ffaa00;
+  --danger:          #ff3333;
+  --danger-dim:      rgba(255, 51, 51, 0.12);
+  --info:            #00d2ff;
+}
+
+/* Theme Blue HUD (Fallout 4) */
+body.theme-blue {
+  --bg:              #00060c;
+  --surface:         #001224;
+  --surface-alt:     #002347;
+  --surface-hover:   #00366c;
+
+  --border:          rgba(0, 210, 255, 0.18);
+  --border-muted:    rgba(0, 210, 255, 0.08);
+  --border-bright:   rgba(0, 210, 255, 0.45);
+
+  --primary:         #00d2ff;
+  --primary-hover:   #33ddff;
+  --primary-dim:     rgba(0, 210, 255, 0.12);
+  --primary-glow:    rgba(0, 210, 255, 0.24);
+  --glow-ring:       0 0 0 3px rgba(0, 210, 255, 0.24);
+
+  --text:            #00d2ff;
+  --text-muted:      #00a8cc;
+  --text-subtle:     #00667f;
+
+  --glow-color:      rgba(0, 210, 255, 0.5);
+  --glow-text:       0 0 4px rgba(0, 210, 255, 0.5);
+  
+  --success:         #00d2ff;
+  --warn:            #ff9900;
+  --danger:          #ff3333;
+  --danger-dim:      rgba(255, 51, 51, 0.12);
+  --info:            #00d2ff;
+}
+
+/* Theme White Mono (Vintage monochrome monitor) */
+body.theme-white {
+  --bg:              #0b0b0b;
+  --surface:         #161616;
+  --surface-alt:     #242424;
+  --surface-hover:   #343434;
+
+  --border:          rgba(240, 240, 240, 0.18);
+  --border-muted:    rgba(240, 240, 240, 0.08);
+  --border-bright:   rgba(240, 240, 240, 0.45);
+
+  --primary:         #f0f0f0;
+  --primary-hover:   #ffffff;
+  --primary-dim:     rgba(240, 240, 240, 0.12);
+  --primary-glow:    rgba(240, 240, 240, 0.24);
+  --glow-ring:       0 0 0 3px rgba(240, 240, 240, 0.24);
+
+  --text:            #f0f0f0;
+  --text-muted:      #b0b0b0;
+  --text-subtle:     #606060;
+
+  --glow-color:      rgba(240, 240, 240, 0.4);
+  --glow-text:       0 0 4px rgba(240, 240, 240, 0.4);
+  
+  --success:         #f0f0f0;
+  --warn:            #ff9900;
+  --danger:          #ff3333;
+  --danger-dim:      rgba(255, 51, 51, 0.12);
+  --info:            #00d2ff;
+}
+
+/* Aplica fontes monospace, glow text e cantos industriais para as cores retro */
+body.theme-green, body.theme-amber, body.theme-blue, body.theme-white {
+  font-family: 'Share Tech Mono', ui-monospace, 'SFMono-Regular', monospace;
+  text-shadow: var(--glow-text);
+  
+  --r-sm:            2px;
+  --r-md:            3px;
+  --r-lg:            4px;
+}
+
+body.theme-green input, body.theme-green textarea, body.theme-green select, body.theme-green button, body.theme-green kbd, body.theme-green span:not(.brand-by-text), body.theme-green div:not(.brand-by), body.theme-green p, body.theme-green h1, body.theme-green h2, body.theme-green h3, body.theme-green h4, body.theme-green h5, body.theme-green h6, body.theme-green a, body.theme-green li, body.theme-green td, body.theme-green th, body.theme-green pre, body.theme-green code,
+body.theme-amber input, body.theme-amber textarea, body.theme-amber select, body.theme-amber button, body.theme-amber kbd, body.theme-amber span:not(.brand-by-text), body.theme-amber div:not(.brand-by), body.theme-amber p, body.theme-amber h1, body.theme-amber h2, body.theme-amber h3, body.theme-amber h4, body.theme-amber h5, body.theme-amber h6, body.theme-amber a, body.theme-amber li, body.theme-amber td, body.theme-amber th, body.theme-amber pre, body.theme-amber code,
+body.theme-blue input, body.theme-blue textarea, body.theme-blue select, body.theme-blue button, body.theme-blue kbd, body.theme-blue span:not(.brand-by-text), body.theme-blue div:not(.brand-by), body.theme-blue p, body.theme-blue h1, body.theme-blue h2, body.theme-blue h3, body.theme-blue h4, body.theme-blue h5, body.theme-blue h6, body.theme-blue a, body.theme-blue li, body.theme-blue td, body.theme-blue th, body.theme-blue pre, body.theme-blue code,
+body.theme-white input, body.theme-white textarea, body.theme-white select, body.theme-white button, body.theme-white kbd, body.theme-white span:not(.brand-by-text), body.theme-white div:not(.brand-by), body.theme-white p, body.theme-white h1, body.theme-white h2, body.theme-white h3, body.theme-white h4, body.theme-white h5, body.theme-white h6, body.theme-white a, body.theme-white li, body.theme-white td, body.theme-white th, body.theme-white pre, body.theme-white code {
+  font-family: 'Share Tech Mono', ui-monospace, 'SFMono-Regular', monospace !important;
+  text-shadow: var(--glow-text);
+}
+
+/* CRT Screen Effects & Overlay */
+.crt-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0, 0, 0, 0.75) 100%);
+  pointer-events: none;
+  z-index: 9999;
+}
+
+body.crt-enabled::after {
+  content: " ";
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%);
+  background-size: 100% 4px;
+  z-index: 9998;
+  pointer-events: none;
+}
+
+/* Barra de rolagem de varredura (Refresh scanline bar) */
+body.crt-enabled::before {
+  content: " ";
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 8px;
+  background: var(--primary);
+  opacity: 0.04;
+  z-index: 9997;
+  pointer-events: none;
+  animation: crt-roll 10s linear infinite;
+}
+
+@keyframes crt-roll {
+  0% { transform: translateY(-10px); }
+  100% { transform: translateY(105vh); }
+}
+
+body.flicker-enabled {
+  animation: crt-flicker 0.22s infinite;
+}
+
+/* Cintilação orgânica instável (Organic failure-prone old monitor flicker) */
+@keyframes crt-flicker {
+  0% { opacity: 0.985; }
+  8% { opacity: 0.992; }
+  15% { opacity: 0.978; }
+  22% { opacity: 0.996; }
+  30% { opacity: 0.972; }
+  45% { opacity: 1; }
+  55% { opacity: 0.98; }
+  68% { opacity: 0.993; }
+  78% { opacity: 0.974; }
+  88% { opacity: 0.996; }
+  100% { opacity: 0.985; }
+}
+
+/* Scrollbars Retro */
+body.theme-green *, body.theme-amber *, body.theme-blue *, body.theme-white * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-bright) transparent;
+}
+body.theme-green *::-webkit-scrollbar, body.theme-amber *::-webkit-scrollbar, body.theme-blue *::-webkit-scrollbar, body.theme-white *::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+body.theme-green *::-webkit-scrollbar-thumb, body.theme-amber *::-webkit-scrollbar-thumb, body.theme-blue *::-webkit-scrollbar-thumb, body.theme-white *::-webkit-scrollbar-thumb {
+  background: var(--border-bright);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--bg);
+}
+body.theme-green *::-webkit-scrollbar-thumb:hover, body.theme-amber *::-webkit-scrollbar-thumb:hover, body.theme-blue *::-webkit-scrollbar-thumb:hover, body.theme-white *::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* Adaptabilidade do SVG "by SwordPower" e marca do topo */
+body.theme-green .brand-by-bg rect:first-of-type,
+body.theme-green .brand-by-bg circle { fill: var(--primary) !important; }
+body.theme-green .brand-by-bg rect:last-of-type { fill: var(--text) !important; }
+body.theme-green .brand-by-bg path:first-of-type { fill: var(--surface-alt) !important; opacity: 1 !important; stroke: var(--border-bright) !important; stroke-width: 1 !important; }
+body.theme-green .brand-by-bg path:last-of-type { fill: var(--primary-glow) !important; }
+
+body.theme-amber .brand-by-bg rect:first-of-type,
+body.theme-amber .brand-by-bg circle { fill: var(--primary) !important; }
+body.theme-amber .brand-by-bg rect:last-of-type { fill: var(--text) !important; }
+body.theme-amber .brand-by-bg path:first-of-type { fill: var(--surface-alt) !important; opacity: 1 !important; stroke: var(--border-bright) !important; stroke-width: 1 !important; }
+body.theme-amber .brand-by-bg path:last-of-type { fill: var(--primary-glow) !important; }
+
+body.theme-blue .brand-by-bg rect:first-of-type,
+body.theme-blue .brand-by-bg circle { fill: var(--primary) !important; }
+body.theme-blue .brand-by-bg rect:last-of-type { fill: var(--text) !important; }
+body.theme-blue .brand-by-bg path:first-of-type { fill: var(--surface-alt) !important; opacity: 1 !important; stroke: var(--border-bright) !important; stroke-width: 1 !important; }
+body.theme-blue .brand-by-bg path:last-of-type { fill: var(--primary-glow) !important; }
+
+body.theme-white .brand-by-bg rect:first-of-type,
+body.theme-white .brand-by-bg circle { fill: var(--primary) !important; }
+body.theme-white .brand-by-bg rect:last-of-type { fill: var(--text) !important; }
+body.theme-white .brand-by-bg path:first-of-type { fill: var(--surface-alt) !important; opacity: 1 !important; stroke: var(--border-bright) !important; stroke-width: 1 !important; }
+body.theme-white .brand-by-bg path:last-of-type { fill: var(--primary-glow) !important; }
+
+.brand-icon svg path { stroke: var(--bg) !important; }
+
+/* Realce de sintaxe hljs monocromático phosphor */
+body.theme-green .hljs, body.theme-amber .hljs, body.theme-blue .hljs, body.theme-white .hljs {
+  background: var(--surface-alt) !important;
+  color: var(--text) !important;
+}
+body.theme-green .hljs-keyword, body.theme-green .hljs-selector-tag, body.theme-green .hljs-title, body.theme-green .hljs-section, body.theme-green .hljs-name, body.theme-green .hljs-strong,
+body.theme-amber .hljs-keyword, body.theme-amber .hljs-selector-tag, body.theme-amber .hljs-title, body.theme-amber .hljs-section, body.theme-amber .hljs-name, body.theme-amber .hljs-strong,
+body.theme-blue .hljs-keyword, body.theme-blue .hljs-selector-tag, body.theme-blue .hljs-title, body.theme-blue .hljs-section, body.theme-blue .hljs-name, body.theme-blue .hljs-strong,
+body.theme-white .hljs-keyword, body.theme-white .hljs-selector-tag, body.theme-white .hljs-title, body.theme-white .hljs-section, body.theme-white .hljs-name, body.theme-white .hljs-strong {
+  color: var(--primary) !important;
+  font-weight: bold;
+}
+body.theme-green .hljs-comment, body.theme-green .hljs-quote,
+body.theme-amber .hljs-comment, body.theme-amber .hljs-quote,
+body.theme-blue .hljs-comment, body.theme-blue .hljs-quote,
+body.theme-white .hljs-comment, body.theme-white .hljs-quote {
+  color: var(--text-subtle) !important;
+}
+body.theme-green .hljs-string, body.theme-green .hljs-literal, body.theme-green .hljs-number, body.theme-green .hljs-addition, body.theme-green .hljs-attribute, body.theme-green .hljs-type,
+body.theme-amber .hljs-string, body.theme-amber .hljs-literal, body.theme-amber .hljs-number, body.theme-amber .hljs-addition, body.theme-amber .hljs-attribute, body.theme-amber .hljs-type,
+body.theme-blue .hljs-string, body.theme-blue .hljs-literal, body.theme-blue .hljs-number, body.theme-blue .hljs-addition, body.theme-blue .hljs-attribute, body.theme-blue .hljs-type,
+body.theme-white .hljs-string, body.theme-white .hljs-literal, body.theme-white .hljs-number, body.theme-white .hljs-addition, body.theme-white .hljs-attribute, body.theme-white .hljs-type {
+  color: var(--text-muted) !important;
 }
 
 /* ── Base ─────────────────────────────────────────────────────────── */
@@ -179,9 +458,9 @@ kbd {
   position: absolute; bottom: -1px; left: 0; right: 0; height: 1px;
   background: linear-gradient(90deg,
     transparent 0%,
-    rgba(16,185,129,.6) 30%,
-    rgba(16,185,129,.9) 50%,
-    rgba(16,185,129,.6) 70%,
+    var(--border) 30%,
+    var(--primary) 50%,
+    var(--border) 70%,
     transparent 100%);
   background-size: 200% auto;
   animation: topbarShimmer 4s linear infinite;
@@ -196,7 +475,7 @@ kbd {
   border-radius: var(--r-md);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 0 0 1px rgba(16,185,129,.3), 0 2px 8px rgba(16,185,129,.2);
+  box-shadow: 0 0 0 1px var(--primary-dim), 0 2px 8px var(--primary-glow);
   animation: brandGlow 3s ease-in-out infinite;
 }
 
@@ -1648,7 +1927,7 @@ kbd {
 .save-status.pulse  { animation: savePulse .5s ease; }
 @keyframes savePulse {
   0%   { transform: scale(1); }
-  35%  { transform: scale(1.15); text-shadow: 0 0 8px rgba(16,185,129,.55); }
+  35%  { transform: scale(1.15); text-shadow: 0 0 8px var(--glow-color); }
   100% { transform: scale(1); }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1698,3 +1977,456 @@ kbd {
   .mermaid-wrap { background: white !important; border-color: #ddd !important; break-inside: avoid !important; display: block !important; }
   .capture-wrap { display: block !important; break-inside: avoid !important; }
 }
+
+/* ── Overrides adicionais para visual retro e cantos Pip-Boy ─────────── */
+
+body.theme-green .modal, body.theme-amber .modal, body.theme-blue .modal, body.theme-white .modal {
+  position: relative;
+  border: 1px solid var(--border-bright) !important;
+  background: var(--surface) !important;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.8), 0 0 5px var(--primary-glow) !important;
+}
+
+body.theme-green .modal::before, body.theme-amber .modal::before, body.theme-blue .modal::before, body.theme-white .modal::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; width: 10px; height: 10px;
+  border-top: 3px solid var(--primary);
+  border-left: 3px solid var(--primary);
+  pointer-events: none;
+}
+
+body.theme-green .modal::after, body.theme-amber .modal::after, body.theme-blue .modal::after, body.theme-white .modal::after {
+  content: "";
+  position: absolute;
+  bottom: 0; right: 0; width: 10px; height: 10px;
+  border-bottom: 3px solid var(--primary);
+  border-right: 3px solid var(--primary);
+  pointer-events: none;
+}
+
+/* Cantos em colchete também para o empty-panel e editor/preview */
+body.theme-green .empty-state, body.theme-amber .empty-state, body.theme-blue .empty-state, body.theme-white .empty-state {
+  position: relative;
+  padding: 2rem;
+  border: 1px dashed var(--border);
+}
+
+body.theme-green .empty-state::before, body.theme-amber .empty-state::before, body.theme-blue .empty-state::before, body.theme-white .empty-state::before {
+  content: "";
+  position: absolute;
+  top: -1px; left: -1px; width: 8px; height: 8px;
+  border-top: 2px solid var(--primary);
+  border-left: 2px solid var(--primary);
+}
+
+body.theme-green .empty-state::after, body.theme-amber .empty-state::after, body.theme-blue .empty-state::after, body.theme-white .empty-state::after {
+  content: "";
+  position: absolute;
+  bottom: -1px; right: -1px; width: 8px; height: 8px;
+  border-bottom: 2px solid var(--primary);
+  border-right: 2px solid var(--primary);
+}
+
+/* Modificações em inputs, textareas e selectboxes */
+body.theme-green input[type="text"], body.theme-green input[type="date"], body.theme-green textarea, body.theme-green select,
+body.theme-amber input[type="text"], body.theme-amber input[type="date"], body.theme-amber textarea, body.theme-amber select,
+body.theme-blue input[type="text"], body.theme-blue input[type="date"], body.theme-blue textarea, body.theme-blue select,
+body.theme-white input[type="text"], body.theme-white input[type="date"], body.theme-white textarea, body.theme-white select {
+  background: var(--surface) !important;
+  border: 1px solid var(--border-bright) !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+}
+
+body.theme-green input[type="text"]:focus, body.theme-green input[type="date"]:focus, body.theme-green textarea:focus, body.theme-green select:focus,
+body.theme-amber input[type="text"]:focus, body.theme-amber input[type="date"]:focus, body.theme-amber textarea:focus, body.theme-amber select:focus,
+body.theme-blue input[type="text"]:focus, body.theme-blue input[type="date"]:focus, body.theme-blue textarea:focus, body.theme-blue select:focus,
+body.theme-white input[type="text"]:focus, body.theme-white input[type="date"]:focus, body.theme-white textarea:focus, body.theme-white select:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 6px var(--primary-glow) !important;
+  outline: none !important;
+}
+
+/* Altura e padding do topbar brand SVG */
+body.theme-green .brand-by, body.theme-amber .brand-by, body.theme-blue .brand-by, body.theme-white .brand-by {
+  filter: drop-shadow(0 0 2px var(--primary-glow));
+}
+
+/* Atalhos de teclado retro */
+body.theme-green kbd, body.theme-amber kbd, body.theme-blue kbd, body.theme-white kbd {
+  background: var(--surface-alt) !important;
+  border: 1px solid var(--border-bright) !important;
+  color: var(--text) !important;
+  border-bottom-width: 2px !important;
+}
+
+/* Activity bar tab active retro */
+body.theme-green .activity-btn.active,
+body.theme-amber .activity-btn.active,
+body.theme-blue .activity-btn.active,
+body.theme-white .activity-btn.active {
+  color: var(--bg) !important;
+  background: var(--primary) !important;
+  text-shadow: none !important;
+}
+
+body.theme-green .activity-btn.active svg,
+body.theme-amber .activity-btn.active svg,
+body.theme-blue .activity-btn.active svg,
+body.theme-white .activity-btn.active svg {
+  stroke: var(--bg) !important;
+}
+
+/* Botões do sistema retro glow */
+body.theme-green .btn-primary, body.theme-amber .btn-primary, body.theme-blue .btn-primary, body.theme-white .btn-primary {
+  background: var(--primary) !important;
+  color: var(--bg) !important;
+  border-color: var(--primary) !important;
+  text-shadow: none !important;
+  box-shadow: 0 0 6px var(--primary-glow) !important;
+}
+
+body.theme-green .btn-primary:hover, body.theme-amber .btn-primary:hover, body.theme-blue .btn-primary:hover, body.theme-white .btn-primary:hover {
+  background: var(--primary-hover) !important;
+  box-shadow: 0 0 10px var(--primary-glow) !important;
+}
+
+body.theme-green .btn-ghost, body.theme-amber .btn-ghost, body.theme-blue .btn-ghost, body.theme-white .btn-ghost {
+  background: var(--surface-alt) !important;
+  border: 1px solid var(--border-bright) !important;
+  color: var(--primary) !important;
+}
+
+body.theme-green .btn-ghost:hover, body.theme-amber .btn-ghost:hover, body.theme-blue .btn-ghost:hover, body.theme-white .btn-ghost:hover {
+  background: var(--surface-hover) !important;
+  color: var(--primary-hover) !important;
+  box-shadow: 0 0 6px var(--primary-glow) !important;
+}
+
+/* Badges de tags e tipos */
+body.theme-green .type-badge, body.theme-amber .type-badge, body.theme-blue .type-badge, body.theme-white .type-badge {
+  border: 1px solid var(--primary) !important;
+  background: var(--primary-dim) !important;
+  color: var(--primary) !important;
+}
+
+body.theme-green .tag-item, body.theme-amber .tag-item, body.theme-blue .tag-item, body.theme-white .tag-item {
+  border: 1px solid var(--border-bright) !important;
+  background: var(--surface-alt) !important;
+  color: var(--primary) !important;
+}
+
+/* Estilo do Kanban e Graph */
+body.theme-green .kanban-column, body.theme-amber .kanban-column, body.theme-blue .kanban-column, body.theme-white .kanban-column {
+  border: 1px solid var(--border) !important;
+  background: var(--surface) !important;
+}
+
+body.theme-green .kanban-card, body.theme-amber .kanban-card, body.theme-blue .kanban-card, body.theme-white .kanban-card {
+  border: 1px solid var(--border-bright) !important;
+  background: var(--surface-alt) !important;
+}
+
+body.theme-green .kanban-card:hover, body.theme-amber .kanban-card:hover, body.theme-blue .kanban-card:hover, body.theme-white .kanban-card:hover {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 6px var(--primary-glow) !important;
+}
+
+/* Garante que as opções dos menus suspensos (select/option) herdem o tema */
+body.theme-green select option,
+body.theme-amber select option,
+body.theme-blue select option,
+body.theme-white select option {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+
+/* Custom Retro Select Dropdown */
+.retro-select {
+  position: relative;
+  display: inline-block;
+  font-size: .8rem;
+  user-select: none;
+}
+
+.retro-select-trigger {
+  background: var(--bg);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  padding: .2rem .6rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  min-width: 130px;
+  transition: border-color var(--t), box-shadow var(--t);
+  text-shadow: var(--glow-text);
+  height: 24px;
+}
+
+.retro-select-trigger:hover {
+  border-color: var(--primary);
+  box-shadow: 0 0 5px var(--primary-glow);
+}
+
+.retro-select-arrow {
+  font-size: .65rem;
+  color: var(--primary);
+}
+
+.retro-select-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--r-sm);
+  z-index: 100;
+  display: none;
+  flex-direction: column;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.9), 0 0 5px var(--primary-glow);
+}
+
+.retro-select-dropdown.open {
+  display: flex;
+}
+
+.retro-select-option {
+  padding: .35rem .6rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: background var(--t), color var(--t);
+  text-shadow: var(--glow-text);
+  font-size: .8rem;
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.retro-select-option:last-child {
+  border-bottom: none;
+}
+
+.retro-select-option:hover {
+  background: var(--surface-hover);
+  color: var(--primary);
+}
+
+.retro-select-option.selected {
+  background: var(--primary-dim);
+  color: var(--primary);
+  font-weight: bold;
+}
+
+/* Custom Retro Tag Suggestions Dropdown */
+.retro-tag-input-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.retro-tag-suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 150px;
+  background: var(--surface);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--r-sm);
+  z-index: 100;
+  display: none;
+  flex-direction: column;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.9), 0 0 5px var(--primary-glow);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.retro-tag-suggestions.open {
+  display: flex;
+}
+
+.retro-tag-suggestion-item {
+  padding: .35rem .6rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: background var(--t), color var(--t);
+  text-shadow: var(--glow-text);
+  font-size: .8rem;
+  border-bottom: 1px solid var(--border-muted);
+  white-space: nowrap;
+}
+
+.retro-tag-suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.retro-tag-suggestion-item:hover {
+  background: var(--surface-hover);
+  color: var(--primary);
+}
+
+/* Normalização de inputs no editor-info-bar (Tamanho e alinhamento consistentes) */
+.editor-info-bar input[type="text"],
+.editor-info-bar input[type="datetime-local"],
+.editor-info-bar .retro-select-trigger {
+  height: 24px !important;
+  box-sizing: border-box !important;
+  font-size: 0.72rem !important;
+  font-family: 'Share Tech Mono', monospace !important;
+  padding: 0 6px !important;
+  border-radius: var(--r-sm) !important;
+  width: 170px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  vertical-align: middle !important;
+  margin: 0 !important;
+}
+
+/* Garante que o input de pasta e tags se alinhem perfeitamente com bordas e fundos retro */
+.editor-info-bar .tag-input,
+.editor-info-bar .meta-input {
+  background: var(--surface) !important;
+  border: 1px solid var(--border-bright) !important;
+  color: var(--text) !important;
+}
+
+/* O dropdown de sugestões de tags também deve alinhar com a nova largura do input de tags */
+.retro-tag-suggestions {
+  width: 170px !important;
+  min-width: 170px !important;
+}
+
+/* Duration badge */
+.task-duration-badge {
+  font-size: .7rem !important;
+  font-weight: bold !important;
+  padding: 0 .45rem !important;
+  border-radius: var(--r-sm) !important;
+  background: var(--primary-dim) !important;
+  color: var(--primary) !important;
+  border: 1px solid var(--border-bright) !important;
+  height: 24px !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  text-shadow: var(--glow-text) !important;
+  margin-left: .5rem !important;
+  vertical-align: middle !important;
+}
+
+/* Efeito de vidro curvado / vinheta pesada (Curved Glass / Vignette) */
+.crt-vignette {
+  position: fixed;
+  inset: 0;
+  box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.95);
+  pointer-events: none;
+  z-index: 9998;
+  display: none;
+}
+body.curved-enabled .crt-vignette {
+  display: block;
+}
+body.curved-enabled .crt-overlay {
+  background: radial-gradient(circle, rgba(0,0,0,0) 45%, rgba(0, 0, 0, 0.85) 100%);
+}
+
+/* Ruído de estática de TV antiga (Signal Noise) */
+.crt-static {
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.05;
+  pointer-events: none;
+  z-index: 9996;
+  display: none;
+}
+body.static-enabled .crt-static {
+  display: block;
+  animation: static-drift 0.15s steps(4) infinite;
+}
+@keyframes static-drift {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-0.5%, 0.5%); }
+  50% { transform: translate(0.5%, -0.5%); }
+  75% { transform: translate(-0.5%, -0.5%); }
+  100% { transform: translate(0.5%, 0.5%); }
+}
+
+/* Animação CRT de ligar o monitor (Turn-on animation) */
+.crt-turn-on-overlay {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 100000;
+  pointer-events: none;
+  animation: crt-turn-on 0.65s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+@keyframes crt-turn-on {
+  0% {
+    transform: scale(0, 0.005);
+    background: #fff;
+    opacity: 1;
+  }
+  40% {
+    transform: scale(1, 0.005);
+    background: var(--primary);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1, 1);
+    background: transparent;
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+/* Animação CRT rápida de transição (desliga e liga na troca de telas) */
+.crt-transition-overlay {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 100000;
+  pointer-events: none;
+  display: none;
+}
+
+body.crt-transition-active .crt-transition-overlay {
+  display: block;
+  animation: crt-transition-flash 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+@keyframes crt-transition-flash {
+  0% {
+    transform: scale(1, 1);
+    background: transparent;
+    opacity: 0;
+  }
+  35% {
+    transform: scale(1, 0.005);
+    background: var(--primary);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0, 0);
+    background: #fff;
+    opacity: 1;
+  }
+  65% {
+    transform: scale(1, 0.005);
+    background: var(--primary);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1, 1);
+    background: transparent;
+    opacity: 0;
+  }
+}
+
+
+
+
+
+
+
