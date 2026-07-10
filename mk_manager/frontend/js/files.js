@@ -1,7 +1,7 @@
 // Responsabilidade: ciclo de vida de arquivos via API (CRUD, busca, mover, renomear)
 
 import { st } from "./state.js";
-import { toast } from "./utils.js";
+import { esc, toast } from "./utils.js";
 import { apiFetch } from "./api.js";
 import { renderSidebar, renderSearchResults } from "./sidebar.js";
 import {
@@ -66,7 +66,7 @@ export async function saveFile() {
   const content = document.getElementById("md-editor").value;
   const title = document.getElementById("title-input").value.trim();
   const folder =
-    document.getElementById("folder-input")?.value.trim() ?? st.activeFolder;
+    document.getElementById("folder-input")?.value?.trim() ?? st.activeFolder;
   const status =
     document.getElementById("status-select")?.value ?? st.activeStatus;
   const datePlanning = document.getElementById("date-planning")?.value ?? "";
@@ -116,6 +116,32 @@ export async function saveFile() {
   }
 }
 
+export function addToRecentFiles(file) {
+  if (!file || !file.id) return;
+  st.recentFiles = st.recentFiles.filter(f => f.id !== file.id);
+  st.recentFiles.unshift({ id: file.id, title: file.title || "Sem título" });
+  if (st.recentFiles.length > 5) st.recentFiles.pop();
+  renderRecentFiles();
+}
+
+export function renderRecentFiles() {
+  const bar = document.getElementById("recent-files-bar");
+  if (!bar) return;
+  if (!st.recentFiles || st.recentFiles.length === 0) {
+    bar.style.display = "none";
+    return;
+  }
+  bar.style.display = "flex";
+  bar.innerHTML = st.recentFiles.map(f => {
+    const active = f.id === st.activeId ? "active" : "";
+    return `<span class="recent-file-tab ${active}" onclick="openFileFromTab('${f.id}')" title="${esc(f.title)}">${esc(f.title)}</span>`;
+  }).join("");
+}
+
+window.openFileFromTab = (id) => {
+  openFile(id);
+};
+
 export async function openFile(id) {
   if (st.mainView !== "editor") setMainView("editor");
   if (st.isDirty && st.activeId) await saveFile();
@@ -153,6 +179,7 @@ export async function openFile(id) {
     renderTags(st.activeTags);
     renderSidebar();
     showEditorPanel();
+    addToRecentFiles(file);
     setView(st.view);
     updateFooter();
     setSaveStatus("saved");
@@ -217,6 +244,8 @@ export async function deleteFile(id) {
       st.activeId = null;
       showEmptyPanel();
     }
+    st.recentFiles = st.recentFiles.filter((f) => f.id !== id);
+    renderRecentFiles();
     renderSidebar();
     updateStorageInfo();
     toast("Arquivo excluído.", "success");
@@ -339,6 +368,11 @@ export async function confirmRenameFile(id, newTitle) {
       document.getElementById("filename-label").textContent = updated.filename;
       if (updated.id !== id) st.activeId = updated.id;
     }
+    st.recentFiles = st.recentFiles.map(rf => {
+      if (rf.id === id) return { id: updated.id, title: updated.title };
+      return rf;
+    });
+    renderRecentFiles();
     renderSidebar();
     toast("Renomeado com sucesso.", "success");
   } catch (e) {

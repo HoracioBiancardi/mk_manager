@@ -90,7 +90,7 @@ export function renderTree() {
 
   let html = '';
 
-  if (st.creatingFolder) {
+  if (st.creatingFolder && !st.creatingFolderIn) {
     html += `<div class="tree-folder-new">
       <span class="tree-caret-gap"></span>
       ${FOLDER_ICON}
@@ -122,6 +122,17 @@ export function renderTree() {
 
     if (isOpen) {
       filesHere.forEach(f => { html += treeFileHtml(f, depth + 1); });
+      if (st.creatingFolder && st.creatingFolderIn === folderPath) {
+        const inputIndent = (0.5 + (depth + 1) * 0.875).toFixed(2);
+        html += `<div class="tree-folder-new" style="padding-left:${inputIndent}rem">
+          <span class="tree-caret-gap"></span>
+          ${FOLDER_ICON}
+          <input class="rename-input" id="new-folder-input" placeholder="Nome da pasta"
+            onkeydown="onNewFolderKey(event)"
+            onblur="onNewFolderBlur(this.value)"
+            onclick="event.stopPropagation()">
+        </div>`;
+      }
     }
   });
 
@@ -193,6 +204,10 @@ function treeFileHtml(f, depth) {
     </div>`;
   }
 
+  const progress = f.type === 'task' && f.task_total > 0
+    ? `<span class="tree-progress" title="Progresso da task: ${f.task_done} concluídas de ${f.task_total}">[${f.task_done}/${f.task_total}]</span>`
+    : '';
+
   return `<div class="tree-item${active}" style="padding-left:${indent}rem" data-id="${f.id}"
     onclick="openFile('${f.id}')"
     oncontextmenu="onFileContextMenu(event,'${f.id}')"
@@ -200,7 +215,7 @@ function treeFileHtml(f, depth) {
     onmouseenter="showFileTooltip(event,'${f.id}')" onmouseleave="hideFileTooltip()">
     <span class="tree-caret-gap"></span>
     ${fileIcon}
-    <span class="tree-name">${esc(f.title || 'Sem título')}</span>
+    <span class="tree-name">${esc(f.title || 'Sem título')} ${progress}</span>
     <div class="tree-item-actions" onclick="event.stopPropagation()">
       <button class="icon-btn" onclick="startRenameFile('${f.id}')" title="Renomear">✏</button>
       <button class="icon-btn del" onclick="openDeleteModal('${f.id}','${esc(f.title || 'Sem título')}','${esc(f.filename)}')" title="Excluir">✕</button>
@@ -525,6 +540,7 @@ export function onFolderContextMenu(e, path) {
   showContextMenu(e.clientX, e.clientY, [
     { icon: '📄', label: 'Nova nota aqui', onClick: () => _newFile?.('note', path) },
     { icon: '☑', label: 'Nova task aqui', onClick: () => _newFile?.('task', path) },
+    { icon: '📁', label: 'Nova pasta aqui', onClick: () => startNewFolderInput(path) },
     { separator: true },
     { icon: '✏', label: 'Renomear pasta', onClick: () => startRenameFolder(path) },
     { icon: '✕', label: 'Excluir pasta', danger: true, onClick: () => deleteFolderPrompt(path) },
@@ -544,8 +560,12 @@ export function onTreeBackgroundContextMenu(e) {
 
 // ── Nova pasta inline ──────────────────────────────────────────────────────────
 
-export function startNewFolderInput() {
+export function startNewFolderInput(parentPath = null) {
   st.creatingFolder = true;
+  st.creatingFolderIn = parentPath;
+  if (parentPath) {
+    st.expandedFolders.add(parentPath);
+  }
   renderTree();
 }
 
@@ -567,14 +587,17 @@ export function confirmNewFolder(name) {
   st.creatingFolder = false;
   const trimmed = name.trim().replace(/^\/+|\/+$/g, '');
   if (trimmed) {
-    st.emptyFolders.add(trimmed);
-    st.expandedFolders.add(trimmed);
+    const fullPath = st.creatingFolderIn ? `${st.creatingFolderIn}/${trimmed}` : trimmed;
+    st.emptyFolders.add(fullPath);
+    st.expandedFolders.add(fullPath);
   }
+  st.creatingFolderIn = null;
   renderTree();
 }
 
 export function cancelNewFolderInput() {
   st.creatingFolder = false;
+  st.creatingFolderIn = null;
   renderTree();
 }
 
@@ -605,6 +628,14 @@ export function onRenameBlur(id, value) {
   if (st.renamingId === id) _confirmRenameFile?.(id, value);
 }
 
+export function setSidebarFilter(filter) {
+  st.filter = filter;
+  document.querySelectorAll("#sidebar-filters .filter-tab").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.filter === filter);
+  });
+  renderSidebar();
+}
+
 // ── Expor ao DOM (necessário para event handlers inline gerados acima) ────────
 Object.assign(window, {
   toggleTreeFolder,
@@ -633,4 +664,5 @@ Object.assign(window, {
   onFolderContextMenu,
   onTreeBackgroundContextMenu,
   toggleTagTreeNode,
+  setSidebarFilter,
 });

@@ -1,11 +1,21 @@
 // Responsabilidade: utilitários reutilizáveis
 
+import { playErrorSfx } from "./sfx.js";
+
 export function toast(msg, type = 'info', duration = 3000) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.className = `toast ${type} visible`;
   clearTimeout(t._tid);
   t._tid = setTimeout(() => { t.className = 'toast'; }, duration);
+
+  if (type === 'error') {
+    playErrorSfx();
+    document.body.classList.add('crt-glitch-active');
+    setTimeout(() => {
+      document.body.classList.remove('crt-glitch-active');
+    }, 500);
+  }
 }
 
 // esc local: inclui aspas simples (necessário para atributos onclick inline)

@@ -28,6 +28,8 @@ export const st = {
   emptyFolders: new Set(),
   draggingFileId: null,
   creatingFolder: false,
+  creatingFolderIn: null,
   kanbanColumns: null,
   addingKanbanCol: false,
+  recentFiles: [],
 };

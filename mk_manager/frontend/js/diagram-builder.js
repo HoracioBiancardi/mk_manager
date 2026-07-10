@@ -98,11 +98,11 @@ function unquote(s) {
 
 // `subgraph ID [Título]`, `subgraph ID ["Título"]` ou `subgraph ID` (sem título)
 function parseSubgraphHeader(line) {
-  const m = /^subgraph\s+([^\s[]+)\s*(?:\[\s*(.*?)\s*\])?\s*$/i.exec(line);
+  const m = /^subgraph\s+([^\s"[\]]+)(?:\s*(?:\[\s*(.*?)\s*\]|"(.*?)"|([^\s]+)))?\s*$/i.exec(line);
   if (!m) return null;
   const id = m[1];
-  const title = m[2] !== undefined ? unquote(m[2]) : id;
-  return { id, title };
+  const titleText = m[2] !== undefined ? m[2] : (m[3] !== undefined ? m[3] : (m[4] !== undefined ? m[4] : id));
+  return { id, title: unquote(titleText) };
 }
 
 function findMermaidBlockAt(text, pos) {
@@ -117,14 +117,10 @@ function findMermaidBlockAt(text, pos) {
 
 function parseMermaid(body) {
   const lines = body.split("\n").map((l) => l.trim()).filter(Boolean);
-  if (!lines.length || !/^flowchart\s+/i.test(lines[0])) return null;
-  const direction = /^flowchart\s+LR/i.test(lines[0]) ? "LR" : "TD";
+  if (!lines.length || !/^(flowchart|graph)\s+/i.test(lines[0])) return null;
+  const direction = /^(flowchart|graph)\s+LR/i.test(lines[0]) ? "LR" : "TD";
   const bodyLines = lines.slice(1);
 
-  // Separa marcadores subgraph/end do resto: cada linha "normal" carrega o id
-  // do grupo em que está aninhada (se houver), pra atribuir os nós a ele.
-  // Subgraphs aninhados colapsam no grupo mais interno (não suportamos
-  // hierarquia de grupos no builder visual).
   const groups = [];
   const groupStack = [];
   const flatLines = [];
@@ -146,27 +142,88 @@ function parseMermaid(body) {
     }
   };
 
-  for (const { line, groupId } of flatLines) {
-    const re = nodeDeclRegex();
-    let m;
-    while ((m = re.exec(line))) {
-      if (m[3] !== undefined) registerNode(m[1], "circle", m[3], groupId);
-      else if (m[4] !== undefined) registerNode(m[1], "rect", m[4], groupId);
-      else if (m[5] !== undefined) registerNode(m[1], "rhombus", m[5], groupId);
-      else if (m[6] !== undefined) registerNode(m[1], "round", m[6], groupId);
-    }
-  }
-
   const edges = [];
-  for (const { line: rawLine, groupId } of flatLines) {
-    const cleaned = rawLine.replace(nodeDeclRegex(), (_, id) => id);
-    const re = edgeRegex();
-    let m;
-    while ((m = re.exec(cleaned))) {
-      const [, from, arrow, label, to] = m;
-      registerNode(from, "rect", from, groupId);
-      registerNode(to, "rect", to, groupId);
-      edges.push({ from, to, label: (label || "").trim(), type: TYPE_BY_ARROW[arrow] || "arrow" });
+  const arrowRegex = /<-->|-\.->|-->|---/g;
+
+  for (const { line, groupId } of flatLines) {
+    // 1. Extração de declarações explícitas de nós
+    const declRe = nodeDeclRegex();
+    let declMatch;
+    while ((declMatch = declRe.exec(line))) {
+      const id = declMatch[1];
+      if (declMatch[3] !== undefined) registerNode(id, "circle", declMatch[3], groupId);
+      else if (declMatch[4] !== undefined) registerNode(id, "rect", declMatch[4], groupId);
+      else if (declMatch[5] !== undefined) registerNode(id, "rhombus", declMatch[5], groupId);
+      else if (declMatch[6] !== undefined) registerNode(id, "round", declMatch[6], groupId);
+    }
+
+    // 2. Extração de conexões e setas (incluindo cadeias de setas e múltiplas fontes com &)
+    arrowRegex.lastIndex = 0;
+    const arrows = [];
+    let match;
+    while ((match = arrowRegex.exec(line))) {
+      arrows.push({ type: match[0], index: match.index });
+    }
+
+    if (arrows.length > 0) {
+      const parts = [];
+      let lastIndex = 0;
+      for (const arrow of arrows) {
+        parts.push(line.slice(lastIndex, arrow.index));
+        lastIndex = arrow.index + arrow.type.length;
+      }
+      parts.push(line.slice(lastIndex));
+
+      const parsePartNodes = (part) => {
+        const nodeIds = [];
+        const subParts = part.split("&");
+        for (let sub of subParts) {
+          sub = sub.trim();
+          if (!sub) continue;
+
+          // Se a parte iniciar com rótulo, ex: "|texto| Nó"
+          const labelMatch = /^\s*\|([^|]*)\|\s*(.*)/.exec(sub);
+          if (labelMatch) {
+            sub = labelMatch[2].trim();
+          }
+
+          const nodeDeclRe = /([A-Za-z0-9_]+)(?:\(\(("[^"]*"|[^()]*)\)\)|\[("[^"]*"|[^[\]]*)\]|\{("[^"]*"|[^{}]*)\}|\(("[^"]*"|[^()]*)\))?/;
+          const m = nodeDeclRe.exec(sub);
+          if (m) {
+            const id = m[1];
+            nodeIds.push(id);
+            if (m[2] !== undefined) registerNode(id, "circle", m[2], groupId);
+            else if (m[3] !== undefined) registerNode(id, "rect", m[3], groupId);
+            else if (m[4] !== undefined) registerNode(id, "rhombus", m[4], groupId);
+            else if (m[5] !== undefined) registerNode(id, "round", m[5], groupId);
+            else registerNode(id, "rect", id, groupId);
+          }
+        }
+        return nodeIds;
+      };
+
+      const nodeLists = parts.map(p => parsePartNodes(p));
+
+      // Extrai os rótulos de cada aresta no formato A -->|rótulo| B
+      const edgeLabels = arrows.map((_, idx) => {
+        const nextPart = parts[idx + 1];
+        const labelMatch = /^\s*\|([^|]*)\|/.exec(nextPart);
+        return labelMatch ? labelMatch[1].trim() : "";
+      });
+
+      for (let i = 0; i < arrows.length; i++) {
+        const arrow = arrows[i].type;
+        const type = TYPE_BY_ARROW[arrow] || "arrow";
+        const leftNodes = nodeLists[i];
+        const rightNodes = nodeLists[i + 1];
+        const label = edgeLabels[i] || "";
+
+        for (const from of leftNodes) {
+          for (const to of rightNodes) {
+            edges.push({ from, to, label, type });
+          }
+        }
+      }
     }
   }
 
@@ -684,6 +741,7 @@ function buildModal() {
   const btnAddGroup = mkBtn("+ Grupo", "Adicionar um grupo (vira um subgraph no Mermaid)");
   const btnDir = mkBtn("↕ Vertical", "Alternar direção do fluxo");
   const btnEdgeType = mkBtn(EDGE_TYPE_LABEL.arrow, "Tipo de seta usado nas próximas conexões");
+  const btnLayout = mkBtn("⚡ Formatar", "Organizar caixas automaticamente");
   const btnUndo = mkBtn("↶ Desfazer", "Desfazer (Ctrl+Z)");
   const btnRedo = mkBtn("↷ Refazer", "Refazer (Ctrl+Shift+Z)");
   const btnClear = mkBtn("🗑 Limpar", "Remover todas as caixas");
@@ -697,7 +755,7 @@ function buildModal() {
   btnInsert.style.borderColor = "var(--primary)";
   const btnClose = mkBtn("✕ Fechar", "Fechar sem inserir (Esc)");
 
-  toolbar.append(title, btnAdd, btnAddGroup, btnDir, btnEdgeType, btnUndo, btnRedo, btnClear, hint, btnInsert, btnClose);
+  toolbar.append(title, btnAdd, btnAddGroup, btnDir, btnEdgeType, btnLayout, btnUndo, btnRedo, btnClear, hint, btnInsert, btnClose);
 
   const canvasWrap = document.createElement("div");
   canvasWrap.className = "db-canvas-wrap";
@@ -726,6 +784,7 @@ function buildModal() {
   btnAddGroup.addEventListener("click", addGroup);
   btnDir.addEventListener("click", toggleDirection);
   btnEdgeType.addEventListener("click", cycleNextEdgeType);
+  btnLayout.addEventListener("click", () => { pushHistory(); autoLayoutDiagram(); });
   btnUndo.addEventListener("click", undo);
   btnRedo.addEventListener("click", redo);
   btnClear.addEventListener("click", clearAll);
@@ -830,6 +889,9 @@ export function openDiagramBuilder() {
       makeEdgeElement(edge);
     });
     updateDirectionBtnLabel();
+    
+    // Dispara auto layout com pequeno atraso para que as dimensões do canvas estejam prontas
+    setTimeout(autoLayoutDiagram, 60);
   } else {
     addNode();
     addNode();
@@ -866,5 +928,128 @@ function insertAndClose() {
   closeDiagramBuilder();
 }
 
+// ── Auto-Layout do Diagrama via D3 Force Simulation ─────────────────────────
+function ensureD3() {
+  if (window.d3) return Promise.resolve(window.d3);
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js";
+    s.onload = () => resolve(window.d3);
+    s.onerror = () => reject(new Error("Falha ao carregar D3"));
+    document.head.appendChild(s);
+  });
+}
+
+export async function autoLayoutDiagram() {
+  if (!state || !state.nodes.length) return;
+  
+  let d3;
+  try {
+    d3 = await ensureD3();
+  } catch (e) {
+    toast("Falha ao carregar D3 (verifique a conexão).", "error");
+    return;
+  }
+
+  const canvasWidth = els.canvas.clientWidth || 800;
+  const canvasHeight = els.canvas.clientHeight || 600;
+
+  // Cria estrutura para simulação D3
+  // Iniciamos todos os nós próximos ao centro para o algoritmo espalhá-los de forma ótima
+  const simNodes = state.nodes.map(n => ({
+    id: n.id,
+    nodeRef: n,
+    x: canvasWidth / 2 + (Math.random() - 0.5) * 100,
+    y: canvasHeight / 2 + (Math.random() - 0.5) * 100
+  }));
+
+  const simLinks = state.edges.map(e => ({
+    source: e.from,
+    target: e.to
+  })).filter(l =>
+    simNodes.some(n => n.id === l.source) && simNodes.some(n => n.id === l.target)
+  );
+
+  const linkForce = d3.forceLink(simLinks)
+    .id(d => d.id)
+    .distance(130);
+
+  const sim = d3.forceSimulation(simNodes)
+    .force("link", linkForce)
+    .force("charge", d3.forceManyBody().strength(-380))
+    .force("center", d3.forceCenter(canvasWidth / 2, canvasHeight / 2))
+    .force("collide", d3.forceCollide().radius(75));
+
+  // Roda a simulação síncrona por 120 ticks
+  for (let i = 0; i < 120; i++) {
+    sim.tick();
+  }
+
+  // Aplica as posições finais nos elementos do DOM
+  simNodes.forEach(sn => {
+    const node = sn.nodeRef;
+    // Margens mínimas de padding da tela
+    node.x = Math.max(30, Math.min(canvasWidth - 130, sn.x - 50));
+    node.y = Math.max(30, Math.min(canvasHeight - 70, sn.y - 25));
+    if (node.el) {
+      node.el.style.left = `${node.x}px`;
+      node.el.style.top = `${node.y}px`;
+    }
+  });
+
+  // Ajusta subgraphs (grupos) para cobrir os nós correspondentes
+  autoFitGroups();
+
+  // Redesenha as conexões
+  state.edges.forEach(updateEdgeGeometry);
+}
+
+function autoFitGroups() {
+  if (!state.groups.length) return;
+
+  const nodesByGroup = new Map();
+  state.nodes.forEach(n => {
+    const groupId = n.groupId || getNodeGroupMembership(n);
+    if (groupId) {
+      if (!nodesByGroup.has(groupId)) nodesByGroup.set(groupId, []);
+      nodesByGroup.get(groupId).push(n);
+    }
+  });
+
+  state.groups.forEach(g => {
+    const members = nodesByGroup.get(g.id) || [];
+    if (!members.length) return;
+
+    let minX = Infinity, minY = Infinity;
+    let maxX = -Infinity, maxY = -Infinity;
+
+    members.forEach(n => {
+      minX = Math.min(minX, n.x);
+      minY = Math.min(minY, n.y);
+      maxX = Math.max(maxX, n.x + (n.el ? n.el.offsetWidth : 120));
+      maxY = Math.max(maxY, n.y + (n.el ? n.el.offsetHeight : 50));
+    });
+
+    g.x = minX - 25;
+    g.y = minY - 50;
+    g.w = maxX - minX + 50;
+    g.h = maxY - minY + 75;
+
+    if (g.el) {
+      g.el.style.left = `${g.x}px`;
+      g.el.style.top = `${g.y}px`;
+      g.el.style.width = `${g.w}px`;
+      g.el.style.height = `${g.h}px`;
+    }
+  });
+}
+
+function getNodeGroupMembership(node) {
+  for (const g of state.groups) {
+    if (nodeInGroup(node, g)) return g.id;
+  }
+  return null;
+}
+
 // ── Expor ao DOM (necessário para event handlers inline) ──────────────────────
-Object.assign(window, { openDiagramBuilder, closeDiagramBuilder });
+Object.assign(window, { openDiagramBuilder, closeDiagramBuilder, autoLayoutDiagram });

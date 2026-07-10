@@ -291,6 +291,7 @@ export function onEditorInput() {
   if (st.view !== "edit") renderPreview();
   setSaveStatus("saving");
   scheduleSave();
+  checkWikiLinkAutocomplete();
 }
 
 export function onTitleChange() {
@@ -302,6 +303,40 @@ export function onTitleChange() {
 
 export function onEditorKeydown(e) {
   const ta = document.getElementById("md-editor");
+
+  // ── Autocomplete [[ Wiki-Links ───────────────────────────────────────────
+  if (_wikiActive) {
+    const dropdown = document.getElementById("wiki-link-suggestions");
+    const items = dropdown ? dropdown.querySelectorAll(".wiki-link-item") : [];
+    
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      _wikiSelectedIdx = (_wikiSelectedIdx + 1) % items.length;
+      showWikiLinkSuggestions();
+      return;
+    }
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      _wikiSelectedIdx = (_wikiSelectedIdx - 1 + items.length) % items.length;
+      showWikiLinkSuggestions();
+      return;
+    }
+    if (e.key === "Enter" || e.key === "Tab") {
+      e.preventDefault();
+      const selectedItem = dropdown ? dropdown.querySelector(".wiki-link-item.selected") : null;
+      if (selectedItem) {
+        selectedItem.click();
+      } else {
+        hideWikiLinkSuggestions();
+      }
+      return;
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      hideWikiLinkSuggestions();
+      return;
+    }
+  }
 
   // ── Tab / Shift+Tab ──────────────────────────────────────────────────────
   if (e.key === "Tab") {
@@ -661,6 +696,7 @@ Object.assign(window, {
   selectRetroTag,
   filterRetroTagSuggestions,
   updateTaskDuration,
+  insertWikiLink,
 });
 
 export function updateTaskDuration() {
@@ -741,6 +777,104 @@ document.addEventListener("click", (e) => {
   
   if (!e.target.closest(".retro-tag-input-wrap")) {
     closeRetroTagSuggestions();
+  }
+});
+
+// ── Lógica de Autocomplete de Wiki-Links ──────────────────────────────────────
+let _wikiActive = false;
+let _wikiStartIndex = -1;
+let _wikiQuery = "";
+let _wikiSelectedIdx = 0;
+
+export function checkWikiLinkAutocomplete() {
+  const ta = document.getElementById("md-editor");
+  if (!ta) return;
+  const pos = ta.selectionStart;
+  const textBefore = ta.value.slice(0, pos);
+  const lastDoubleOpen = textBefore.lastIndexOf("[[");
+  
+  if (lastDoubleOpen !== -1) {
+    const textAfterOpen = textBefore.slice(lastDoubleOpen + 2);
+    if (!textAfterOpen.includes("]]") && !textAfterOpen.includes("\n")) {
+      _wikiActive = true;
+      _wikiStartIndex = lastDoubleOpen;
+      _wikiQuery = textAfterOpen.trim().toLowerCase();
+      showWikiLinkSuggestions();
+      return;
+    }
+  }
+  
+  hideWikiLinkSuggestions();
+}
+
+export function showWikiLinkSuggestions() {
+  const suggestions = st.files.filter(f => {
+    const title = (f.title || "").toLowerCase();
+    const id = (f.id || "").toLowerCase();
+    return title.includes(_wikiQuery) || id.includes(_wikiQuery);
+  });
+  
+  const dropdown = document.getElementById("wiki-link-suggestions");
+  if (!dropdown) return;
+  
+  if (suggestions.length === 0) {
+    dropdown.style.display = "none";
+    return;
+  }
+  
+  _wikiSelectedIdx = Math.max(0, Math.min(_wikiSelectedIdx, suggestions.length - 1));
+  dropdown.style.display = "block";
+  
+  dropdown.innerHTML = suggestions.map((f, idx) => {
+    const isSelected = idx === _wikiSelectedIdx ? "selected" : "";
+    const icon = f.type === "task" ? "☑" : "📝";
+    return `<div class="wiki-link-item ${isSelected}" onclick="insertWikiLink('${esc(f.title || f.id)}')">
+              <span class="wiki-icon">${icon}</span>
+              <span class="wiki-title">${esc(f.title || "Sem título")}</span>
+              <span class="wiki-type">${f.type === "task" ? "Task" : "Note"}</span>
+            </div>`;
+  }).join("");
+}
+
+export function hideWikiLinkSuggestions() {
+  _wikiActive = false;
+  _wikiStartIndex = -1;
+  _wikiQuery = "";
+  _wikiSelectedIdx = 0;
+  const dropdown = document.getElementById("wiki-link-suggestions");
+  if (dropdown) dropdown.style.display = "none";
+}
+
+export function insertWikiLink(title) {
+  const ta = document.getElementById("md-editor");
+  if (!ta || _wikiStartIndex === -1) return;
+  
+  const pos = ta.selectionStart;
+  const insertText = `[[${title}]]`;
+  
+  replaceRange(ta, _wikiStartIndex, pos, insertText);
+  const newCursorPos = _wikiStartIndex + insertText.length;
+  ta.setSelectionRange(newCursorPos, newCursorPos);
+  ta.focus();
+  
+  hideWikiLinkSuggestions();
+  onEditorInput();
+}
+
+// Vincula listeners ao textarea do editor
+document.addEventListener("DOMContentLoaded", () => {
+  const ta = document.getElementById("md-editor");
+  if (ta) {
+    ta.addEventListener("click", checkWikiLinkAutocomplete);
+    ta.addEventListener("keyup", (e) => {
+      if (e.key !== "ArrowUp" && e.key !== "ArrowDown" && e.key !== "Enter" && e.key !== "Escape") {
+        checkWikiLinkAutocomplete();
+      }
+    });
+    ta.addEventListener("blur", () => {
+      // Pequeno atraso para dar tempo de registrar o clique nos itens do dropdown
+      setTimeout(hideWikiLinkSuggestions, 200);
+    });
   }
 });
 

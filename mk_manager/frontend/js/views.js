@@ -8,6 +8,7 @@ import { renderKanban, resetKanbanUiState } from "./kanban.js";
 import { renderTagsPanel, renderSearchResults, hideFileTooltip } from "./sidebar.js";
 import { renderGraph } from "./graph.js";
 import { getCrtTransition } from "./prefs.js";
+import { playTransitionSfx } from "./sfx.js";
 
 const PANES = {
   kanban: "kanban-pane",
@@ -68,6 +69,7 @@ export function setMainView(view) {
   if (useTransition) {
     // Inicia animação de transição CRT (desliga a tela rápido)
     document.body.classList.add("crt-transition-active");
+    playTransitionSfx();
 
     // Altera a visualização no meio da transição (quando a tela apagar, em 180ms)
     setTimeout(performChange, 180);

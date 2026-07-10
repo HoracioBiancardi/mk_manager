@@ -42,6 +42,9 @@ export function applyPrefsOnBoot() {
   setCrtStatic(getCrtStatic());
   setCrtCurved(getCrtCurved());
   setCrtTransition(getCrtTransition());
+  setCrtRadar(getCrtRadar());
+  setCrtOpacity(getCrtOpacity());
+  setSfxEnabled(getSfxEnabled());
   setCrtTheme(getCrtTheme());
 }
 
@@ -123,6 +126,47 @@ export function getCrtTransition() {
 export function setCrtTransition(enabled) {
   localStorage.setItem(TRANSITION_KEY, String(enabled));
   const el = document.getElementById("settings-transition");
+  if (el) el.checked = enabled;
+}
+
+const SFX_KEY = "mk-sfx-enabled";
+const OPACITY_KEY = "mk-crt-opacity";
+const RADAR_KEY = "mk-crt-radar";
+
+export function getSfxEnabled() {
+  const saved = localStorage.getItem(SFX_KEY);
+  return saved === null ? false : saved === "true"; // desativado por padrão
+}
+
+export function setSfxEnabled(enabled) {
+  localStorage.setItem(SFX_KEY, String(enabled));
+  const el = document.getElementById("settings-sfx");
+  if (el) el.checked = enabled;
+}
+
+export function getCrtOpacity() {
+  const saved = localStorage.getItem(OPACITY_KEY);
+  return saved === null ? 0.06 : parseFloat(saved);
+}
+
+export function setCrtOpacity(value) {
+  localStorage.setItem(OPACITY_KEY, String(value));
+  document.documentElement.style.setProperty("--crt-opacity", value);
+  const el = document.getElementById("settings-crt-opacity");
+  if (el) el.value = value;
+  const label = document.getElementById("settings-crt-opacity-label");
+  if (label) label.textContent = `${Math.round(value * 100)}%`;
+}
+
+export function getCrtRadar() {
+  const saved = localStorage.getItem(RADAR_KEY);
+  return saved === null ? true : saved === "true";
+}
+
+export function setCrtRadar(enabled) {
+  localStorage.setItem(RADAR_KEY, String(enabled));
+  document.body.classList.toggle("radar-sweep-enabled", enabled);
+  const el = document.getElementById("settings-radar-sweep");
   if (el) el.checked = enabled;
 }
 

@@ -195,6 +195,11 @@
             </button>
           </div>
         </div>
+        <div class="sidebar-filters" id="sidebar-filters">
+          <button class="filter-tab active" data-filter="all" onclick="setSidebarFilter('all')">Tudo</button>
+          <button class="filter-tab" data-filter="note" onclick="setSidebarFilter('note')">Notas</button>
+          <button class="filter-tab" data-filter="task" onclick="setSidebarFilter('task')">Tasks</button>
+        </div>
         <div id="file-tree" class="file-tree" oncontextmenu="onTreeBackgroundContextMenu(event)"></div>
       </div>
 
@@ -240,12 +245,7 @@
               <div class="retro-tag-suggestions" id="retro-tag-suggestions"></div>
             </div>
           </div>
-          <div class="info-sep"></div>
-          <div class="info-group">
-            <span class="info-label">📁</span>
-            <input id="folder-input" type="text" class="meta-input" placeholder="pasta/subpasta"
-              oninput="onMetaChange()" autocomplete="off">
-          </div>
+
           <div id="status-row-part" style="display:contents">
           <div class="info-sep"></div>
           <div class="info-group">
@@ -280,9 +280,9 @@
             </div>
           </div>
         </div>
-
+        <div class="recent-files-bar" id="recent-files-bar" style="display: none;"></div>
         <div class="editor-body">
-          <div id="editor-pane" class="editor-pane">
+          <div id="editor-pane" class="editor-pane" style="position: relative;">
             <div class="md-toolbar">
               <button class="tool-btn" onclick="fmt('**','**')"><b>B</b></button>
               <button class="tool-btn" onclick="fmt('*','*')"><i>I</i></button>
@@ -320,6 +320,7 @@
             <textarea id="md-editor" class="md-textarea"
               placeholder="Comece a escrever em Markdown…&#10;&#10;Use - [ ] para criar tasks interativas"
               oninput="onEditorInput()" onkeydown="onEditorKeydown(event)"></textarea>
+            <div id="wiki-link-suggestions" class="wiki-link-suggestions" style="display: none;"></div>
           </div>
           <div id="resize-handle" class="resize-handle" title="Arraste para redimensionar · Duplo-clique para 50/50">
             <div class="rh-dots">
@@ -388,7 +389,9 @@
           <button class="btn btn-ghost btn-sm active" id="graph-orphans-btn" onclick="toggleGraphOrphans()"
             title="Mostrar/esconder notas sem nenhum link">Sem conexão</button>
         </div>
-        <div id="graph-container" class="graph-container"></div>
+        <div id="graph-container" class="graph-container">
+          <div class="radar-sweep" id="radar-sweep"></div>
+        </div>
       </div>
     </main>
   </div>
@@ -434,6 +437,7 @@
         <button class="close-btn" onclick="closeSettingsModal()">✕</button>
       </div>
       <div class="modal-body">
+        <div class="settings-sec-title">📂 Diretórios & backups</div>
         <div class="form-group">
           <label class="form-label" for="settings-notes-dir">Pasta dos arquivos</label>
           <div class="folder-picker-row">
@@ -477,6 +481,8 @@
           <button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick="downloadBackup()">⬇ Baixar backup
             (.zip)</button>
         </div>
+
+        <div class="settings-sec-title">📝 Editor & Leitura</div>
         <div class="form-group">
           <label class="form-label" for="settings-default-view">Visualização padrão ao abrir um arquivo</label>
           <select id="settings-default-view" class="form-input">
@@ -490,44 +496,57 @@
               id="settings-font-size-label">14px</span></label>
           <input id="settings-font-size" type="range" min="11" max="24" step="1" oninput="onFontSizeInput(this.value)">
         </div>
+
+        <div class="settings-sec-title">📺 Aparência Pip-Boy (CRT)</div>
         <div class="form-group">
-          <label class="form-label">Aparência CRT Pip-Boy</label>
-          <div style="display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.5rem;">
-            <label
-              style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
+          <div class="settings-grid-2">
+            <label style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
               <input type="checkbox" id="settings-scanlines" onchange="toggleScanlines(this.checked)">
-              <span>Ativar linhas de varredura (Scanlines CRT)</span>
+              <span>Scanlines CRT</span>
             </label>
-            <label
-              style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
+            <label style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
               <input type="checkbox" id="settings-flicker" onchange="toggleFlicker(this.checked)">
-              <span>Ativar cintilação de tela (Flicker)</span>
+              <span>Flicker (Brilho)</span>
             </label>
-            <label
-              style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
+            <label style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
               <input type="checkbox" id="settings-static" onchange="toggleStatic(this.checked)">
-              <span>Ativar estática analógica (Static Noise)</span>
+              <span>Estática (Ruído)</span>
             </label>
-            <label
-              style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
+            <label style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
               <input type="checkbox" id="settings-curved" onchange="toggleCurved(this.checked)">
-              <span>Ativar curvatura de tela (Curved Screen)</span>
+              <span>Curvatura CRT</span>
             </label>
-            <label
-              style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
+            <label style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
               <input type="checkbox" id="settings-transition" onchange="toggleTransition(this.checked)">
-              <span>Ativar transição CRT de telas (Screen Transition)</span>
+              <span>Transição CRT</span>
             </label>
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-              <label for="settings-theme" style="font-size: 0.8125rem; color: var(--text-muted);">Tema de Cor:</label>
-              <select id="settings-theme" class="form-input" style="flex: 1; padding: 0.25rem 0.5rem;"
-                onchange="changeTheme(this.value)">
-                <option value="green">Verde Fósforo (Classic Pip-Boy)</option>
-                <option value="amber">Âmbar Radiação (Fallout NV)</option>
-                <option value="blue">Azul HUD (Fallout 4)</option>
-                <option value="white">Branco Monocromático</option>
-              </select>
-            </div>
+            <label style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
+              <input type="checkbox" id="settings-radar-sweep" onchange="toggleRadar(this.checked)">
+              <span>Varredura Radar</span>
+            </label>
+            <label style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
+              <input type="checkbox" id="settings-sfx" onchange="toggleSfx(this.checked)">
+              <span>Efeitos SFX</span>
+            </label>
+          </div>
+          
+          <div style="display: flex; flex-direction: column; gap: 0.2rem; margin-top: 1rem;">
+            <label class="form-label" style="font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 0;">
+              Brilho das Scanlines CRT: <span id="settings-crt-opacity-label">6%</span>
+            </label>
+            <input id="settings-crt-opacity" type="range" min="0" max="0.2" step="0.01" style="width: 100%; cursor: pointer;"
+              oninput="changeCrtOpacity(parseFloat(this.value))">
+          </div>
+          
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.8rem;">
+            <label for="settings-theme" style="font-size: 0.8125rem; color: var(--text-muted); white-space: nowrap;">Tema de Cor:</label>
+            <select id="settings-theme" class="form-input" style="flex: 1; padding: 0.25rem 0.5rem;"
+              onchange="changeTheme(this.value)">
+              <option value="green">Verde Fósforo (Classic Pip-Boy)</option>
+              <option value="amber">Âmbar Radiação (Fallout NV)</option>
+              <option value="blue">Azul HUD (Fallout 4)</option>
+              <option value="white">Branco Monocromático</option>
+            </select>
           </div>
         </div>
       </div>
