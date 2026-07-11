@@ -1,0 +1,89 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+MK Manager is a Markdown file manager with notes and task-list support. FastAPI backend, vanilla HTML/JS frontend (no build step, no bundler). There is **no database** — every note/task is a real `.md` file on disk with YAML frontmatter, stored under `notes/` (compatible with Obsidian, VSCode, Typora, etc.).
+
+## Commands
+
+Package manager is [uv](https://docs.astral.sh/uv/) (Python 3.11+, pinned via `.python-version`).
+
+```bash
+# Install dependencies
+uv sync
+uv sync --group dev          # + pytest, httpx, pytest-asyncio, playwright
+
+# Run the dev server (entry point is `mk`, defined in pyproject.toml [project.scripts])
+uv run mk
+
+# Equivalent, with explicit uvicorn flags
+uv run uvicorn mk_manager.main:app --reload --port 8888
+
+# Add a dependency
+uv add <package>              # runtime
+uv add --group dev <package>  # dev-only
+
+# Run tests
+uv run pytest
+```
+
+Notes:
+- There is currently no `tests/` directory in the repo, despite pytest/httpx/pytest-asyncio/playwright being present as dev dependencies — `uv run pytest` will find nothing until tests are added.
+- No lint or type-check tooling (ruff, mypy, black, etc.) is configured in `pyproject.toml`. Don't assume one exists.
+- Server config is env-driven, prefix `MK_`, loaded from a `.env` file via `pydantic-settings` (`mk_manager/config.py`): `MK_NOTES_DIR` (default `./notes`), `MK_ASSETS_DIR` (default `{notes_dir}/assets`), `MK_HOST` (default `0.0.0.0`), `MK_PORT` (default `8099`), `MK_DEBUG` (default `true`, enables `--reload`).
+
+## Architecture
+
+### Layered backend (SOLID), one-directional dependency flow
+
+```
+routers/  →  services/  →  repositories/base.py (AbstractFileRepository)  ←  repositories/markdown.py
+(HTTP)       (business        (interface — DIP)                              (concrete: reads/writes
+              rules)                                                          .md files on disk)
+```
+
+- `domain/entities.py` — framework-free dataclasses: `FileRecord` (the parsed state of a `.md` file) and `SearchResult`. `FileRecord` computes `word_count`, `task_total`, `task_done`, `task_items` from its `content` via regex, and also carries `folder`, `status`, `date_planning`, `date_execution`, `date_conclusion` for the kanban-style workflow.
+- `repositories/base.py` — `AbstractFileRepository` is the contract every storage backend must satisfy (create/get/update/delete/list/count/size). `services/file_service.py` depends only on this abstraction, never on `MarkdownFileRepository` directly — swapping storage (e.g. SQLite) means writing a new repository class and rewiring `dependencies.py`, with zero changes to services or routers.
+- `services/file_service.py` — all business logic: CRUD orchestration, full-text search with scoring (title match +20, tag match +10, content match +1), stats aggregation, tag renaming, folder renaming/"deletion" (moves contents to the parent folder rather than destroying anything — there's no trash/undo yet), and kanban status transitions that auto-stamp `date_planning`/`date_execution`/`date_conclusion` the first time a file enters `planning`/`development`/`done`.
+- `services/file_service.py` also owns the **notes graph**: `build_graph()` scans every file's content for `[[wikilink]]` targets (`extract_wikilink_targets`) and resolves them by title (case-insensitive). Unresolved targets become "phantom" nodes rather than being dropped — mirrors Obsidian's behavior. The graph is undirected; duplicate/bidirectional links collapse to one edge.
+- `services/file_service.py` also extracts inline `#tags` from prose (`extract_inline_tags`), skipping fenced code, inline code, and URLs so code samples/hex tokens/URL fragments aren't mistaken for tags. Tag filtering in search is hierarchical: filtering by `area` also matches `area/sub`.
+- `dependencies.py` — FastAPI DI providers. `MarkdownFileRepository` is cached as a process-wide singleton via `lru_cache` (it holds an in-memory parse cache, so it must survive across requests). When the notes directory changes at runtime (via the settings endpoint), `reset_repository_cache()` drops the cached singleton so the next request rebuilds it against the new path.
+- `config.py` — `Settings(BaseSettings)`, singleton via `lru_cache`, prefix `MK_`, reads `.env`.
+- `main.py` — `create_app()` factory (used directly by tests to get a fresh app with dependency overrides); registers all routers, CORS (wide open), the frontend static mount, and a custom per-request `/assets/{path}` handler (deliberately *not* a static mount, so it keeps resolving correctly after `assets_dir` changes at runtime).
+
+### Routers (all under `/api`)
+
+| Router | Prefix | Responsibility |
+|---|---|---|
+| `files.py` | `/api/files` | File/folder CRUD |
+| `search.py` | `/api/search` | Full-text search |
+| `stats.py` | `/api` | Aggregate stats |
+| `tags.py` | `/api/tags` | Tag rename |
+| `graph.py` | `/api/graph` | Wikilink graph |
+| `settings.py` | `/api/settings` | Runtime settings (notes dir, etc.) |
+| `assets.py` | `/api/assets` | Upload images/files pasted or attached to notes |
+
+### Frontend
+
+`mk_manager/frontend/` — vanilla JS SPA, no bundler/build step, served as static files by FastAPI (mounted at `/static`, with `index.html` and `favicon` served explicitly at `/`). Split into one module per concern under `js/`: `app.js` (bootstrap), `state.js`, `api.js`, `editor.js`, `preview.js`, `sidebar.js`, `files.js`, `search-filter.js`, `graph.js`, `kanban.js`, `diagram-builder.js`, `quickopen.js`, `contextmenu.js`, `delete-modal.js`, `settings.js`, `assets.js`, `export.js`, `format-code.js`, `sfx.js`, `utils.js`. Markdown rendering uses [marked.js](https://marked.js.org/).
+
+### File format on disk
+
+Each `.md` under `notes/` (or wherever `MK_NOTES_DIR` points) is YAML frontmatter + Markdown body:
+
+```markdown
+---
+id: abc123def45678
+title: Sprint Meeting
+type: note        # or "task"
+tags: [work, sprint]
+folder: projects/backend
+status: development
+created: '2024-01-15T10:30:00+00:00'
+modified: '2024-01-15T11:00:00+00:00'
+---
+Body content here. Task lists use standard GFM `- [ ]` / `- [x]` syntax.
+Inline `#tags` and `[[wikilinks]]` in the body are also picked up (see file_service.py).
+```

@@ -1,7 +1,7 @@
 # MK Manager
 
-Gerenciador de arquivos Markdown com suporte a **notas** e **tarefas** (task lists).  
-Backend em **FastAPI**, frontend em HTML/JS vanilla, arquivos salvos como `.md` reais no disco.
+Gerenciador de arquivos Markdown com suporte a **notas**, **tarefas** (task lists) e **quadro kanban**.  
+Backend em **FastAPI**, frontend em HTML/JS vanilla, arquivos salvos como `.md` reais no disco — sem banco de dados.
 
 ---
 
@@ -27,13 +27,21 @@ Backend em **FastAPI**, frontend em HTML/JS vanilla, arquivos salvos como `.md` 
 |---|---|
 | **Notas** | Criar, editar e deletar notas em Markdown |
 | **Tasks** | Tasks com checkboxes interativas (`- [ ]` / `- [x]`) |
+| **Pastas** | Organização em pastas/subpastas; renomear/mover move tudo que está aninhado; "deletar" uma pasta apenas move o conteúdo para a pasta pai (nunca destrói dados) |
+| **Kanban** | Status (`planning`/`development`/`review`/`done`) com datas de planejamento, execução e conclusão preenchidas automaticamente na primeira transição |
+| **Grafo de notas** | Visualização das notas conectadas por `[[wikilinks]]`; links para títulos inexistentes viram nós "phantom" (fantasma) em vez de serem descartados |
+| **Tags** | Tags de frontmatter + tags inline `#tag` extraídas do corpo do texto (ignorando código e URLs); filtro hierárquico (`area` também casa com `area/sub`); renomear/mesclar uma tag em todos os arquivos de uma vez |
 | **Busca full-text** | Pesquisa em título, tags e conteúdo com ranking de relevância |
-| **Tags** | Sistema de tags com filtro na sidebar |
 | **Auto-save** | Salvo automaticamente 800ms após parar de digitar |
 | **Split view** | Editor + Preview lado a lado |
 | **Preview ao vivo** | Markdown renderizado em tempo real |
+| **Quick Open** | Abrir qualquer arquivo rapidamente (`Ctrl+K`) |
+| **Diagram builder** | Editor visual de diagramas embutido |
+| **Assets** | Upload de imagens/arquivos anexados às notas (deduplicação automática de nome) |
+| **Backup** | Download de um `.zip` com todo o diretório de notas |
 | **Export** | Download de arquivos `.md` individuais ou todos de uma vez |
 | **Import** | Upload de arquivos `.md` com parse de frontmatter YAML |
+| **Configuração em runtime** | Trocar o diretório de notas e/ou de assets sem reiniciar o servidor (via `/api/settings`, com seletor de pastas) |
 | **Arquivos reais** | Cada nota/task é um `.md` legível por qualquer editor |
 | **Compatível** | Funciona com Obsidian, VSCode, Typora etc. |
 
@@ -52,23 +60,51 @@ mk_manager/
 └── mk_manager/                 # Pacote Python
     ├── __init__.py
     ├── main.py                 # App factory + CLI entry point
-    ├── config.py               # Settings via pydantic-settings
-    ├── dependencies.py         # Providers de injeção de dependência
-    ├── static/
-    │   └── app.html            # Frontend SPA (HTML + JS vanilla)
-    ├── domain/                 # Camada de domínio (sem dependências externas)
-    │   └── entities.py         # FileRecord, SearchResult
-    ├── models/                 # Schemas Pydantic (HTTP I/O)
-    │   └── schemas.py          # Request/Response models
-    ├── repositories/           # Camada de acesso a dados
-    │   ├── base.py             # AbstractFileRepository (interface)
-    │   └── markdown.py         # MarkdownFileRepository (implementação)
-    ├── services/               # Lógica de negócio
-    │   └── file_service.py     # FileService
-    └── routers/                # Handlers HTTP (adapters)
-        ├── files.py            # CRUD /api/files
-        ├── search.py           # GET /api/search
-        └── stats.py            # GET /api/stats
+    ├── config.py                # Settings via pydantic-settings
+    ├── dependencies.py          # Providers de injeção de dependência
+    ├── frontend/                 # Frontend SPA (HTML + CSS + JS vanilla)
+    │   ├── index.html
+    │   ├── favicon.svg
+    │   ├── css/
+    │   │   └── style.css
+    │   └── js/
+    │       ├── app.js            # Bootstrap + atalhos de teclado globais
+    │       ├── state.js          # Estado global da SPA
+    │       ├── api.js            # Client HTTP
+    │       ├── editor.js         # Textarea + toolbar de formatação
+    │       ├── preview.js        # Renderização Markdown ao vivo
+    │       ├── sidebar.js        # Árvore de arquivos/pastas
+    │       ├── files.js          # CRUD de arquivos no frontend
+    │       ├── search-filter.js  # Busca e filtros
+    │       ├── graph.js          # Visualização do grafo de notas
+    │       ├── kanban.js         # Quadro kanban
+    │       ├── diagram-builder.js# Editor visual de diagramas
+    │       ├── quickopen.js      # Busca rápida (Ctrl+K)
+    │       ├── contextmenu.js    # Menu de contexto
+    │       ├── delete-modal.js   # Modal de confirmação de exclusão
+    │       ├── settings.js       # Modal de configurações
+    │       ├── assets.js         # Upload de assets
+    │       ├── export.js         # Export de arquivos
+    │       ├── format-code.js    # Formatação de blocos de código
+    │       ├── sfx.js            # Efeitos sonoros
+    │       └── utils.js
+    ├── domain/                   # Camada de domínio (sem dependências externas)
+    │   └── entities.py           # FileRecord, SearchResult
+    ├── models/                   # Schemas Pydantic (HTTP I/O)
+    │   └── schemas.py            # Request/Response models
+    ├── repositories/              # Camada de acesso a dados
+    │   ├── base.py                # AbstractFileRepository (interface)
+    │   └── markdown.py            # MarkdownFileRepository (implementação)
+    ├── services/                  # Lógica de negócio
+    │   └── file_service.py        # FileService
+    └── routers/                   # Handlers HTTP (adapters)
+        ├── files.py                # CRUD /api/files + pastas
+        ├── search.py                # GET /api/search
+        ├── stats.py                 # GET /api/stats
+        ├── tags.py                  # PUT /api/tags/{old_tag} (rename/merge)
+        ├── graph.py                  # GET /api/graph
+        ├── settings.py                # /api/settings (config em runtime + backup)
+        └── assets.py                   # POST /api/assets (upload)
 ```
 
 ---
@@ -84,8 +120,8 @@ Cada módulo tem **uma única razão para mudar**:
 |---|---|
 | `domain/entities.py` | Modelar o conceito de "arquivo markdown" |
 | `repositories/markdown.py` | Ler e escrever arquivos no disco |
-| `services/file_service.py` | Aplicar regras de negócio (busca, IDs, timestamps) |
-| `routers/files.py` | Traduzir HTTP → serviço → resposta JSON |
+| `services/file_service.py` | Aplicar regras de negócio (busca, tags, grafo, pastas, kanban, IDs, timestamps) |
+| `routers/*.py` | Traduzir HTTP → serviço → resposta JSON |
 | `config.py` | Carregar configuração do ambiente |
 
 ### O — Open/Closed Principle
@@ -102,7 +138,7 @@ Para usar SQLite, basta criar `SqliteFileRepository(AbstractFileRepository)` e i
 ```
 Router → FileService → AbstractFileRepository ← MarkdownFileRepository
 ```
-A camada de alto nível (`FileService`) depende da **abstração** (`AbstractFileRepository`), não da implementação concreta (`MarkdownFileRepository`). A injeção ocorre em `dependencies.py`.
+A camada de alto nível (`FileService`) depende da **abstração** (`AbstractFileRepository`), não da implementação concreta (`MarkdownFileRepository`). A injeção ocorre em `dependencies.py`, onde o repositório é mantido como singleton em cache (`lru_cache`) — reconstruído sob demanda via `reset_repository_cache()` quando o diretório de notas muda em runtime.
 
 ---
 
@@ -136,32 +172,32 @@ uv sync --group dev
 ## Execução
 
 ```bash
-uv run mk-manager
+uv run mk
 ```
 
 ### Com opções customizadas
 
 ```bash
 # Porta diferente
-MK_PORT=9000 uv run mk-manager
+MK_PORT=9000 uv run mk
 
 # Sem hot-reload
-MK_DEBUG=false uv run mk-manager
+MK_DEBUG=false uv run mk
 
 # Diretório de notas customizado
-MK_NOTES_DIR=/home/user/vault uv run mk-manager
+MK_NOTES_DIR=/home/user/vault uv run mk
 
 # Usando uvicorn diretamente
-uv run uvicorn mk_manager.main:app --reload --port 8888
+uv run uvicorn mk_manager.main:app --reload --port 8099
 ```
 
 ### Acessar
 
 | URL | Descrição |
 |---|---|
-| `http://localhost:8888` | Aplicação frontend |
-| `http://localhost:8888/docs` | Swagger UI interativo |
-| `http://localhost:8888/redoc` | ReDoc (documentação alternativa) |
+| `http://localhost:8099` | Aplicação frontend |
+| `http://localhost:8099/docs` | Swagger UI interativo |
+| `http://localhost:8099/redoc` | ReDoc (documentação alternativa) |
 
 ---
 
@@ -172,27 +208,31 @@ Todas as configurações usam o prefixo `MK_` e podem ser definidas em `.env`:
 ```env
 # .env
 MK_NOTES_DIR=./notes       # Diretório dos arquivos markdown
-MK_HOST=0.0.0.0            # Endereço de bind do servidor
-MK_PORT=8888               # Porta TCP
-MK_DEBUG=true              # Habilita hot-reload
+MK_ASSETS_DIR=             # Diretório de assets (vazio = {MK_NOTES_DIR}/assets)
+MK_HOST=0.0.0.0             # Endereço de bind do servidor
+MK_PORT=8099                 # Porta TCP
+MK_DEBUG=true                 # Habilita hot-reload
 ```
 
 | Variável | Padrão | Descrição |
 |---|---|---|
 | `MK_NOTES_DIR` | `./notes` | Diretório onde os `.md` são salvos |
+| `MK_ASSETS_DIR` | `{MK_NOTES_DIR}/assets` | Diretório de uploads (imagens, PDFs etc.) |
 | `MK_HOST` | `0.0.0.0` | Host do servidor |
-| `MK_PORT` | `8888` | Porta do servidor |
+| `MK_PORT` | `8099` | Porta do servidor |
 | `MK_DEBUG` | `true` | Hot-reload automático |
+
+O diretório de notas e o de assets também podem ser trocados **em runtime**, sem reiniciar o servidor, via `PUT /api/settings/` — a mudança é persistida de volta no `.env`.
 
 ---
 
 ## API Reference
 
-Base URL: `http://localhost:8888/api`
+Base URL: `http://localhost:8099/api`
 
 ### Arquivos
 
-#### `GET /api/files`
+#### `GET /api/files/`
 Lista todos os arquivos (sem conteúdo), ordenados por data de modificação.
 
 **Query params:**
@@ -211,15 +251,23 @@ Lista todos os arquivos (sem conteúdo), ordenados por data de modificação.
     "modified": "2024-01-15T11:00:00+00:00",
     "word_count": 142,
     "task_total": 0,
-    "task_done": 0
+    "task_done": 0,
+    "task_items": [],
+    "folder": "projetos/backend",
+    "status": "development",
+    "date_planning": "2024-01-10T09:00",
+    "date_execution": "2024-01-12T09:00",
+    "date_conclusion": ""
   }
 ]
 ```
 
+> `tags` nesta resposta é a *união* das tags de frontmatter com as tags inline `#tag` encontradas no corpo (para exibição na sidebar). Na resposta de detalhe (`GET`/edição) só vêm as tags de frontmatter, para não promover tags inline ao salvar.
+
 ---
 
-#### `POST /api/files`
-Cria um novo arquivo.
+#### `POST /api/files/`
+Cria um novo arquivo. Todos os campos têm default, então `{}` já cria um rascunho em branco.
 
 **Body:**
 ```json
@@ -227,7 +275,12 @@ Cria um novo arquivo.
   "title": "Minha Nota",
   "type": "note",
   "tags": ["pessoal"],
-  "content": "## Introdução\n\nConteúdo aqui..."
+  "content": "## Introdução\n\nConteúdo aqui...",
+  "folder": "pessoal",
+  "status": "",
+  "date_planning": "",
+  "date_execution": "",
+  "date_conclusion": ""
 }
 ```
 
@@ -244,14 +297,15 @@ Retorna um arquivo completo com conteúdo.
 ---
 
 #### `PUT /api/files/{id}`
-Atualização parcial. Campos `null` são preservados.
+Atualização parcial. Campos `null`/omitidos são preservados.
 
 **Body:**
 ```json
 {
   "title": "Novo Título",
   "content": "Conteúdo atualizado...",
-  "tags": ["trabalho", "importante"]
+  "tags": ["trabalho", "importante"],
+  "status": "done"
 }
 ```
 
@@ -267,14 +321,31 @@ Remove permanentemente o arquivo do disco.
 
 ---
 
+#### `PUT /api/files/folder`
+Renomeia/move uma pasta e tudo que está aninhado nela.
+
+**Body:** `{"old_path": "projetos", "new_path": "arquivados/projetos"}`
+
+**Resposta `200`:** `{"updated_count": 3}`
+
+---
+
+#### `DELETE /api/files/folder?path=...`
+"Deleta" uma pasta movendo seu conteúdo para a pasta pai — nunca destrói arquivos.
+
+**Resposta `200`:** `{"updated_count": 3}`
+
+---
+
 ### Busca
 
-#### `GET /api/search`
+#### `GET /api/search/`
 Busca full-text com ranking de relevância.
 
 **Query params:**
 - `q` — termo de busca (case-insensitive)
 - `type` — filtrar por `note` ou `task`
+- `tag` — filtrar por tag exata; repita o parâmetro para casamento AND (`?tag=area&tag=urgente`). O filtro é hierárquico: `area` também casa com arquivos marcados `area/sub`.
 
 **Ranking interno:**
 
@@ -299,6 +370,35 @@ Busca full-text com ranking de relevância.
 
 ---
 
+### Tags
+
+#### `PUT /api/tags/{old_tag}`
+Renomeia (ou mescla, se a tag nova já existir) uma tag em todos os arquivos que a possuem.
+
+**Body:** `{"new_tag": "trabalho-urgente"}`
+
+**Resposta `200`:** `{"updated_count": 5}`
+
+---
+
+### Grafo
+
+#### `GET /api/graph/`
+Constrói o grafo de notas a partir das referências `[[wikilink]]` em todos os arquivos.
+
+- **Nós**: um por arquivo, mais um nó "phantom" por link `[[Alvo]]` que não resolve a nenhum arquivo existente.
+- **Arestas**: uma por link resolvido único entre duas notas (grafo não-direcionado; links duplicados/bidirecionais colapsam numa só aresta).
+
+**Resposta `200`:**
+```json
+{
+  "nodes": [{"id": "abc123", "title": "Reunião", "type": "note", "tags": [], "folder": ""}],
+  "edges": [{"source": "abc123", "target": "phantom:projeto-x"}]
+}
+```
+
+---
+
 ### Estatísticas
 
 #### `GET /api/stats`
@@ -315,6 +415,35 @@ Busca full-text com ranking de relevância.
 
 ---
 
+### Configurações (runtime)
+
+#### `GET /api/settings/`
+Retorna o diretório de notas/assets em uso e o endereço do servidor.
+
+#### `PUT /api/settings/`
+Troca o diretório de notas e/ou de assets **sem reiniciar o servidor**. A mudança é aplicada imediatamente e persistida no `.env`.
+
+**Body:** `{"notes_dir": "/home/user/vault", "assets_dir": null}`
+
+#### `GET /api/settings/browse?path=...`
+Lista subdiretórios de `path` (usado pelo seletor de pastas na UI de configurações). Sem `path`, lista a partir do pai do diretório de notas atual.
+
+#### `GET /api/settings/backup`
+Baixa um `.zip` com todo o diretório de notas atual.
+
+---
+
+### Assets
+
+#### `POST /api/assets/`
+Upload de um arquivo (multipart/form-data) para o diretório de assets configurado. Em caso de colisão de nome, um sufixo numérico é adicionado automaticamente.
+
+**Resposta `201`:** `{"url": "/assets/imagem.png", "filename": "imagem.png"}`
+
+Os arquivos enviados ficam acessíveis em `GET /assets/{nome}`.
+
+---
+
 ## Formato dos Arquivos
 
 Cada arquivo `.md` no diretório `notes/` segue o padrão **YAML frontmatter + Markdown**:
@@ -327,8 +456,13 @@ type: note
 tags:
 - trabalho
 - sprint
+folder: projetos/backend
+status: development
 created: '2024-01-15T10:30:00+00:00'
 modified: '2024-01-15T11:00:00+00:00'
+date_planning: '2024-01-10T09:00'
+date_execution: '2024-01-12T09:00'
+date_conclusion: ''
 ---
 ## Pauta
 
@@ -337,7 +471,7 @@ modified: '2024-01-15T11:00:00+00:00'
 
 ## Notas
 
-Decidimos mover o item X para a próxima sprint.
+Decidimos mover o item X para a próxima sprint. Relacionado a [[Projeto X]] #sprint-atual
 ```
 
 **Tasks** usam a sintaxe padrão GFM:
@@ -358,23 +492,31 @@ modified: '2024-01-15T17:30:00+00:00'
 - [ ] Code review da feature X
 ```
 
+`folder`, `status`, `date_planning`, `date_execution` e `date_conclusion` são opcionais — ficam vazios (`""`) quando o arquivo não participa do quadro kanban. `#tags` inline no corpo e links `[[Nota]]` também são reconhecidos automaticamente, sem precisar declarar no frontmatter.
+
 Os arquivos são **compatíveis** com Obsidian, VSCode (extensão Markdown), Typora e qualquer editor de texto.
 
 ---
 
 ## Frontend
 
-O arquivo `app.html` é uma SPA (Single Page Application) com:
+O diretório `frontend/` é uma SPA (Single Page Application) sem build step, com:
 
 - Design glassmorphism dark com fundo animado (partículas + aurora)
-- **Sidebar**: lista de arquivos com busca, filtros e progresso de tasks
+- **Sidebar**: árvore de arquivos/pastas com busca, filtros e progresso de tasks
 - **Editor**: textarea monospace com toolbar de formatação Markdown
 - **Preview**: renderização ao vivo via [marked.js](https://marked.js.org/)
 - **Split view** / Editor only / Preview only
 - **Checkboxes interativos** no preview — clicar atualiza o arquivo
+- **Kanban**: quadro com colunas de status, drag-and-drop entre etapas
+- **Grafo de notas**: visualização interativa dos links `[[wikilink]]`
+- **Diagram builder**: editor visual de diagramas embutido no app
+- **Quick Open**: busca rápida de arquivos por título (`Ctrl+K`)
+- **Menu de contexto** na árvore de arquivos/pastas
 - **Tags**: adicionar com Enter ou vírgula, remover com ×
 - **Auto-save** com debounce de 800ms
 - **Indicador de conexão** (● online / ● offline)
+- **Efeitos sonoros** (opcionais, configuráveis)
 
 **Atalhos de teclado:**
 
@@ -382,10 +524,13 @@ O arquivo `app.html` é uma SPA (Single Page Application) com:
 |---|---|
 | `Ctrl+N` | Nova nota |
 | `Ctrl+Shift+N` | Nova task |
+| `Ctrl+K` | Busca rápida (Quick Open) — ou inserir link `[texto](url)` quando o foco está no editor |
 | `Ctrl+S` | Forçar save |
+| `Ctrl+B` | Negrito (no editor) |
+| `Ctrl+I` | Itálico (no editor) |
 | `Tab` | Indentar (2 espaços) |
-| `Enter` | Continuar lista automaticamente |
-| `Esc` | Fechar modal |
+| `Enter` | Continuar lista/tabela automaticamente |
+| `Esc` | Fechar modal (delete, settings, quick open, edição rápida do kanban) |
 
 ---
 
@@ -396,6 +541,8 @@ O arquivo `app.html` é uma SPA (Single Page Application) com:
 ```bash
 uv sync --group dev
 ```
+
+Isso instala `pytest`, `httpx`, `pytest-asyncio` e `playwright` — usados para os testes automatizados do projeto.
 
 ### Rodar testes
 
@@ -413,6 +560,8 @@ tests/
 └── test_api.py              # Testes de integração dos endpoints
 ```
 
+> Ainda não há uma pasta `tests/` no repositório — a estrutura acima é a sugerida para quando os testes forem adicionados.
+
 ### Adicionar uma nova dependência
 
 ```bash
@@ -422,7 +571,7 @@ uv add --group dev <pacote>  # desenvolvimento
 
 ### Trocar o backend de armazenamento
 
-1. Criar `src/mk_manager/repositories/sqlite.py` implementando `AbstractFileRepository`
+1. Criar `mk_manager/repositories/sqlite.py` implementando `AbstractFileRepository`
 2. Em `dependencies.py`, trocar `MarkdownFileRepository` por `SqliteFileRepository`
 3. Zero mudanças em `FileService` ou nos routers
 
