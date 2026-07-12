@@ -482,7 +482,9 @@ export function showFileTooltip(e, id) {
   const rect = e.currentTarget.getBoundingClientRect();
   const sidebar = document.querySelector('.sidebar-panel');
   const sRight = sidebar ? sidebar.getBoundingClientRect().right : rect.right;
-  tip.style.top = `${Math.max(4, rect.top)}px`;
+  const tipHeight = tip.getBoundingClientRect().height;
+  const maxTop = window.innerHeight - tipHeight - 8;
+  tip.style.top = `${Math.max(4, Math.min(rect.top, maxTop))}px`;
   tip.style.left = `${sRight + 10}px`;
   tip.classList.add('visible');
 }

@@ -185,8 +185,111 @@ body.theme-white {
   --info:            #00d2ff;
 }
 
+/* Theme Red Alert (Enclave / Modo Crítico) */
+body.theme-red {
+  --bg:              #0a0000;
+  --surface:         #170202;
+  --surface-alt:     #2b0505;
+  --surface-hover:   #400808;
+
+  --border:          rgba(255, 51, 51, 0.18);
+  --border-muted:    rgba(255, 51, 51, 0.08);
+  --border-bright:   rgba(255, 51, 51, 0.45);
+
+  --primary:         #ff3333;
+  --primary-hover:   #ff5c5c;
+  --primary-dim:     rgba(255, 51, 51, 0.12);
+  --primary-glow:    rgba(255, 51, 51, 0.24);
+  --glow-ring:       0 0 0 3px rgba(255, 51, 51, 0.24);
+
+  --text:            #ff3333;
+  --text-muted:      #cc2929;
+  --text-subtle:     #7f1919;
+
+  --glow-color:      rgba(255, 51, 51, 0.5);
+  --glow-text:       0 0 4px rgba(255, 51, 51, 0.5);
+
+  --success:         #1aff80;
+  --warn:            #ffaa00;
+  --danger:          #ff3333;
+  --danger-dim:      rgba(255, 51, 51, 0.12);
+  --info:            #00d2ff;
+}
+
+/* Theme Purple Vault-Tec (HUD experimental) */
+body.theme-purple {
+  --bg:              #060010;
+  --surface:         #0f0020;
+  --surface-alt:     #1d0040;
+  --surface-hover:   #2b0060;
+
+  --border:          rgba(191, 90, 255, 0.18);
+  --border-muted:    rgba(191, 90, 255, 0.08);
+  --border-bright:   rgba(191, 90, 255, 0.45);
+
+  --primary:         #bf5aff;
+  --primary-hover:   #cc77ff;
+  --primary-dim:     rgba(191, 90, 255, 0.12);
+  --primary-glow:    rgba(191, 90, 255, 0.24);
+  --glow-ring:       0 0 0 3px rgba(191, 90, 255, 0.24);
+
+  --text:            #bf5aff;
+  --text-muted:      #9440cc;
+  --text-subtle:     #5c2680;
+
+  --glow-color:      rgba(191, 90, 255, 0.5);
+  --glow-text:       0 0 4px rgba(191, 90, 255, 0.5);
+
+  --success:         #1aff80;
+  --warn:            #ffaa00;
+  --danger:          #ff3333;
+  --danger-dim:      rgba(255, 51, 51, 0.12);
+  --info:            #00d2ff;
+}
+
+/* Theme Corporativo (Neutro — uso profissional, sem efeitos CRT/Pip-Boy) */
+body.theme-corporate {
+  --bg:              #12141a;
+  --surface:         #1a1d24;
+  --surface-alt:     #21252e;
+  --surface-hover:   #2a2f3a;
+
+  --border:          #2d323d;
+  --border-muted:    #21252e;
+  --border-bright:   #3d4452;
+
+  --primary:         #5b8def;
+  --primary-hover:   #6f9bff;
+  --primary-dim:     rgba(91, 141, 239, 0.12);
+  --primary-glow:    rgba(91, 141, 239, 0.18);
+  --glow-ring:       0 0 0 3px rgba(91, 141, 239, 0.18);
+
+  --text:            #e4e6eb;
+  --text-muted:      #9aa0ac;
+  --text-subtle:     #6b7280;
+
+  --success:         #22c55e;
+  --warn:            #f59e0b;
+  --danger:          #ef4444;
+  --danger-dim:      rgba(239, 68, 68, 0.1);
+  --info:            #3b82f6;
+}
+
+/* Sem CRT/scanlines/glow neste tema — visual limpo para contexto empresarial */
+body.theme-corporate.crt-enabled::after,
+body.theme-corporate.crt-enabled::before,
+body.theme-corporate .crt-overlay,
+body.theme-corporate .crt-vignette,
+body.theme-corporate .crt-static,
+body.theme-corporate .radar-sweep {
+  display: none !important;
+}
+body.theme-corporate.flicker-enabled {
+  animation: none !important;
+}
+
 /* Aplica fontes monospace, glow text e cantos industriais para as cores retro */
-body.theme-green, body.theme-amber, body.theme-blue, body.theme-white {
+body.theme-green, body.theme-amber, body.theme-blue, body.theme-white, body.theme-red, body.theme-purple {
   font-family: 'Share Tech Mono', ui-monospace, 'SFMono-Regular', monospace;
   text-shadow: var(--glow-text);
   
@@ -198,6 +301,8 @@ body.theme-green, body.theme-amber, body.theme-blue, body.theme-white {
 body.theme-green input, body.theme-green textarea, body.theme-green select, body.theme-green button, body.theme-green kbd, body.theme-green span:not(.brand-by-text), body.theme-green div:not(.brand-by), body.theme-green p, body.theme-green h1, body.theme-green h2, body.theme-green h3, body.theme-green h4, body.theme-green h5, body.theme-green h6, body.theme-green a, body.theme-green li, body.theme-green td, body.theme-green th, body.theme-green pre, body.theme-green code,
 body.theme-amber input, body.theme-amber textarea, body.theme-amber select, body.theme-amber button, body.theme-amber kbd, body.theme-amber span:not(.brand-by-text), body.theme-amber div:not(.brand-by), body.theme-amber p, body.theme-amber h1, body.theme-amber h2, body.theme-amber h3, body.theme-amber h4, body.theme-amber h5, body.theme-amber h6, body.theme-amber a, body.theme-amber li, body.theme-amber td, body.theme-amber th, body.theme-amber pre, body.theme-amber code,
 body.theme-blue input, body.theme-blue textarea, body.theme-blue select, body.theme-blue button, body.theme-blue kbd, body.theme-blue span:not(.brand-by-text), body.theme-blue div:not(.brand-by), body.theme-blue p, body.theme-blue h1, body.theme-blue h2, body.theme-blue h3, body.theme-blue h4, body.theme-blue h5, body.theme-blue h6, body.theme-blue a, body.theme-blue li, body.theme-blue td, body.theme-blue th, body.theme-blue pre, body.theme-blue code,
+body.theme-red input, body.theme-red textarea, body.theme-red select, body.theme-red button, body.theme-red kbd, body.theme-red span:not(.brand-by-text), body.theme-red div:not(.brand-by), body.theme-red p, body.theme-red h1, body.theme-red h2, body.theme-red h3, body.theme-red h4, body.theme-red h5, body.theme-red h6, body.theme-red a, body.theme-red li, body.theme-red td, body.theme-red th, body.theme-red pre, body.theme-red code,
+body.theme-purple input, body.theme-purple textarea, body.theme-purple select, body.theme-purple button, body.theme-purple kbd, body.theme-purple span:not(.brand-by-text), body.theme-purple div:not(.brand-by), body.theme-purple p, body.theme-purple h1, body.theme-purple h2, body.theme-purple h3, body.theme-purple h4, body.theme-purple h5, body.theme-purple h6, body.theme-purple a, body.theme-purple li, body.theme-purple td, body.theme-purple th, body.theme-purple pre, body.theme-purple code,
 body.theme-white input, body.theme-white textarea, body.theme-white select, body.theme-white button, body.theme-white kbd, body.theme-white span:not(.brand-by-text), body.theme-white div:not(.brand-by), body.theme-white p, body.theme-white h1, body.theme-white h2, body.theme-white h3, body.theme-white h4, body.theme-white h5, body.theme-white h6, body.theme-white a, body.theme-white li, body.theme-white td, body.theme-white th, body.theme-white pre, body.theme-white code {
   font-family: 'Share Tech Mono', ui-monospace, 'SFMono-Regular', monospace !important;
   text-shadow: var(--glow-text);
@@ -271,20 +376,20 @@ body.flicker-enabled {
 }
 
 /* Scrollbars Retro */
-body.theme-green *, body.theme-amber *, body.theme-blue *, body.theme-white * {
+body.theme-green *, body.theme-amber *, body.theme-blue *, body.theme-white *, body.theme-red *, body.theme-purple * {
   scrollbar-width: thin;
   scrollbar-color: var(--border-bright) transparent;
 }
-body.theme-green *::-webkit-scrollbar, body.theme-amber *::-webkit-scrollbar, body.theme-blue *::-webkit-scrollbar, body.theme-white *::-webkit-scrollbar {
+body.theme-green *::-webkit-scrollbar, body.theme-amber *::-webkit-scrollbar, body.theme-blue *::-webkit-scrollbar, body.theme-white *::-webkit-scrollbar, body.theme-red *::-webkit-scrollbar, body.theme-purple *::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-body.theme-green *::-webkit-scrollbar-thumb, body.theme-amber *::-webkit-scrollbar-thumb, body.theme-blue *::-webkit-scrollbar-thumb, body.theme-white *::-webkit-scrollbar-thumb {
+body.theme-green *::-webkit-scrollbar-thumb, body.theme-amber *::-webkit-scrollbar-thumb, body.theme-blue *::-webkit-scrollbar-thumb, body.theme-white *::-webkit-scrollbar-thumb, body.theme-red *::-webkit-scrollbar-thumb, body.theme-purple *::-webkit-scrollbar-thumb {
   background: var(--border-bright);
   border-radius: var(--r-sm);
   border: 1px solid var(--bg);
 }
-body.theme-green *::-webkit-scrollbar-thumb:hover, body.theme-amber *::-webkit-scrollbar-thumb:hover, body.theme-blue *::-webkit-scrollbar-thumb:hover, body.theme-white *::-webkit-scrollbar-thumb:hover {
+body.theme-green *::-webkit-scrollbar-thumb:hover, body.theme-amber *::-webkit-scrollbar-thumb:hover, body.theme-blue *::-webkit-scrollbar-thumb:hover, body.theme-white *::-webkit-scrollbar-thumb:hover, body.theme-red *::-webkit-scrollbar-thumb:hover, body.theme-purple *::-webkit-scrollbar-thumb:hover {
   background: var(--primary);
 }
 
@@ -313,16 +418,30 @@ body.theme-white .brand-by-bg rect:last-of-type { fill: var(--text) !important; 
 body.theme-white .brand-by-bg path:first-of-type { fill: var(--surface-alt) !important; opacity: 1 !important; stroke: var(--border-bright) !important; stroke-width: 1 !important; }
 body.theme-white .brand-by-bg path:last-of-type { fill: var(--primary-glow) !important; }
 
+body.theme-red .brand-by-bg rect:first-of-type,
+body.theme-red .brand-by-bg circle { fill: var(--primary) !important; }
+body.theme-red .brand-by-bg rect:last-of-type { fill: var(--text) !important; }
+body.theme-red .brand-by-bg path:first-of-type { fill: var(--surface-alt) !important; opacity: 1 !important; stroke: var(--border-bright) !important; stroke-width: 1 !important; }
+body.theme-red .brand-by-bg path:last-of-type { fill: var(--primary-glow) !important; }
+
+body.theme-purple .brand-by-bg rect:first-of-type,
+body.theme-purple .brand-by-bg circle { fill: var(--primary) !important; }
+body.theme-purple .brand-by-bg rect:last-of-type { fill: var(--text) !important; }
+body.theme-purple .brand-by-bg path:first-of-type { fill: var(--surface-alt) !important; opacity: 1 !important; stroke: var(--border-bright) !important; stroke-width: 1 !important; }
+body.theme-purple .brand-by-bg path:last-of-type { fill: var(--primary-glow) !important; }
+
 .brand-icon svg path { stroke: var(--bg) !important; }
 
 /* Realce de sintaxe hljs monocromático phosphor */
-body.theme-green .hljs, body.theme-amber .hljs, body.theme-blue .hljs, body.theme-white .hljs {
+body.theme-green .hljs, body.theme-amber .hljs, body.theme-blue .hljs, body.theme-white .hljs, body.theme-red .hljs, body.theme-purple .hljs {
   background: var(--surface-alt) !important;
   color: var(--text) !important;
 }
 body.theme-green .hljs-keyword, body.theme-green .hljs-selector-tag, body.theme-green .hljs-title, body.theme-green .hljs-section, body.theme-green .hljs-name, body.theme-green .hljs-strong,
 body.theme-amber .hljs-keyword, body.theme-amber .hljs-selector-tag, body.theme-amber .hljs-title, body.theme-amber .hljs-section, body.theme-amber .hljs-name, body.theme-amber .hljs-strong,
 body.theme-blue .hljs-keyword, body.theme-blue .hljs-selector-tag, body.theme-blue .hljs-title, body.theme-blue .hljs-section, body.theme-blue .hljs-name, body.theme-blue .hljs-strong,
+body.theme-red .hljs-keyword, body.theme-red .hljs-selector-tag, body.theme-red .hljs-title, body.theme-red .hljs-section, body.theme-red .hljs-name, body.theme-red .hljs-strong,
+body.theme-purple .hljs-keyword, body.theme-purple .hljs-selector-tag, body.theme-purple .hljs-title, body.theme-purple .hljs-section, body.theme-purple .hljs-name, body.theme-purple .hljs-strong,
 body.theme-white .hljs-keyword, body.theme-white .hljs-selector-tag, body.theme-white .hljs-title, body.theme-white .hljs-section, body.theme-white .hljs-name, body.theme-white .hljs-strong {
   color: var(--primary) !important;
   font-weight: bold;
@@ -330,12 +449,16 @@ body.theme-white .hljs-keyword, body.theme-white .hljs-selector-tag, body.theme-
 body.theme-green .hljs-comment, body.theme-green .hljs-quote,
 body.theme-amber .hljs-comment, body.theme-amber .hljs-quote,
 body.theme-blue .hljs-comment, body.theme-blue .hljs-quote,
+body.theme-red .hljs-comment, body.theme-red .hljs-quote,
+body.theme-purple .hljs-comment, body.theme-purple .hljs-quote,
 body.theme-white .hljs-comment, body.theme-white .hljs-quote {
   color: var(--text-subtle) !important;
 }
 body.theme-green .hljs-string, body.theme-green .hljs-literal, body.theme-green .hljs-number, body.theme-green .hljs-addition, body.theme-green .hljs-attribute, body.theme-green .hljs-type,
 body.theme-amber .hljs-string, body.theme-amber .hljs-literal, body.theme-amber .hljs-number, body.theme-amber .hljs-addition, body.theme-amber .hljs-attribute, body.theme-amber .hljs-type,
 body.theme-blue .hljs-string, body.theme-blue .hljs-literal, body.theme-blue .hljs-number, body.theme-blue .hljs-addition, body.theme-blue .hljs-attribute, body.theme-blue .hljs-type,
+body.theme-red .hljs-string, body.theme-red .hljs-literal, body.theme-red .hljs-number, body.theme-red .hljs-addition, body.theme-red .hljs-attribute, body.theme-red .hljs-type,
+body.theme-purple .hljs-string, body.theme-purple .hljs-literal, body.theme-purple .hljs-number, body.theme-purple .hljs-addition, body.theme-purple .hljs-attribute, body.theme-purple .hljs-type,
 body.theme-white .hljs-string, body.theme-white .hljs-literal, body.theme-white .hljs-number, body.theme-white .hljs-addition, body.theme-white .hljs-attribute, body.theme-white .hljs-type {
   color: var(--text-muted) !important;
 }
@@ -678,9 +801,6 @@ kbd {
 }
 .editor-topbar-right {
   display: flex; align-items: center; gap: .5rem; flex-shrink: 0;
-}
-.filename-label {
-  font-size: .68rem; color: var(--text-subtle);
 }
 .topbar-shortcuts {
   font-size: .68rem; color: var(--text-subtle);
@@ -2002,14 +2122,14 @@ kbd {
 
 /* ── Overrides adicionais para visual retro e cantos Pip-Boy ─────────── */
 
-body.theme-green .modal, body.theme-amber .modal, body.theme-blue .modal, body.theme-white .modal {
+body.theme-green .modal, body.theme-amber .modal, body.theme-blue .modal, body.theme-white .modal, body.theme-red .modal, body.theme-purple .modal {
   position: relative;
   border: 1px solid var(--border-bright) !important;
   background: var(--surface) !important;
   box-shadow: 0 0 15px rgba(0, 0, 0, 0.8), 0 0 5px var(--primary-glow) !important;
 }
 
-body.theme-green .modal::before, body.theme-amber .modal::before, body.theme-blue .modal::before, body.theme-white .modal::before {
+body.theme-green .modal::before, body.theme-amber .modal::before, body.theme-blue .modal::before, body.theme-white .modal::before, body.theme-red .modal::before, body.theme-purple .modal::before {
   content: "";
   position: absolute;
   top: 0; left: 0; width: 10px; height: 10px;
@@ -2018,7 +2138,7 @@ body.theme-green .modal::before, body.theme-amber .modal::before, body.theme-blu
   pointer-events: none;
 }
 
-body.theme-green .modal::after, body.theme-amber .modal::after, body.theme-blue .modal::after, body.theme-white .modal::after {
+body.theme-green .modal::after, body.theme-amber .modal::after, body.theme-blue .modal::after, body.theme-white .modal::after, body.theme-red .modal::after, body.theme-purple .modal::after {
   content: "";
   position: absolute;
   bottom: 0; right: 0; width: 10px; height: 10px;
@@ -2028,13 +2148,13 @@ body.theme-green .modal::after, body.theme-amber .modal::after, body.theme-blue 
 }
 
 /* Cantos em colchete também para o empty-panel e editor/preview */
-body.theme-green .empty-state, body.theme-amber .empty-state, body.theme-blue .empty-state, body.theme-white .empty-state {
+body.theme-green .empty-state, body.theme-amber .empty-state, body.theme-blue .empty-state, body.theme-white .empty-state, body.theme-red .empty-state, body.theme-purple .empty-state {
   position: relative;
   padding: 2rem;
   border: 1px dashed var(--border);
 }
 
-body.theme-green .empty-state::before, body.theme-amber .empty-state::before, body.theme-blue .empty-state::before, body.theme-white .empty-state::before {
+body.theme-green .empty-state::before, body.theme-amber .empty-state::before, body.theme-blue .empty-state::before, body.theme-white .empty-state::before, body.theme-red .empty-state::before, body.theme-purple .empty-state::before {
   content: "";
   position: absolute;
   top: -1px; left: -1px; width: 8px; height: 8px;
@@ -2042,7 +2162,7 @@ body.theme-green .empty-state::before, body.theme-amber .empty-state::before, bo
   border-left: 2px solid var(--primary);
 }
 
-body.theme-green .empty-state::after, body.theme-amber .empty-state::after, body.theme-blue .empty-state::after, body.theme-white .empty-state::after {
+body.theme-green .empty-state::after, body.theme-amber .empty-state::after, body.theme-blue .empty-state::after, body.theme-white .empty-state::after, body.theme-red .empty-state::after, body.theme-purple .empty-state::after {
   content: "";
   position: absolute;
   bottom: -1px; right: -1px; width: 8px; height: 8px;
@@ -2050,10 +2170,41 @@ body.theme-green .empty-state::after, body.theme-amber .empty-state::after, body
   border-right: 2px solid var(--primary);
 }
 
+/* Silhueta do Vault Boy (polegar para cima) ao fundo da tela vazia (sem nota/task aberta) — só nos temas retrô */
+.empty-panel { position: relative; overflow: hidden; }
+
+body.theme-green .empty-panel::before,
+body.theme-amber .empty-panel::before,
+body.theme-blue .empty-panel::before,
+body.theme-white .empty-panel::before,
+body.theme-red .empty-panel::before,
+body.theme-purple .empty-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: min(48vh, 340px);
+  height: min(48vh, 340px);
+  background-color: var(--primary);
+  opacity: 0.07;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 260'%3E%3Ccircle cx='100' cy='34' r='25'/%3E%3Crect x='65' y='60' width='70' height='96' rx='24'/%3E%3Crect x='72' y='150' width='24' height='64' rx='11'/%3E%3Crect x='104' y='150' width='24' height='64' rx='11'/%3E%3Crect x='44' y='66' width='22' height='82' rx='11' transform='rotate(6 55 66)'/%3E%3Crect x='122' y='60' width='24' height='52' rx='12' transform='rotate(-38 134 66)'/%3E%3Crect x='146' y='14' width='22' height='52' rx='11' transform='rotate(4 157 62)'/%3E%3Ccircle cx='158' cy='16' r='17'/%3E%3Crect x='172' y='8' width='22' height='14' rx='7'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 260'%3E%3Ccircle cx='100' cy='34' r='25'/%3E%3Crect x='65' y='60' width='70' height='96' rx='24'/%3E%3Crect x='72' y='150' width='24' height='64' rx='11'/%3E%3Crect x='104' y='150' width='24' height='64' rx='11'/%3E%3Crect x='44' y='66' width='22' height='82' rx='11' transform='rotate(6 55 66)'/%3E%3Crect x='122' y='60' width='24' height='52' rx='12' transform='rotate(-38 134 66)'/%3E%3Crect x='146' y='14' width='22' height='52' rx='11' transform='rotate(4 157 62)'/%3E%3Ccircle cx='158' cy='16' r='17'/%3E%3Crect x='172' y='8' width='22' height='14' rx='7'/%3E%3C/svg%3E");
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  pointer-events: none;
+  z-index: 0;
+}
+
 /* Modificações em inputs, textareas e selectboxes */
 body.theme-green input[type="text"], body.theme-green input[type="date"], body.theme-green textarea, body.theme-green select,
 body.theme-amber input[type="text"], body.theme-amber input[type="date"], body.theme-amber textarea, body.theme-amber select,
 body.theme-blue input[type="text"], body.theme-blue input[type="date"], body.theme-blue textarea, body.theme-blue select,
+body.theme-red input[type="text"], body.theme-red input[type="date"], body.theme-red textarea, body.theme-red select,
+body.theme-purple input[type="text"], body.theme-purple input[type="date"], body.theme-purple textarea, body.theme-purple select,
 body.theme-white input[type="text"], body.theme-white input[type="date"], body.theme-white textarea, body.theme-white select {
   background: var(--surface) !important;
   border: 1px solid var(--border-bright) !important;
@@ -2064,6 +2215,8 @@ body.theme-white input[type="text"], body.theme-white input[type="date"], body.t
 body.theme-green input[type="text"]:focus, body.theme-green input[type="date"]:focus, body.theme-green textarea:focus, body.theme-green select:focus,
 body.theme-amber input[type="text"]:focus, body.theme-amber input[type="date"]:focus, body.theme-amber textarea:focus, body.theme-amber select:focus,
 body.theme-blue input[type="text"]:focus, body.theme-blue input[type="date"]:focus, body.theme-blue textarea:focus, body.theme-blue select:focus,
+body.theme-red input[type="text"]:focus, body.theme-red input[type="date"]:focus, body.theme-red textarea:focus, body.theme-red select:focus,
+body.theme-purple input[type="text"]:focus, body.theme-purple input[type="date"]:focus, body.theme-purple textarea:focus, body.theme-purple select:focus,
 body.theme-white input[type="text"]:focus, body.theme-white input[type="date"]:focus, body.theme-white textarea:focus, body.theme-white select:focus {
   border-color: var(--primary) !important;
   box-shadow: 0 0 6px var(--primary-glow) !important;
@@ -2071,12 +2224,12 @@ body.theme-white input[type="text"]:focus, body.theme-white input[type="date"]:f
 }
 
 /* Altura e padding do topbar brand SVG */
-body.theme-green .brand-by, body.theme-amber .brand-by, body.theme-blue .brand-by, body.theme-white .brand-by {
+body.theme-green .brand-by, body.theme-amber .brand-by, body.theme-blue .brand-by, body.theme-white .brand-by, body.theme-red .brand-by, body.theme-purple .brand-by {
   filter: drop-shadow(0 0 2px var(--primary-glow));
 }
 
 /* Atalhos de teclado retro */
-body.theme-green kbd, body.theme-amber kbd, body.theme-blue kbd, body.theme-white kbd {
+body.theme-green kbd, body.theme-amber kbd, body.theme-blue kbd, body.theme-white kbd, body.theme-red kbd, body.theme-purple kbd {
   background: var(--surface-alt) !important;
   border: 1px solid var(--border-bright) !important;
   color: var(--text) !important;
@@ -2087,6 +2240,8 @@ body.theme-green kbd, body.theme-amber kbd, body.theme-blue kbd, body.theme-whit
 body.theme-green .activity-btn.active,
 body.theme-amber .activity-btn.active,
 body.theme-blue .activity-btn.active,
+body.theme-red .activity-btn.active,
+body.theme-purple .activity-btn.active,
 body.theme-white .activity-btn.active {
   color: var(--bg) !important;
   background: var(--primary) !important;
@@ -2096,12 +2251,14 @@ body.theme-white .activity-btn.active {
 body.theme-green .activity-btn.active svg,
 body.theme-amber .activity-btn.active svg,
 body.theme-blue .activity-btn.active svg,
+body.theme-red .activity-btn.active svg,
+body.theme-purple .activity-btn.active svg,
 body.theme-white .activity-btn.active svg {
   stroke: var(--bg) !important;
 }
 
 /* Botões do sistema retro glow */
-body.theme-green .btn-primary, body.theme-amber .btn-primary, body.theme-blue .btn-primary, body.theme-white .btn-primary {
+body.theme-green .btn-primary, body.theme-amber .btn-primary, body.theme-blue .btn-primary, body.theme-white .btn-primary, body.theme-red .btn-primary, body.theme-purple .btn-primary {
   background: var(--primary) !important;
   color: var(--bg) !important;
   border-color: var(--primary) !important;
@@ -2109,48 +2266,48 @@ body.theme-green .btn-primary, body.theme-amber .btn-primary, body.theme-blue .b
   box-shadow: 0 0 6px var(--primary-glow) !important;
 }
 
-body.theme-green .btn-primary:hover, body.theme-amber .btn-primary:hover, body.theme-blue .btn-primary:hover, body.theme-white .btn-primary:hover {
+body.theme-green .btn-primary:hover, body.theme-amber .btn-primary:hover, body.theme-blue .btn-primary:hover, body.theme-white .btn-primary:hover, body.theme-red .btn-primary:hover, body.theme-purple .btn-primary:hover {
   background: var(--primary-hover) !important;
   box-shadow: 0 0 10px var(--primary-glow) !important;
 }
 
-body.theme-green .btn-ghost, body.theme-amber .btn-ghost, body.theme-blue .btn-ghost, body.theme-white .btn-ghost {
+body.theme-green .btn-ghost, body.theme-amber .btn-ghost, body.theme-blue .btn-ghost, body.theme-white .btn-ghost, body.theme-red .btn-ghost, body.theme-purple .btn-ghost {
   background: var(--surface-alt) !important;
   border: 1px solid var(--border-bright) !important;
   color: var(--primary) !important;
 }
 
-body.theme-green .btn-ghost:hover, body.theme-amber .btn-ghost:hover, body.theme-blue .btn-ghost:hover, body.theme-white .btn-ghost:hover {
+body.theme-green .btn-ghost:hover, body.theme-amber .btn-ghost:hover, body.theme-blue .btn-ghost:hover, body.theme-white .btn-ghost:hover, body.theme-red .btn-ghost:hover, body.theme-purple .btn-ghost:hover {
   background: var(--surface-hover) !important;
   color: var(--primary-hover) !important;
   box-shadow: 0 0 6px var(--primary-glow) !important;
 }
 
 /* Badges de tags e tipos */
-body.theme-green .type-badge, body.theme-amber .type-badge, body.theme-blue .type-badge, body.theme-white .type-badge {
+body.theme-green .type-badge, body.theme-amber .type-badge, body.theme-blue .type-badge, body.theme-white .type-badge, body.theme-red .type-badge, body.theme-purple .type-badge {
   border: 1px solid var(--primary) !important;
   background: var(--primary-dim) !important;
   color: var(--primary) !important;
 }
 
-body.theme-green .tag-item, body.theme-amber .tag-item, body.theme-blue .tag-item, body.theme-white .tag-item {
+body.theme-green .tag-item, body.theme-amber .tag-item, body.theme-blue .tag-item, body.theme-white .tag-item, body.theme-red .tag-item, body.theme-purple .tag-item {
   border: 1px solid var(--border-bright) !important;
   background: var(--surface-alt) !important;
   color: var(--primary) !important;
 }
 
 /* Estilo do Kanban e Graph */
-body.theme-green .kanban-column, body.theme-amber .kanban-column, body.theme-blue .kanban-column, body.theme-white .kanban-column {
+body.theme-green .kanban-column, body.theme-amber .kanban-column, body.theme-blue .kanban-column, body.theme-white .kanban-column, body.theme-red .kanban-column, body.theme-purple .kanban-column {
   border: 1px solid var(--border) !important;
   background: var(--surface) !important;
 }
 
-body.theme-green .kanban-card, body.theme-amber .kanban-card, body.theme-blue .kanban-card, body.theme-white .kanban-card {
+body.theme-green .kanban-card, body.theme-amber .kanban-card, body.theme-blue .kanban-card, body.theme-white .kanban-card, body.theme-red .kanban-card, body.theme-purple .kanban-card {
   border: 1px solid var(--border-bright) !important;
   background: var(--surface-alt) !important;
 }
 
-body.theme-green .kanban-card:hover, body.theme-amber .kanban-card:hover, body.theme-blue .kanban-card:hover, body.theme-white .kanban-card:hover {
+body.theme-green .kanban-card:hover, body.theme-amber .kanban-card:hover, body.theme-blue .kanban-card:hover, body.theme-white .kanban-card:hover, body.theme-red .kanban-card:hover, body.theme-purple .kanban-card:hover {
   border-color: var(--primary) !important;
   box-shadow: 0 0 6px var(--primary-glow) !important;
 }
@@ -2159,6 +2316,8 @@ body.theme-green .kanban-card:hover, body.theme-amber .kanban-card:hover, body.t
 body.theme-green select option,
 body.theme-amber select option,
 body.theme-blue select option,
+body.theme-red select option,
+body.theme-purple select option,
 body.theme-white select option {
   background: var(--surface) !important;
   color: var(--text) !important;
@@ -2459,9 +2618,19 @@ body.theme-blue .app-layout, body.theme-blue .sidebar-panel {
     linear-gradient(90deg, rgba(59, 130, 246, 0.012) 1px, transparent 1px);
 }
 body.theme-white .app-layout, body.theme-white .sidebar-panel {
-  background-image: 
+  background-image:
     linear-gradient(rgba(243, 244, 246, 0.009) 1px, transparent 1px),
     linear-gradient(90deg, rgba(243, 244, 246, 0.009) 1px, transparent 1px);
+}
+body.theme-red .app-layout, body.theme-red .sidebar-panel {
+  background-image:
+    linear-gradient(rgba(255, 51, 51, 0.012) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 51, 51, 0.012) 1px, transparent 1px);
+}
+body.theme-purple .app-layout, body.theme-purple .sidebar-panel {
+  background-image:
+    linear-gradient(rgba(191, 90, 255, 0.012) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(191, 90, 255, 0.012) 1px, transparent 1px);
 }
 
 /* ── Grafo estilo Radar Pip-Boy ─────────────────────────────────────────── */

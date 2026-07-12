@@ -83,7 +83,7 @@ export function getCrtTheme() {
 
 export function setCrtTheme(theme) {
   localStorage.setItem(THEME_KEY, theme);
-  document.body.classList.remove("theme-green", "theme-amber", "theme-blue", "theme-white");
+  document.body.classList.remove("theme-green", "theme-amber", "theme-blue", "theme-white", "theme-red", "theme-purple", "theme-corporate");
   document.body.classList.add("theme-" + theme);
   const el = document.getElementById("settings-theme");
   if (el) el.value = theme;

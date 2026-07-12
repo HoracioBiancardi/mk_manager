@@ -106,7 +106,6 @@ export async function saveFile() {
     st.activeStatus = updated.status || "";
     updateRetroStatusLabel();
     st.isDirty = false;
-    document.getElementById("filename-label").textContent = updated.filename;
     renderSidebar();
     setSaveStatus("saved");
     updateStorageInfo();
@@ -156,7 +155,6 @@ export async function openFile(id) {
 
     document.getElementById("title-input").value = file.title;
     document.getElementById("md-editor").value = file.content;
-    document.getElementById("filename-label").textContent = file.filename;
     const folderInput = document.getElementById("folder-input");
     if (folderInput) folderInput.value = file.folder || "";
     updateStatusSelect();
@@ -365,7 +363,6 @@ export async function confirmRenameFile(id, newTitle) {
     if (idx !== -1) st.files[idx] = { ...updated };
     if (st.activeId === id) {
       document.getElementById("title-input").value = updated.title;
-      document.getElementById("filename-label").textContent = updated.filename;
       if (updated.id !== id) st.activeId = updated.id;
     }
     st.recentFiles = st.recentFiles.map(rf => {

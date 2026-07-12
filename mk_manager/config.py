@@ -35,7 +35,7 @@ class Settings(BaseSettings):
 
     notes_dir: Path = Path("./notes")
     assets_dir: Path | None = None
-    host: str = "0.0.0.0"
+    host: str = "127.0.0.1"
     port: int = 8099
     debug: bool = True
 
