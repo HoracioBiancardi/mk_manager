@@ -8,6 +8,7 @@
 // sequência de inicialização e dos atalhos globais.
 
 import { toast } from "./utils.js";
+import { apiFetch } from "./api.js";
 import { initSidebarActions } from "./sidebar.js";
 import { setSaveCallback, initResizer } from "./editor.js";
 import { initPreviewSourceSync } from "./preview.js";
@@ -42,12 +43,11 @@ import "./format-code.js";
 import "./settings.js";
 
 // ── Conexão ───────────────────────────────────────────────────────────────────
+// Só o check inicial do boot — depois disso o badge é mantido em dia pelo
+// próprio apiFetch (api.js), a cada requisição real que o app já faz.
 async function checkConn() {
   try {
-    await fetch("/api/stats");
-    const b = document.getElementById("conn-badge");
-    b.textContent = "● online";
-    b.classList.add("online");
+    await apiFetch("/stats");
     return true;
   } catch {
     return false;
