@@ -1029,6 +1029,7 @@ kbd {
   overflow-y: auto; flex: 1; min-height: 0;
 }
 .kanban-card {
+  position: relative;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--r-sm); padding: .5rem .625rem;
   cursor: grab; font-size: .8rem;
@@ -1038,6 +1039,14 @@ kbd {
 }
 .kanban-card:hover { border-color: var(--primary); box-shadow: var(--glow-ring); transform: translateY(-1px); }
 .kanban-card.dragging { opacity: .4; cursor: grabbing; }
+.kanban-card-archive-btn {
+  display: none; position: absolute; top: .3rem; right: .3rem;
+  width: 1.3rem; height: 1.3rem; padding: 0; line-height: 1.3rem;
+  background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--r-sm);
+  font-size: .68rem; cursor: pointer; text-align: center;
+}
+.kanban-card-archive-btn:hover { background: var(--surface-hover); border-color: var(--primary); }
+.kanban-card:hover .kanban-card-archive-btn { display: block; }
 .kanban-card-title { color: var(--text); font-weight: 500; line-height: 1.4; word-break: break-word; }
 .kanban-card-tags { margin-top: .35rem; display: flex; flex-wrap: wrap; gap: .15rem; }
 .kanban-tag {
@@ -1180,6 +1189,7 @@ kbd {
 
 /* ── Kanban quick-edit modal ─────────────────────────────────────── */
 .kanban-qedit-modal { max-width: 660px; width: 100%; max-height: 82vh; display: flex; flex-direction: column; }
+.settings-modal { max-width: 540px; width: 100%; }
 .kanban-qedit-title-text { font-size: 1rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kanban-qedit-body { overflow-y: auto; flex: 1; padding: .75rem 1.25rem 1rem; line-height: 1.7; }
 .kanban-qedit-empty { color: var(--text-subtle); font-size: .85rem; padding: .5rem 0; }
@@ -1255,6 +1265,13 @@ kbd {
 .graph-pane .panel-filters { flex: 0 0 auto; }
 .graph-pane .panel-filters .filter-tab { flex: 0 0 auto; padding-left: .75rem; padding-right: .75rem; }
 #graph-orphans-btn.active { background: var(--primary-dim); color: var(--primary); border-color: rgba(16,185,129,.3); }
+.graph-select {
+  flex: 0 0 auto; background: var(--surface-alt); border: 1px solid var(--border);
+  border-radius: var(--r-md); color: var(--text); font-size: .75rem; font-family: inherit;
+  padding: .3rem .5rem; outline: none; cursor: pointer; max-width: 150px;
+}
+.graph-select:hover { background: var(--surface-hover); }
+.graph-select:focus { border-color: var(--primary); }
 .graph-container { flex: 1; min-height: 0; position: relative; }
 .graph-container svg { display: block; cursor: grab; }
 .graph-container svg:active { cursor: grabbing; }
@@ -1264,6 +1281,70 @@ kbd {
   height: 100%; display: flex; align-items: center; justify-content: center;
   color: var(--text-subtle); font-size: .85rem;
 }
+
+/* ── Tela de lista (tela cheia — tabela densa estilo ClickUp) ──────────── */
+.list-pane { flex: 1; display: none; min-height: 0; overflow: hidden; background: var(--bg); flex-direction: column; }
+.list-pane .pane-header { flex-wrap: wrap; }
+.list-pane .panel-filters { flex: 0 0 auto; }
+.list-title-search {
+  flex: 0 1 200px; background: var(--surface-alt); border: 1px solid var(--border);
+  border-radius: var(--r-md); color: var(--text); font-size: .75rem; font-family: inherit;
+  padding: .3rem .5rem; outline: none; transition: border-color .15s;
+}
+.list-title-search:focus { border-color: var(--primary); }
+.list-title-search::placeholder { color: var(--text-subtle); }
+.list-table-container { flex: 1; min-height: 0; overflow: auto; }
+.list-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.list-table thead { position: sticky; top: 0; background: var(--surface); z-index: 1; }
+.list-table th {
+  text-align: left; padding: .5rem .75rem; color: var(--text-subtle);
+  font-weight: 600; border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+.list-table th.sortable { cursor: pointer; user-select: none; }
+.list-table th.sortable:hover { color: var(--text); }
+.list-table th.sortable.active { color: var(--primary); }
+.list-table td {
+  padding: .45rem .75rem; border-bottom: 1px solid var(--border);
+  vertical-align: middle; white-space: nowrap;
+}
+.list-row:hover { background: var(--surface-hover); }
+.list-group-header { cursor: pointer; background: var(--surface-alt); }
+.list-group-header:hover { background: var(--surface-hover); }
+.list-group-header td {
+  padding: .4rem .75rem; font-weight: 600; font-size: .75rem;
+  border-bottom: 1px solid var(--border);
+}
+.list-group-arrow { display: inline-block; width: 1rem; color: var(--text-subtle); }
+.list-group-count {
+  margin-left: .4rem; color: var(--text-subtle); font-weight: 400; font-size: .7rem;
+}
+.list-cell-title { cursor: pointer; color: var(--text); font-weight: 500; white-space: normal; }
+.list-cell-title:hover { color: var(--primary); text-decoration: underline; }
+.list-status-select {
+  background: var(--surface-alt); border: 1px solid var(--border);
+  border-radius: var(--r-sm); color: var(--text); font-size: .72rem; font-family: inherit;
+  padding: .2rem .4rem; outline: none; cursor: pointer; max-width: 140px;
+}
+.list-status-select:hover { background: var(--surface-hover); }
+.list-tags { display: flex; flex-wrap: wrap; gap: .15rem; }
+.list-tag-more { opacity: .7; }
+.list-dash { color: var(--text-subtle); }
+.list-empty {
+  padding: 2rem .75rem; text-align: center;
+  font-size: .78rem; color: var(--text-subtle);
+}
+
+/* ── Tela de arquivo (tela cheia — notas/tasks arquivadas) ─────────────── */
+.archive-pane { flex: 1; display: none; min-height: 0; overflow: hidden; background: var(--bg); flex-direction: column; }
+.archive-list-container { flex: 1; min-height: 0; overflow-y: auto; padding: .5rem; }
+.archive-row {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .5rem .75rem; border: 1px solid var(--border); border-radius: var(--r-md);
+  margin-bottom: .35rem; background: var(--surface);
+}
+.archive-row:hover { background: var(--surface-hover); }
+.archive-row-title { flex: 1; color: var(--text); font-size: .8125rem; font-weight: 500; }
+.archive-row-date { font-size: .7rem; color: var(--text-subtle); flex-shrink: 0; }
 
 /* ── Tela de tags (full screen — árvore à esquerda, detalhe à direita) ── */
 .tags-pane { flex: 1; display: none; min-height: 0; overflow: hidden; background: var(--bg); }

@@ -18,6 +18,7 @@ relative to the notes root if not present in the frontmatter.
 
 from __future__ import annotations
 
+import dataclasses
 import re
 import threading
 import unicodedata
@@ -63,6 +64,10 @@ def _cleanup_empty_dirs(start: Path, stop_at: Path) -> None:
 
 
 class MarkdownFileRepository(AbstractFileRepository):
+
+    # Reserved top-level folder for archived files (excluded from list_all()
+    # by default). Kept flat under notes_dir like "assets" already is.
+    ARCHIVE_FOLDER = "_archive"
 
     def __init__(self, notes_dir: Path) -> None:
         self._dir: Path = notes_dir
@@ -220,6 +225,7 @@ class MarkdownFileRepository(AbstractFileRepository):
             date_planning=_coerce_str(meta.get("date_planning", "")),
             date_execution=_coerce_str(meta.get("date_execution", "")),
             date_conclusion=_coerce_str(meta.get("date_conclusion", "")),
+            archived_from=_coerce_str(meta.get("archived_from", "")),
         )
 
     def _write(self, path: Path, record: FileRecord) -> None:
@@ -236,6 +242,7 @@ class MarkdownFileRepository(AbstractFileRepository):
             "date_planning": record.date_planning,
             "date_execution": record.date_execution,
             "date_conclusion": record.date_conclusion,
+            "archived_from": record.archived_from,
         }
         frontmatter = yaml.dump(
             fm_data, allow_unicode=True, default_flow_style=False
@@ -244,19 +251,45 @@ class MarkdownFileRepository(AbstractFileRepository):
 
     # ── AbstractFileRepository ─────────────────────────────────────────────
 
-    def list_all(self) -> list[FileRecord]:
-        paths = sorted(
-            self._dir.rglob("*.md"),
-            key=lambda p: p.stat().st_mtime,
-            reverse=True,
-        )
+    def list_all(self, include_archived: bool = False) -> list[FileRecord]:
+        archive_dir = self._dir / self.ARCHIVE_FOLDER
+        paths: list[Path] = []
+        for child in self._dir.iterdir():
+            if child == archive_dir:
+                if include_archived:
+                    paths.extend(child.rglob("*.md"))
+                continue
+            if child.is_dir():
+                paths.extend(child.rglob("*.md"))
+            elif child.suffix == ".md":
+                paths.append(child)
+        paths.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+
         records: list[FileRecord] = []
         for p in paths:
             try:
                 records.append(self._parse_cached(p))
             except (OSError, ValueError, yaml.YAMLError):
                 continue
-        self._evict_stale(set(paths))
+        if include_archived:
+            # Only a comprehensive scan is safe to use for eviction — with
+            # the archive skipped, `paths` wouldn't cover it and every
+            # archived entry would look "stale" and get dropped from the
+            # cache on every single non-archived listing.
+            self._evict_stale(set(paths))
+        return records
+
+    def list_archived(self) -> list[FileRecord]:
+        archive_dir = self._dir / self.ARCHIVE_FOLDER
+        if not archive_dir.is_dir():
+            return []
+        paths = sorted(archive_dir.rglob("*.md"), key=lambda p: p.stat().st_mtime, reverse=True)
+        records: list[FileRecord] = []
+        for p in paths:
+            try:
+                records.append(self._parse_cached(p))
+            except (OSError, ValueError, yaml.YAMLError):
+                continue
         return records
 
     def get_by_id(self, file_id: str) -> FileRecord:
@@ -366,9 +399,40 @@ class MarkdownFileRepository(AbstractFileRepository):
         _cleanup_empty_dirs(path.parent, self._dir)
         self._forget(path, file_id)
 
+    def _relocate(self, file_id: str, *, new_folder: str, archived_from: str) -> FileRecord:
+        """Shared move logic for `archive`/`unarchive` (both are just a folder move)."""
+        old_path = self._require_path(file_id)
+        existing = self._parse_cached(old_path)
+        new_path = self._build_path(existing.id, new_folder)
+        rel_filename = str(new_path.relative_to(self._dir)).replace("\\", "/")
+        updated = dataclasses.replace(
+            existing,
+            folder=new_folder,
+            archived_from=archived_from,
+            filename=rel_filename,
+            modified=datetime.now(timezone.utc).isoformat(),
+        )
+        if new_path != old_path:
+            self._write(new_path, updated)
+            old_path.unlink()
+            _cleanup_empty_dirs(old_path.parent, self._dir)
+            self._forget(old_path, file_id)
+        else:
+            self._write(old_path, updated)
+        self._remember(new_path, updated)
+        return updated
+
+    def archive(self, file_id: str) -> FileRecord:
+        existing = self.get_by_id(file_id)
+        return self._relocate(file_id, new_folder=self.ARCHIVE_FOLDER, archived_from=existing.folder)
+
+    def unarchive(self, file_id: str) -> FileRecord:
+        existing = self.get_by_id(file_id)
+        return self._relocate(file_id, new_folder=existing.archived_from, archived_from="")
+
     def count_by_type(self) -> dict[str, int]:
         counts: dict[str, int] = {}
-        for record in self.list_all():
+        for record in self.list_all(include_archived=True):
             counts[record.type] = counts.get(record.type, 0) + 1
         return counts
 

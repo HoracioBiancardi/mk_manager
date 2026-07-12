@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from mk_manager.domain.entities import FileRecord, SearchResult
 from mk_manager.models.schemas import (
@@ -174,20 +174,33 @@ class FileService:
 
     # ── Queries ────────────────────────────────────────────────────────────
 
-    def list_files(self, type_filter: str | None = None) -> list[FileRecord]:
+    def list_files(
+        self, type_filter: str | None = None, include_archived: bool = False
+    ) -> list[FileRecord]:
         """Return all files, optionally restricted to a single type.
 
         Args:
             type_filter: ``"note"`` or ``"task"`` to filter results,
                 or ``None`` to return every file.
+            include_archived: Whether to include archived files alongside
+                active ones. Defaults to ``False`` — archived files are
+                meant to stay out of the way until explicitly restored.
 
         Returns:
             List of ``FileRecord`` objects ordered newest-modified first.
         """
-        records = self._repo.list_all()
+        records = self._repo.list_all(include_archived=include_archived)
         if type_filter:
             records = [r for r in records if r.type == type_filter]
         return records
+
+    def list_archived_files(self) -> list[FileRecord]:
+        """Return only archived files, newest-modified first.
+
+        Returns:
+            List of archived ``FileRecord`` objects.
+        """
+        return self._repo.list_archived()
 
     def get_file(self, file_id: str) -> FileRecord:
         """Retrieve a single file by its unique identifier.
@@ -208,6 +221,7 @@ class FileService:
         query: str,
         type_filter: str | None = None,
         tag_filter: list[str] | None = None,
+        include_archived: bool = False,
     ) -> list[SearchResult]:
         """Full-text search across title, tags, and content.
 
@@ -223,11 +237,13 @@ class FileService:
         Args:
             query: Search term.  Case-insensitive.  Empty string returns all files.
             type_filter: Optional type restriction (``"note"`` or ``"task"``).
+            include_archived: Whether archived files are eligible to match.
+                Defaults to ``False``.
 
         Returns:
             Ordered list of ``SearchResult`` dataclasses.
         """
-        records = self._repo.list_all()
+        records = self._repo.list_all(include_archived=include_archived)
         if type_filter:
             records = [r for r in records if r.type == type_filter]
         if tag_filter:
@@ -511,3 +527,60 @@ class FileService:
             FileNotFoundError: If no file with *file_id* exists.
         """
         self._repo.delete(file_id)
+
+    def archive_file(self, file_id: str) -> FileRecord:
+        """Move a file into the archive, out of default listings.
+
+        Args:
+            file_id: Identifier of the file to archive.
+
+        Returns:
+            The updated ``FileRecord``.
+
+        Raises:
+            FileNotFoundError: If no file with *file_id* exists.
+        """
+        return self._repo.archive(file_id)
+
+    def unarchive_file(self, file_id: str) -> FileRecord:
+        """Restore a previously archived file to its original folder.
+
+        Args:
+            file_id: Identifier of the file to restore.
+
+        Returns:
+            The updated ``FileRecord``.
+
+        Raises:
+            FileNotFoundError: If no file with *file_id* exists.
+        """
+        return self._repo.unarchive(file_id)
+
+    def archive_completed_before(self, days: int) -> int:
+        """Archive every "done" task whose conclusion date is older than *days*.
+
+        Only tasks that actually have a ``status == "done"`` and a stamped
+        ``date_conclusion`` are considered — tasks marked done without ever
+        going through the kanban transition (no conclusion date) are left
+        alone rather than guessed at.
+
+        Args:
+            days: Age threshold in days; tasks concluded on or before this
+                many days ago are archived.
+
+        Returns:
+            Number of tasks archived.
+        """
+        cutoff = datetime.now() - timedelta(days=days)
+        archived_count = 0
+        for record in self._repo.list_all():
+            if record.status != "done" or not record.date_conclusion:
+                continue
+            try:
+                concluded_at = datetime.fromisoformat(record.date_conclusion)
+            except ValueError:
+                continue
+            if concluded_at <= cutoff:
+                self._repo.archive(record.id)
+                archived_count += 1
+        return archived_count

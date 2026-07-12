@@ -150,6 +150,16 @@ class FolderChangeResponse(BaseModel):
     updated_count: int
 
 
+class ArchiveBatchResponse(BaseModel):
+    """Result of a batch-archive operation.
+
+    Attributes:
+        archived_count: Number of files moved into the archive.
+    """
+
+    archived_count: int
+
+
 class SearchResultResponse(FileMetaResponse):
     """Search result enriched with a content excerpt around the match.
 

@@ -28,8 +28,10 @@ Backend em **FastAPI**, frontend em HTML/JS vanilla, arquivos salvos como `.md` 
 | **Notas** | Criar, editar e deletar notas em Markdown |
 | **Tasks** | Tasks com checkboxes interativas (`- [ ]` / `- [x]`) |
 | **Pastas** | Organização em pastas/subpastas; renomear/mover move tudo que está aninhado; "deletar" uma pasta apenas move o conteúdo para a pasta pai (nunca destrói dados) |
-| **Kanban** | Status (`planning`/`development`/`review`/`done`) com datas de planejamento, execução e conclusão preenchidas automaticamente na primeira transição |
-| **Grafo de notas** | Visualização das notas conectadas por `[[wikilinks]]`; links para títulos inexistentes viram nós "phantom" (fantasma) em vez de serem descartados |
+| **Kanban** | Status (`planning`/`development`/`review`/`done`, colunas customizáveis) com datas de planejamento, execução e conclusão preenchidas automaticamente na primeira transição |
+| **Lista** | Tela estilo ClickUp: tabela de notas/tasks ordenável por qualquer coluna, filtrável por tipo/status/tag/pasta/título, com status editável direto na linha e agrupamento opcional (por status, pasta, tag ou tipo) em seções recolhíveis |
+| **Arquivo** | Arquivar notas/tasks tira do Kanban/Lista/Grafo sem apagar nada (fica em `_archive/`, restaurável a qualquer momento); arquivamento manual (botão no card do Kanban ou na tela Arquivo) ou em lote por idade da conclusão |
+| **Grafo de notas** | Visualização das notas conectadas por `[[wikilinks]]`, filtrável por tipo/tag/pasta; links para títulos inexistentes viram nós "phantom" (fantasma) em vez de serem descartados |
 | **Tags** | Tags de frontmatter + tags inline `#tag` extraídas do corpo do texto (ignorando código e URLs); filtro hierárquico (`area` também casa com `area/sub`); renomear/mesclar uma tag em todos os arquivos de uma vez |
 | **Busca full-text** | Pesquisa em título, tags e conteúdo com ranking de relevância |
 | **Auto-save** | Salvo automaticamente 800ms após parar de digitar |
@@ -78,6 +80,8 @@ mk_manager/
     │       ├── search-filter.js  # Busca e filtros
     │       ├── graph.js          # Visualização do grafo de notas
     │       ├── kanban.js         # Quadro kanban
+    │       ├── list.js           # Tela Lista (tabela ordenável/agrupável)
+    │       ├── archive.js        # Tela Arquivo (restaurar/excluir arquivadas)
     │       ├── diagram-builder.js# Editor visual de diagramas
     │       ├── quickopen.js      # Busca rápida (Ctrl+K)
     │       ├── contextmenu.js    # Menu de contexto
@@ -237,6 +241,7 @@ Lista todos os arquivos (sem conteúdo), ordenados por data de modificação.
 
 **Query params:**
 - `type` — filtrar por `note` ou `task`
+- `include_archived` — `true` para incluir arquivadas junto das ativas (padrão `false`)
 
 **Resposta `200`:**
 ```json
@@ -334,6 +339,36 @@ Renomeia/move uma pasta e tudo que está aninhado nela.
 "Deleta" uma pasta movendo seu conteúdo para a pasta pai — nunca destrói arquivos.
 
 **Resposta `200`:** `{"updated_count": 3}`
+
+---
+
+#### `GET /api/files/archived`
+Lista apenas os arquivos arquivados, ordenados por data de modificação.
+
+**Resposta `200`:** mesmo formato de `GET /api/files/`
+
+---
+
+#### `POST /api/files/{id}/archive`
+Move o arquivo para a pasta de arquivamento (`_archive/`), guardando a pasta original em `archived_from` para restaurar depois. Não apaga nada; some do Kanban, da Lista, da Busca e do Grafo por padrão.
+
+**Resposta `200`:** `FileMetaResponse`
+**Resposta `404`:** arquivo não encontrado
+
+---
+
+#### `POST /api/files/{id}/unarchive`
+Restaura um arquivo arquivado para a pasta em que estava antes.
+
+**Resposta `200`:** `FileMetaResponse`
+**Resposta `404`:** arquivo não encontrado
+
+---
+
+#### `POST /api/files/archive-completed?days=30`
+Arquiva em lote toda task com `status=done` cuja `date_conclusion` seja mais antiga que `days` dias.
+
+**Resposta `200`:** `{"archived_count": 4}`
 
 ---
 
@@ -494,6 +529,8 @@ modified: '2024-01-15T17:30:00+00:00'
 
 `folder`, `status`, `date_planning`, `date_execution` e `date_conclusion` são opcionais — ficam vazios (`""`) quando o arquivo não participa do quadro kanban. `#tags` inline no corpo e links `[[Nota]]` também são reconhecidos automaticamente, sem precisar declarar no frontmatter.
 
+`_archive/` é uma pasta reservada na raiz de `notes/` (não use esse nome para suas próprias pastas). Arquivar um arquivo o move fisicamente para lá e preenche `archived_from` com a pasta de origem; restaurar move de volta e limpa o campo. Arquivos arquivados ficam fora de toda listagem por padrão (Kanban, Lista, Grafo, Busca) até serem restaurados pela tela Arquivo.
+
 Os arquivos são **compatíveis** com Obsidian, VSCode (extensão Markdown), Typora e qualquer editor de texto.
 
 ---
@@ -508,8 +545,10 @@ O diretório `frontend/` é uma SPA (Single Page Application) sem build step, co
 - **Preview**: renderização ao vivo via [marked.js](https://marked.js.org/)
 - **Split view** / Editor only / Preview only
 - **Checkboxes interativos** no preview — clicar atualiza o arquivo
-- **Kanban**: quadro com colunas de status, drag-and-drop entre etapas
-- **Grafo de notas**: visualização interativa dos links `[[wikilink]]`
+- **Kanban**: quadro com colunas de status customizáveis, drag-and-drop entre etapas, botão de arquivar por card
+- **Lista**: tabela ordenável/filtrável de notas e tasks, com agrupamento por status/pasta/tag/tipo em seções recolhíveis
+- **Arquivo**: tela de itens arquivados, com restaurar ou excluir definitivamente
+- **Grafo de notas**: visualização interativa dos links `[[wikilink]]`, filtrável por tipo/tag/pasta
 - **Diagram builder**: editor visual de diagramas embutido no app
 - **Quick Open**: busca rápida de arquivos por título (`Ctrl+K`)
 - **Menu de contexto** na árvore de arquivos/pastas

@@ -22,12 +22,27 @@ class AbstractFileRepository(ABC):
     """
 
     @abstractmethod
-    def list_all(self) -> list[FileRecord]:
+    def list_all(self, include_archived: bool = False) -> list[FileRecord]:
         """Return all stored file records, newest-modified first.
+
+        Args:
+            include_archived: When ``False`` (default), archived files are
+                excluded — implementations should skip scanning the archive
+                entirely rather than filtering results after the fact, so
+                that a large archive doesn't slow down every normal listing.
 
         Returns:
             Ordered list of ``FileRecord`` objects (no content body required,
             but implementations may include it for simplicity).
+        """
+        ...
+
+    @abstractmethod
+    def list_archived(self) -> list[FileRecord]:
+        """Return only archived file records, newest-modified first.
+
+        Returns:
+            Ordered list of archived ``FileRecord`` objects.
         """
         ...
 
@@ -127,8 +142,44 @@ class AbstractFileRepository(ABC):
         ...
 
     @abstractmethod
+    def archive(self, file_id: str) -> FileRecord:
+        """Move a file out of default listings, remembering its origin.
+
+        Implementations decide how "archived" is represented in storage
+        (e.g. a reserved folder for a filesystem backend); callers should
+        not assume anything about *how*, only that the file stops appearing
+        in ``list_all()`` (with ``include_archived=False``) and starts
+        appearing in ``list_archived()`` until ``unarchive`` is called.
+
+        Args:
+            file_id: Identifier of the file to archive.
+
+        Returns:
+            The updated ``FileRecord``.
+
+        Raises:
+            FileNotFoundError: If no file with *file_id* exists.
+        """
+        ...
+
+    @abstractmethod
+    def unarchive(self, file_id: str) -> FileRecord:
+        """Restore a previously archived file to where it was before.
+
+        Args:
+            file_id: Identifier of the file to restore.
+
+        Returns:
+            The updated ``FileRecord``.
+
+        Raises:
+            FileNotFoundError: If no file with *file_id* exists.
+        """
+        ...
+
+    @abstractmethod
     def count_by_type(self) -> dict[str, int]:
-        """Aggregate file counts grouped by type field.
+        """Aggregate file counts grouped by type field, including archived files.
 
         Returns:
             Mapping of ``type`` string to file count,
@@ -138,7 +189,7 @@ class AbstractFileRepository(ABC):
 
     @abstractmethod
     def total_size_bytes(self) -> int:
-        """Compute total storage consumed by all files.
+        """Compute total storage consumed by all files, including archived ones.
 
         Returns:
             Sum of file sizes in bytes.

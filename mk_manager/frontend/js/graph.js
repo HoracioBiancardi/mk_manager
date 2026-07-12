@@ -5,6 +5,7 @@
 import { esc, toast } from "./utils.js";
 import { apiFetch } from "./api.js";
 import { openFile, openOrCreateByTitle } from "./files.js";
+import { st } from "./state.js";
 
 const NODE_PALETTE = ["#f87171", "#fb923c", "#fbbf24", "#34d399", "#38bdf8", "#818cf8", "#e879f9", "#94a3b8"];
 
@@ -12,6 +13,8 @@ let _d3Promise = null;
 let _simulation = null;
 let _graphData = null;
 let _filter = "all"; // all | note | task
+let _tagFilter = ""; // "" = todas
+let _folderFilter = ""; // "" = todas
 let _showOrphans = true;
 
 function loadD3() {
@@ -45,13 +48,56 @@ export async function renderGraph() {
   container.innerHTML = '<div class="graph-loading">Carregando grafo…</div>';
   try {
     await loadD3();
-    const r = await apiFetch("/graph");
-    _graphData = await r.json();
+    await fetchGraphData();
     drawGraph();
   } catch (e) {
     container.innerHTML = `<div class="graph-loading">Erro ao carregar grafo: ${esc(e.message)}</div>`;
     toast("Erro ao carregar grafo: " + e.message, "error");
   }
+}
+
+async function fetchGraphData() {
+  const r = await apiFetch("/graph");
+  _graphData = await r.json();
+  populateGraphFilterOptions();
+}
+
+// Chamado após qualquer criação/edição/exclusão/movimentação de arquivo ou pasta,
+// pra manter o grafo em sincronia sem esperar o usuário sair e voltar pra tela.
+export async function refreshGraphIfActive() {
+  if (st.mainView !== "graph" || !_graphData) return;
+  try {
+    await fetchGraphData();
+    drawGraph();
+  } catch (e) {
+    toast("Erro ao atualizar grafo: " + e.message, "error");
+  }
+}
+
+function populateGraphFilterOptions() {
+  const tagSel = document.getElementById("graph-tag-filter");
+  const folderSel = document.getElementById("graph-folder-filter");
+  if (!tagSel || !folderSel) return;
+
+  const tags = new Set();
+  const folders = new Set();
+  for (const n of _graphData.nodes) {
+    if (n.type === "phantom") continue;
+    (n.tags || []).forEach((t) => tags.add(t));
+    if (n.folder) folders.add(n.folder);
+  }
+
+  const buildOptions = (sel, values, current, allLabel) => {
+    const sorted = [...values].sort((a, b) => a.localeCompare(b));
+    sel.innerHTML =
+      `<option value="">${allLabel}</option>` +
+      sorted.map((v) => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+    sel.value = sorted.includes(current) ? current : "";
+  };
+  buildOptions(tagSel, tags, _tagFilter, "Todas as tags");
+  buildOptions(folderSel, folders, _folderFilter, "Todas as pastas");
+  _tagFilter = tagSel.value;
+  _folderFilter = folderSel.value;
 }
 
 export function setGraphFilter(f) {
@@ -62,10 +108,25 @@ export function setGraphFilter(f) {
   if (_graphData) drawGraph();
 }
 
+export function setGraphTagFilter(v) {
+  _tagFilter = v;
+  if (_graphData) drawGraph();
+}
+
+export function setGraphFolderFilter(v) {
+  _folderFilter = v;
+  if (_graphData) drawGraph();
+}
+
 export function toggleGraphOrphans() {
   _showOrphans = !_showOrphans;
   document.getElementById("graph-orphans-btn")?.classList.toggle("active", _showOrphans);
   if (_graphData) drawGraph();
+}
+
+// Casamento hierárquico: filtrar por "area" também mostra nós com tag/pasta "area/sub".
+function matchesHierarchy(value, filter) {
+  return value === filter || value.startsWith(filter + "/");
 }
 
 function onNodeClick(d) {
@@ -83,6 +144,8 @@ function drawGraph() {
   const nodesById = new Map();
   const nodes = _graphData.nodes
     .filter((n) => _filter === "all" || n.type === _filter || n.type === "phantom")
+    .filter((n) => n.type === "phantom" || !_tagFilter || (n.tags || []).some((t) => matchesHierarchy(t, _tagFilter)))
+    .filter((n) => n.type === "phantom" || !_folderFilter || matchesHierarchy(n.folder || "", _folderFilter))
     .map((n) => ({ ...n }));
   nodes.forEach((n) => nodesById.set(n.id, n));
 
@@ -191,4 +254,4 @@ function drawGraph() {
 }
 
 // ── Expor ao DOM (necessário para event handlers inline) ──────────────────────
-Object.assign(window, { setGraphFilter, toggleGraphOrphans });
+Object.assign(window, { setGraphFilter, setGraphTagFilter, setGraphFolderFilter, toggleGraphOrphans });

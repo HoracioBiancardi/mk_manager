@@ -31,6 +31,9 @@ class FileRecord:
         filename: Actual filename on disk, e.g. ``"abc123def456.md"``.
         created: ISO 8601 UTC timestamp of initial creation.
         modified: ISO 8601 UTC timestamp of last modification.
+        archived_from: Folder this file lived in before being archived
+            (empty when not archived). Lets ``unarchive`` restore it to its
+            original location instead of the root.
     """
 
     id: str
@@ -46,6 +49,7 @@ class FileRecord:
     date_planning: str = field(default="")
     date_execution: str = field(default="")
     date_conclusion: str = field(default="")
+    archived_from: str = field(default="")
 
     @property
     def word_count(self) -> int:

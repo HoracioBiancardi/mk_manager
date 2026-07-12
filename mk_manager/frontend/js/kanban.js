@@ -5,12 +5,21 @@ import { esc, toast } from "./utils.js";
 import { apiFetch } from "./api.js";
 import { renderMarkdown, toggleCheckboxAt } from "./preview.js";
 import { updateRetroStatusLabel, updateTaskDuration } from "./editor.js";
+import { refreshListIfActive } from "./list.js";
 
 // ── Callback injetado por app.js para evitar dependência circular ─────────────
 let _openFile = null;
+let _archiveFile = null;
 
-export function initKanban({ openFile }) {
+export function initKanban({ openFile, archiveFile }) {
   _openFile = openFile;
+  _archiveFile = archiveFile;
+}
+
+export function archiveTaskFromKanban(event, id) {
+  event.stopPropagation();
+  if (!window.confirm("Arquivar esta task? Ela sai do Kanban e da Lista, mas continua salva — dá pra restaurar na tela Arquivo.")) return;
+  _archiveFile?.(id);
 }
 
 // ── Configuração de colunas ────────────────────────────────────────────────────
@@ -126,6 +135,7 @@ export function renderKanban() {
         draggable="true"
         onclick="openKanbanQEdit('${f.id}')"
         ondragstart="onKanbanCardDragStart(event,'${f.id}')">
+        <button class="kanban-card-archive-btn" title="Arquivar" onclick="archiveTaskFromKanban(event,'${f.id}')">📦</button>
         <div class="kanban-card-title">${esc(f.title || "Sem título")}</div>
         ${taskPreview}${progress}${tags}
       </div>`;
@@ -201,6 +211,7 @@ export async function moveTaskStatus(id, status) {
       updateTaskDuration();
     }
     renderKanban();
+    refreshListIfActive();
   } catch (e) {
     toast("Erro ao mover task: " + e.message, "error");
   }
@@ -400,4 +411,5 @@ Object.assign(window, {
   onKanbanQEditOverlayClick,
   toggleKanbanQEditItem,
   openEditorFromKanbanQEdit,
+  archiveTaskFromKanban,
 });

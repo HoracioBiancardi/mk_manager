@@ -27,6 +27,7 @@ import {
   confirmRenameFile,
   renameFolder,
   deleteFolder,
+  archiveFile,
 } from "./files.js";
 import { closeDeleteModal, openDeleteModal } from "./delete-modal.js";
 import { closeSettingsModal } from "./settings.js";
@@ -55,7 +56,7 @@ async function checkConn() {
 
 // ── Wiring entre módulos (evita imports circulares) ────────────────────────────
 initSidebarActions({ moveFileToFolder, confirmRenameFile, renameFolder, deleteFolder, newFile, openDeleteModal });
-initKanban({ openFile });
+initKanban({ openFile, archiveFile });
 
 // ── Init ───────────────────────────────────────────────────────────────────────
 marked.use({ breaks: true, gfm: true });

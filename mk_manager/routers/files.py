@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from mk_manager.dependencies import get_file_service
 from mk_manager.domain.entities import FileRecord
 from mk_manager.models.schemas import (
+    ArchiveBatchResponse,
     FileCreateRequest,
     FileDetailResponse,
     FileMetaResponse,
@@ -113,18 +114,24 @@ def list_files(
         str | None,
         Query(description="Filter by type: 'note' or 'task'"),
     ] = None,
+    include_archived: Annotated[
+        bool,
+        Query(description="Include archived files alongside active ones"),
+    ] = False,
     service: FileService = Depends(get_file_service),
 ) -> list[FileMetaResponse]:
     """Return metadata for all files, optionally filtered by type.
 
     Args:
         type: Optional type filter. Accepted values: ``"note"``, ``"task"``.
+        include_archived: Whether archived files are included. Defaults to
+            ``False`` — archived files stay out of the default listing.
         service: Injected ``FileService`` instance.
 
     Returns:
         List of ``FileMetaResponse`` objects (content body excluded).
     """
-    return [_to_meta(r) for r in service.list_files(type_filter=type)]
+    return [_to_meta(r) for r in service.list_files(type_filter=type, include_archived=include_archived)]
 
 
 @router.post(
@@ -194,6 +201,48 @@ def delete_folder(
     """
     count = service.delete_folder(path)
     return FolderChangeResponse(updated_count=count)
+
+
+@router.get(
+    "/archived",
+    response_model=list[FileMetaResponse],
+    summary="List archived files",
+    description="Return metadata for every archived file, newest-modified first.",
+)
+def list_archived_files(
+    service: FileService = Depends(get_file_service),
+) -> list[FileMetaResponse]:
+    """Return metadata for all archived files.
+
+    Args:
+        service: Injected ``FileService`` instance.
+
+    Returns:
+        List of ``FileMetaResponse`` objects for archived files.
+    """
+    return [_to_meta(r) for r in service.list_archived_files()]
+
+
+@router.post(
+    "/archive-completed",
+    response_model=ArchiveBatchResponse,
+    summary="Archive every 'done' task concluded more than N days ago",
+)
+def archive_completed(
+    days: Annotated[int, Query(ge=0, description="Age threshold in days")] = 30,
+    service: FileService = Depends(get_file_service),
+) -> ArchiveBatchResponse:
+    """Batch-archive tasks that have been done for a while.
+
+    Args:
+        days: Only tasks concluded this many days ago (or more) are archived.
+        service: Injected ``FileService`` instance.
+
+    Returns:
+        Count of tasks archived.
+    """
+    count = service.archive_completed_before(days)
+    return ArchiveBatchResponse(archived_count=count)
 
 
 @router.get(
@@ -281,6 +330,66 @@ def delete_file(
     """
     try:
         service.delete_file(file_id)
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"File '{file_id}' not found.",
+        )
+
+
+@router.post(
+    "/{file_id}/archive",
+    response_model=FileMetaResponse,
+    summary="Archive a file",
+)
+def archive_file(
+    file_id: str,
+    service: FileService = Depends(get_file_service),
+) -> FileMetaResponse:
+    """Move a file into the archive, out of default listings.
+
+    Args:
+        file_id: Unique file identifier.
+        service: Injected ``FileService`` instance.
+
+    Returns:
+        Updated file metadata.
+
+    Raises:
+        HTTPException: 404 if no file with *file_id* exists.
+    """
+    try:
+        return _to_meta(service.archive_file(file_id))
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"File '{file_id}' not found.",
+        )
+
+
+@router.post(
+    "/{file_id}/unarchive",
+    response_model=FileMetaResponse,
+    summary="Restore an archived file",
+)
+def unarchive_file(
+    file_id: str,
+    service: FileService = Depends(get_file_service),
+) -> FileMetaResponse:
+    """Restore a previously archived file to its original folder.
+
+    Args:
+        file_id: Unique file identifier.
+        service: Injected ``FileService`` instance.
+
+    Returns:
+        Updated file metadata.
+
+    Raises:
+        HTTPException: 404 if no file with *file_id* exists.
+    """
+    try:
+        return _to_meta(service.unarchive_file(file_id))
     except FileNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

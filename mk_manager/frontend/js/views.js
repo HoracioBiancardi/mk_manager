@@ -7,6 +7,8 @@ import { setView, showEditorPanel, showEmptyPanel } from "./editor.js";
 import { renderKanban, resetKanbanUiState } from "./kanban.js";
 import { renderTagsPanel, renderSearchResults, hideFileTooltip } from "./sidebar.js";
 import { renderGraph } from "./graph.js";
+import { renderList } from "./list.js";
+import { renderArchivePane } from "./archive.js";
 import { getCrtTransition } from "./prefs.js";
 import { playTransitionSfx } from "./sfx.js";
 
@@ -15,6 +17,8 @@ const PANES = {
   tags: "tags-pane",
   search: "search-pane",
   graph: "graph-pane",
+  list: "list-pane",
+  archive: "archive-pane",
 };
 
 function hideAllPanes() {
@@ -59,6 +63,10 @@ export function setMainView(view) {
         setTimeout(() => document.getElementById("search-input")?.focus(), 60);
       } else if (view === "graph") {
         renderGraph();
+      } else if (view === "list") {
+        renderList();
+      } else if (view === "archive") {
+        renderArchivePane();
       }
     }
 

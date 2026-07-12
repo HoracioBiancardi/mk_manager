@@ -15,8 +15,11 @@ import {
   updateRetroStatusLabel,
   updateTaskDuration,
 } from "./editor.js";
-import { updateStatusSelect } from "./kanban.js";
+import { updateStatusSelect, renderKanban } from "./kanban.js";
 import { setMainView } from "./views.js";
+import { refreshGraphIfActive } from "./graph.js";
+import { refreshListIfActive } from "./list.js";
+import { refreshArchiveIfActive } from "./archive.js";
 
 // ── Storage info ───────────────────────────────────────────────────────────────
 async function updateStorageInfo() {
@@ -37,6 +40,8 @@ export async function loadFiles() {
     st.searchResults = null;
     renderSidebar();
     updateStorageInfo();
+    refreshGraphIfActive();
+    refreshListIfActive();
   } catch (e) {
     toast("Erro ao carregar arquivos: " + e.message, "error");
   }
@@ -109,6 +114,8 @@ export async function saveFile() {
     renderSidebar();
     setSaveStatus("saved");
     updateStorageInfo();
+    refreshGraphIfActive();
+    refreshListIfActive();
   } catch (e) {
     setSaveStatus("error");
     toast("Erro ao salvar: " + e.message, "error");
@@ -208,6 +215,8 @@ export async function newFile(type, folder = "", title = "") {
     const file = await r.json();
     st.files.unshift(file);
     renderSidebar();
+    refreshGraphIfActive();
+    refreshListIfActive();
     await openFile(file.id);
     if (title) document.getElementById("md-editor").focus();
     else setTimeout(() => document.getElementById("title-input").focus(), 60);
@@ -246,9 +255,50 @@ export async function deleteFile(id) {
     renderRecentFiles();
     renderSidebar();
     updateStorageInfo();
+    refreshGraphIfActive();
+    refreshListIfActive();
+    refreshArchiveIfActive();
     toast("Arquivo excluído.", "success");
   } catch (e) {
     toast("Erro ao excluir: " + e.message, "error");
+  }
+}
+
+// ── Arquivar/restaurar ─────────────────────────────────────────────────────────
+export async function archiveFile(id) {
+  try {
+    await apiFetch(`/files/${id}/archive`, { method: "POST" });
+    st.files = st.files.filter((f) => f.id !== id);
+    if (st.activeId === id) {
+      st.activeId = null;
+      showEmptyPanel();
+    }
+    st.recentFiles = st.recentFiles.filter((f) => f.id !== id);
+    renderRecentFiles();
+    renderSidebar();
+    updateStorageInfo();
+    renderKanban();
+    refreshGraphIfActive();
+    refreshListIfActive();
+    refreshArchiveIfActive();
+    toast("Arquivado. Restaure na tela Arquivo se precisar.", "success");
+  } catch (e) {
+    toast("Erro ao arquivar: " + e.message, "error");
+  }
+}
+
+export async function unarchiveFile(id) {
+  try {
+    const r = await apiFetch(`/files/${id}/unarchive`, { method: "POST" });
+    const restored = await r.json();
+    st.files.unshift(restored);
+    renderSidebar();
+    updateStorageInfo();
+    refreshGraphIfActive();
+    refreshListIfActive();
+    toast("Restaurado.", "success");
+  } catch (e) {
+    toast("Erro ao restaurar: " + e.message, "error");
   }
 }
 
@@ -269,6 +319,8 @@ export async function moveFileToFolder(fileId, folderPath) {
     }
     st.emptyFolders.delete(folderPath);
     renderSidebar();
+    refreshGraphIfActive();
+    refreshListIfActive();
     toast(`Movido para "${folderPath}".`, "success");
   } catch (e) {
     toast("Erro ao mover arquivo: " + e.message, "error");
@@ -371,6 +423,8 @@ export async function confirmRenameFile(id, newTitle) {
     });
     renderRecentFiles();
     renderSidebar();
+    refreshGraphIfActive();
+    refreshListIfActive();
     toast("Renomeado com sucesso.", "success");
   } catch (e) {
     renderSidebar();
