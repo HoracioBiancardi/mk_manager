@@ -249,7 +249,7 @@ export async function deleteFile(id) {
       st.searchResults = st.searchResults.filter((f) => f.id !== id);
     if (st.activeId === id) {
       st.activeId = null;
-      showEmptyPanel();
+      if (st.mainView === "editor") showEmptyPanel();
     }
     st.recentFiles = st.recentFiles.filter((f) => f.id !== id);
     renderRecentFiles();
@@ -271,7 +271,7 @@ export async function archiveFile(id) {
     st.files = st.files.filter((f) => f.id !== id);
     if (st.activeId === id) {
       st.activeId = null;
-      showEmptyPanel();
+      if (st.mainView === "editor") showEmptyPanel();
     }
     st.recentFiles = st.recentFiles.filter((f) => f.id !== id);
     renderRecentFiles();
@@ -285,6 +285,12 @@ export async function archiveFile(id) {
   } catch (e) {
     toast("Erro ao arquivar: " + e.message, "error");
   }
+}
+
+export async function archiveCurrentFile() {
+  if (!st.activeId) return;
+  if (!window.confirm("Arquivar este arquivo? Ele sai das listagens normais, mas continua salvo — dá pra restaurar na tela Arquivo.")) return;
+  await archiveFile(st.activeId);
 }
 
 export async function unarchiveFile(id) {
@@ -452,4 +458,5 @@ Object.assign(window, {
   deleteFolder,
   openOrCreateByTitle,
   onMetaChange,
+  archiveCurrentFile,
 });

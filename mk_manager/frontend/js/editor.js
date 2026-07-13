@@ -51,6 +51,8 @@ export function updateStatusVis(type) {
   if (el) el.style.display = type === "task" ? "contents" : "none";
   const datesEl = document.getElementById("task-dates-part");
   if (datesEl) datesEl.style.display = type === "task" ? "contents" : "none";
+  const archiveBtn = document.getElementById("btn-archive-current");
+  if (archiveBtn) archiveBtn.style.display = type === "task" ? "" : "none";
 }
 
 // ── Tags ──────────────────────────────────────────────────────────────────────
