@@ -1,14 +1,20 @@
 // Responsabilidade: formata blocos de código ```lang ... ``` no editor.
-// Usa Prettier (carregado sob demanda via import dinâmico, só quando o
-// usuário aciona a formatação — não pesa o carregamento inicial da página)
+// Usa Prettier, prettier-plugin-sh (shfmt via WASM) e sql-formatter —
+// todos carregados sob demanda via import dinâmico, só quando o usuário
+// aciona a formatação (não pesa o carregamento inicial da página) —
 // para as linguagens suportadas; para as demais, faz uma limpeza básica e
 // conservadora de espaçamento (sem reindentar, pra não quebrar linguagens
-// sensíveis a espaço como Python/YAML mal detectado).
+// sensíveis a espaço como Python mal detectado).
 
 import { onEditorInput, replaceRange } from "./editor.js";
 import { toast } from "./utils.js";
 
 const PRETTIER_BASE = "https://cdn.jsdelivr.net/npm/prettier@3";
+// prettier-plugin-sh depende de sh-syntax, que usa a export condition
+// "browser" — só o modo `?bundle` do esm.sh resolve isso corretamente
+// (jsdelivr's +esm e o esm.sh "puro" quebram no import de sh-syntax).
+const SH_PLUGIN_URL = "https://esm.sh/prettier-plugin-sh@0.14?bundle";
+const SQL_FORMATTER_URL = "https://cdn.jsdelivr.net/npm/sql-formatter@15/+esm";
 
 // Alias da linguagem do fence ```lang → parser do Prettier.
 const LANG_TO_PARSER = {
@@ -18,6 +24,18 @@ const LANG_TO_PARSER = {
   css: "css", scss: "scss", sass: "scss", less: "less",
   html: "html", htm: "html",
   yaml: "yaml", yml: "yaml",
+};
+
+// Linguagens de shell, formatadas via prettier-plugin-sh (usa o shfmt
+// compilado pra WASM por baixo) — não é um plugin oficial do Prettier,
+// então é carregado à parte do bundle principal.
+const SHELL_LANGS = new Set(["sh", "bash", "shell", "zsh"]);
+
+// Alias da linguagem do fence ```lang → dialeto esperado pelo sql-formatter.
+const SQL_DIALECTS = {
+  sql: "sql", mysql: "mysql", mariadb: "mariadb",
+  postgres: "postgresql", postgresql: "postgresql",
+  sqlite: "sqlite", plsql: "plsql", tsql: "tsql", mssql: "tsql",
 };
 
 let prettierPromise = null;
@@ -43,6 +61,36 @@ function loadPrettier() {
   return prettierPromise;
 }
 
+let shFormatterPromise = null;
+
+function loadShFormatter() {
+  if (!shFormatterPromise) {
+    shFormatterPromise = Promise.all([
+      import(`${PRETTIER_BASE}/standalone.mjs`),
+      import(SH_PLUGIN_URL),
+    ]).then(([standalone, shPlugin]) => ({
+      format: standalone.format,
+      plugins: [shPlugin.default || shPlugin],
+    })).catch((err) => {
+      shFormatterPromise = null;
+      throw err;
+    });
+  }
+  return shFormatterPromise;
+}
+
+let sqlFormatterPromise = null;
+
+function loadSqlFormatter() {
+  if (!sqlFormatterPromise) {
+    sqlFormatterPromise = import(SQL_FORMATTER_URL).catch((err) => {
+      sqlFormatterPromise = null;
+      throw err;
+    });
+  }
+  return sqlFormatterPromise;
+}
+
 // Limpeza conservadora: só espaçamento (trailing whitespace + linhas em
 // branco nas pontas), nunca reindenta — reindentar às cegas quebraria
 // linguagens onde espaço é significativo (Python, YAML...).
@@ -55,6 +103,7 @@ function basicCleanup(code) {
 
 async function formatCode(lang, rawBody) {
   const body = rawBody.endsWith("\n") ? rawBody.slice(0, -1) : rawBody;
+
   const parser = LANG_TO_PARSER[lang];
   if (parser) {
     try {
@@ -67,6 +116,28 @@ async function formatCode(lang, rawBody) {
       return { text: basicCleanup(body) + "\n", formatted: false };
     }
   }
+
+  if (SHELL_LANGS.has(lang)) {
+    try {
+      const { format, plugins } = await loadShFormatter();
+      const out = await format(body, { parser: "sh", plugins });
+      return { text: out.endsWith("\n") ? out : out + "\n", formatted: true };
+    } catch {
+      return { text: basicCleanup(body) + "\n", formatted: false };
+    }
+  }
+
+  const sqlDialect = SQL_DIALECTS[lang];
+  if (sqlDialect) {
+    try {
+      const { format } = await loadSqlFormatter();
+      const out = format(body, { language: sqlDialect });
+      return { text: out.endsWith("\n") ? out : out + "\n", formatted: true };
+    } catch {
+      return { text: basicCleanup(body) + "\n", formatted: false };
+    }
+  }
+
   return { text: basicCleanup(body) + "\n", formatted: false };
 }
 

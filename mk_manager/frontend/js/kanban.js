@@ -4,7 +4,7 @@ import { st } from "./state.js";
 import { esc, toast } from "./utils.js";
 import { apiFetch } from "./api.js";
 import { renderMarkdown, toggleCheckboxAt } from "./preview.js";
-import { updateRetroStatusLabel, updateTaskDuration } from "./editor.js";
+import { updateRetroStatusLabel } from "./editor.js";
 import { refreshListIfActive } from "./list.js";
 
 // ── Callback injetado por app.js para evitar dependência circular ─────────────
@@ -201,14 +201,9 @@ export async function moveTaskStatus(id, status) {
       if (sel) sel.value = updated.status || "";
       updateRetroStatusLabel();
       
-      // Sincroniza inputs de data do editor ativo se a tarefa estiver aberta
-      const datePlanEl = document.getElementById("date-planning");
-      if (datePlanEl) datePlanEl.value = updated.date_planning || "";
-      const dateExecEl = document.getElementById("date-execution");
-      if (dateExecEl) dateExecEl.value = updated.date_execution || "";
-      const dateConclEl = document.getElementById("date-conclusion");
-      if (dateConclEl) dateConclEl.value = updated.date_conclusion || "";
-      updateTaskDuration();
+      // Sincroniza o input de data do editor ativo se a tarefa estiver aberta
+      const statusChangedEl = document.getElementById("status-changed-at");
+      if (statusChangedEl) statusChangedEl.value = updated.status_changed_at || "";
     }
     renderKanban();
     refreshListIfActive();

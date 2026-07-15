@@ -46,9 +46,7 @@ class FileRecord:
     modified: str
     folder: str = field(default="")
     status: str = field(default="")
-    date_planning: str = field(default="")
-    date_execution: str = field(default="")
-    date_conclusion: str = field(default="")
+    status_changed_at: str = field(default="")
     archived_from: str = field(default="")
 
     @property

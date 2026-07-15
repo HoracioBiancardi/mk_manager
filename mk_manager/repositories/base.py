@@ -74,9 +74,7 @@ class AbstractFileRepository(ABC):
         modified: str,
         folder: str = "",
         status: str = "",
-        date_planning: str = "",
-        date_execution: str = "",
-        date_conclusion: str = "",
+        status_changed_at: str = "",
     ) -> FileRecord:
         """Persist a new file record.
 
@@ -105,9 +103,7 @@ class AbstractFileRepository(ABC):
         modified: str,
         folder: str | None = None,
         status: str | None = None,
-        date_planning: str | None = None,
-        date_execution: str | None = None,
-        date_conclusion: str | None = None,
+        status_changed_at: str | None = None,
     ) -> FileRecord:
         """Apply a partial update to an existing file record.
 

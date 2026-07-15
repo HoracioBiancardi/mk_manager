@@ -856,7 +856,7 @@ kbd {
 
 /* ── Sidebar panel ───────────────────────────────────────────────── */
 .sidebar-panel {
-  width: 240px; flex-shrink: 0;
+  width: var(--sidebar-w, 240px); flex-shrink: 0;
   display: flex; flex-direction: column;
   background: var(--surface); border-right: 1px solid var(--border);
   overflow: hidden;
@@ -864,6 +864,12 @@ kbd {
 }
 .sidebar-panel.collapsed {
   width: 0; border-right-color: transparent;
+}
+.sidebar-panel.resizing {
+  transition: none;
+}
+.sidebar-panel.collapsed ~ .sidebar-resize-handle {
+  display: none;
 }
 .panel-content {
   display: none; flex: 1; min-height: 0;
@@ -2031,6 +2037,39 @@ kbd {
 
 .mermaid-zoom-ctrl:disabled { opacity: .4; cursor: not-allowed; }
 
+/* ── Construtor visual de tabela (grade editável → Markdown) ─────────── */
+.tb-grid-wrap {
+  flex: 1; overflow: auto; padding: 1rem; background: var(--bg);
+}
+.tb-grid { border-collapse: collapse; }
+.tb-grid td {
+  border: 1px solid var(--border); padding: 0; vertical-align: middle;
+}
+.tb-cell-input {
+  width: 100%; min-width: 90px; box-sizing: border-box;
+  padding: .35rem .5rem; border: none; outline: none;
+  background: transparent; color: var(--text);
+  font-size: .82rem; font-family: inherit;
+}
+.tb-cell-input:focus {
+  outline: 2px solid var(--primary); outline-offset: -2px;
+  background: var(--surface-hover);
+}
+.tb-header-row td { background: var(--surface-alt); }
+.tb-header-cell-inner { display: flex; align-items: center; gap: .15rem; }
+.tb-header-row .tb-cell-input { flex: 1; font-weight: 600; }
+.tb-align-btn, .tb-col-remove, .tb-row-remove {
+  flex-shrink: 0; width: 22px; height: 22px; box-sizing: border-box;
+  border-radius: var(--r-sm); background: var(--bg); border: 1px solid var(--border);
+  color: var(--text-muted); font-size: .65rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.tb-align-btn:hover { background: var(--primary-dim); color: var(--primary); border-color: var(--primary); }
+.tb-col-remove:hover, .tb-row-remove:hover { background: rgba(239,68,68,.12); color: var(--danger); border-color: var(--danger); }
+.tb-row-controls { width: 30px; text-align: center; }
+.tb-row-controls .tb-row-remove { margin: 0 auto; }
+
 .md-preview pre code { background: none; border: none; padding: 0; color: var(--text); }
 .md-preview pre code.hljs { background: transparent; padding: 0; }
 
@@ -2559,24 +2598,6 @@ body.theme-white select option {
   min-width: 170px !important;
 }
 
-/* Duration badge */
-.task-duration-badge {
-  font-size: .7rem !important;
-  font-weight: bold !important;
-  padding: 0 .45rem !important;
-  border-radius: var(--r-sm) !important;
-  background: var(--primary-dim) !important;
-  color: var(--primary) !important;
-  border: 1px solid var(--border-bright) !important;
-  height: 24px !important;
-  box-sizing: border-box !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  text-shadow: var(--glow-text) !important;
-  margin-left: .5rem !important;
-  vertical-align: middle !important;
-}
-
 /* Efeito de vidro curvado / vinheta pesada (Curved Glass / Vignette) */
 .crt-vignette {
   position: fixed;
@@ -2846,6 +2867,7 @@ body.crt-glitch-active {
   font-weight: bold;
   margin-left: 0.35rem;
   font-family: 'Share Tech Mono', monospace !important;
+  flex-shrink: 0;
 }
 
 /* ── Filtros da Barra Lateral ───────────────────────────────────────────── */

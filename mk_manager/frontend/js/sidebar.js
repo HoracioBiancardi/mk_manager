@@ -4,6 +4,7 @@
 import { st } from './state.js';
 import { esc, timeAgo } from './utils.js';
 import { showContextMenu } from './contextmenu.js';
+import { setSidebarWidth, SIDEBAR_WIDTH_DEFAULT } from './prefs.js';
 
 // ── Ações injetadas por files.js/delete-modal.js (evita import circular: files.js
 // precisa de renderSidebar/renderTree daqui, então este módulo não importa de volta) ──
@@ -21,6 +22,55 @@ export function initSidebarActions({ moveFileToFolder, confirmRenameFile, rename
   _deleteFolder = deleteFolder;
   _newFile = newFile;
   _openDeleteModal = openDeleteModal;
+}
+
+// ── Redimensionamento da sidebar ────────────────────────────────────────────────
+export function initSidebarResizer() {
+  const handle = document.getElementById('sidebar-resize-handle');
+  const panel = document.querySelector('.sidebar-panel');
+  if (!handle || !panel) return;
+  let dragging = false;
+
+  const startDrag = () => {
+    if (panel.classList.contains('collapsed')) return;
+    dragging = true;
+    panel.classList.add('resizing');
+    handle.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  };
+  const moveDrag = (clientX) => {
+    if (!dragging) return;
+    const rect = panel.getBoundingClientRect();
+    setSidebarWidth(clientX - rect.left);
+  };
+  const endDrag = () => {
+    if (!dragging) return;
+    dragging = false;
+    panel.classList.remove('resizing');
+    handle.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  };
+
+  handle.addEventListener('mousedown', (e) => {
+    startDrag();
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', (e) => moveDrag(e.clientX));
+  document.addEventListener('mouseup', endDrag);
+  handle.addEventListener('touchstart', (e) => {
+    startDrag();
+    e.preventDefault();
+  }, { passive: false });
+  document.addEventListener('touchmove', (e) => {
+    if (dragging) {
+      moveDrag(e.touches[0].clientX);
+      e.preventDefault();
+    }
+  }, { passive: false });
+  document.addEventListener('touchend', endDrag);
+  handle.addEventListener('dblclick', () => setSidebarWidth(SIDEBAR_WIDTH_DEFAULT));
 }
 
 // ── SVG icons ─────────────────────────────────────────────────────────────────
@@ -215,7 +265,8 @@ function treeFileHtml(f, depth) {
     onmouseenter="showFileTooltip(event,'${f.id}')" onmouseleave="hideFileTooltip()">
     <span class="tree-caret-gap"></span>
     ${fileIcon}
-    <span class="tree-name">${esc(f.title || 'Sem título')} ${progress}</span>
+    <span class="tree-name">${esc(f.title || 'Sem título')}</span>
+    ${progress}
     <div class="tree-item-actions" onclick="event.stopPropagation()">
       <button class="icon-btn" onclick="startRenameFile('${f.id}')" title="Renomear">✏</button>
       <button class="icon-btn del" onclick="openDeleteModal('${f.id}','${esc(f.title || 'Sem título')}','${esc(f.filename)}')" title="Excluir">✕</button>

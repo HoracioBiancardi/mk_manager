@@ -31,11 +31,34 @@ export function setEditorFontSize(px) {
   applyEditorFontSize(px);
 }
 
+const SIDEBAR_WIDTH_KEY = "mk-sidebar-width";
+export const SIDEBAR_WIDTH_DEFAULT = 240;
+const SIDEBAR_WIDTH_MIN = 160;
+const SIDEBAR_WIDTH_MAX = 480;
+
+export function getSidebarWidth() {
+  const saved = parseInt(localStorage.getItem(SIDEBAR_WIDTH_KEY), 10);
+  return Number.isFinite(saved) && saved >= SIDEBAR_WIDTH_MIN && saved <= SIDEBAR_WIDTH_MAX
+    ? saved
+    : SIDEBAR_WIDTH_DEFAULT;
+}
+
+export function applySidebarWidth(px = getSidebarWidth()) {
+  document.documentElement.style.setProperty("--sidebar-w", px + "px");
+}
+
+export function setSidebarWidth(px) {
+  const clamped = Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, px));
+  localStorage.setItem(SIDEBAR_WIDTH_KEY, String(clamped));
+  applySidebarWidth(clamped);
+}
+
 // Aplica as preferências salvas antes do primeiro arquivo ser aberto.
 export function applyPrefsOnBoot() {
   st.view = getDefaultView();
   applyEditorFontSize();
-  
+  applySidebarWidth();
+
   // Aplica as preferências do Pip-Boy CRT
   setCrtScanlines(getCrtScanlines());
   setCrtFlicker(getCrtFlicker());

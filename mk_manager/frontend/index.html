@@ -221,6 +221,9 @@
       <div class="sidebar-footer" id="storage-info">–</div>
     </aside>
 
+    <div id="sidebar-resize-handle" class="resize-handle sidebar-resize-handle"
+      title="Arraste para redimensionar · Duplo-clique para largura padrão"></div>
+
     <!-- MAIN -->
     <main class="main-panel">
       <div id="empty-panel" class="empty-panel">
@@ -284,14 +287,9 @@
           <div id="task-dates-part" style="display:contents">
             <div class="info-sep"></div>
             <div class="info-group">
-              <span class="info-label" title="Datas de Planejamento, Execução e Conclusão com Horas">Datas</span>
-              <input type="datetime-local" id="date-planning" class="meta-input date-input" onchange="onMetaChange()"
-                title="Planejado em">
-              <input type="datetime-local" id="date-execution" class="meta-input date-input" onchange="onMetaChange()"
-                title="Em Dev (Execução) em">
-              <input type="datetime-local" id="date-conclusion" class="meta-input date-input" onchange="onMetaChange()"
-                title="Concluído em">
-              <span id="task-duration-badge" class="task-duration-badge" style="display: none;" title="Duração total (da Execução até Conclusão)"></span>
+              <span class="info-label" title="Data da última troca de status">Status em</span>
+              <input type="datetime-local" id="status-changed-at" class="meta-input date-input" onchange="onMetaChange()"
+                title="Alterado em">
             </div>
           </div>
         </div>
@@ -323,11 +321,13 @@
               <button class="tool-btn" onclick="insTable()" title="Inserir tabela">⊞ Tabela</button>
               <button class="tool-btn" onclick="formatTable()"
                 title="Alinhar colunas da tabela (cursor deve estar dentro da tabela)">⊟ Alinhar</button>
+              <button class="tool-btn" onclick="openTableBuilder()"
+                title="Construtor visual de tabela: edite células, linhas e colunas numa grade">🧮 Construtor</button>
               <button class="tool-btn" onclick="openDiagramBuilder()"
                 title="Construtor visual: arraste caixas e setas, gera Mermaid sozinho">🧩 Diagrama</button>
               <span class="tool-sep"></span>
               <button class="tool-btn" onclick="formatSmart()"
-                title="Formata o bloco de código onde está o cursor; sem cursor num bloco, formata o documento inteiro (Prettier p/ JS/TS/JSON/CSS/HTML/YAML; limpeza de espaçamento nas demais linguagens)">🧹
+                title="Formata o bloco de código onde está o cursor; sem cursor num bloco, formata o documento inteiro (Prettier p/ JS/TS/JSON/CSS/HTML/YAML, shfmt p/ Bash/Shell, sql-formatter p/ SQL; limpeza de espaçamento nas demais linguagens)">🧹
                 Formatar</button>
               <button class="tool-btn tool-btn-import" onclick="triggerAssetImport()"
                 title="Importar arquivo (imagem, PDF, MD…)">📎 Importar</button>

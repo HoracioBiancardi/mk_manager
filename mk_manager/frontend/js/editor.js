@@ -381,6 +381,20 @@ export function onEditorKeydown(e) {
           const p1 = lineStart + pipes[pipes.length - 2].index + 1;
           const p2 = lineStart + pipes[pipes.length - 1].index;
           ta.setSelectionRange(p1, p2);
+        } else if (lineStart > 0) {
+          // Primeira célula da linha: se houver uma linha de tabela acima,
+          // pula pra última célula dela em vez de ficar parado.
+          const prevLineEnd = lineStart - 1;
+          const prevLineStart = ta.value.lastIndexOf("\n", prevLineEnd - 1) + 1;
+          const prevLine = ta.value.slice(prevLineStart, prevLineEnd);
+          if (/^\s*\|/.test(prevLine)) {
+            const prevPipes = [...prevLine.matchAll(/\|/g)];
+            if (prevPipes.length >= 2) {
+              const p1 = prevLineStart + prevPipes[prevPipes.length - 2].index + 1;
+              const p2 = prevLineStart + prevPipes[prevPipes.length - 1].index;
+              ta.setSelectionRange(p1, p2);
+            }
+          }
         }
       } else {
         const afterCursor = ta.value.slice(pos, lineEnd);
@@ -391,12 +405,27 @@ export function onEditorKeydown(e) {
           const cellEnd = ta.value.indexOf("|", cellStart);
           ta.setSelectionRange(cellStart, cellEnd !== -1 ? cellEnd : cellStart);
         } else {
-          // Última célula: cria nova linha da tabela
-          const cols = currentLine.split("|").length - 2;
-          const newRow = makeTableRow(cols);
-          replaceRange(ta, lineEnd, lineEnd, "\n" + newRow);
-          ta.setSelectionRange(lineEnd + 2, lineEnd + 2);
-          onEditorInput();
+          // Última célula da linha: se existir mais uma linha de tabela
+          // logo abaixo, pula pra primeira célula dela — só cria uma linha
+          // nova quando essa é de fato a última linha da tabela (antes,
+          // isso criava uma linha no meio da tabela sempre que o cursor
+          // estava na última célula de QUALQUER linha, quebrando tabelas
+          // com mais de uma linha de dados).
+          const nextLineStart = lineEnd + 1;
+          const nextLine = ta.value.slice(nextLineStart).split("\n")[0];
+          if (/^\s*\|/.test(nextLine)) {
+            const firstPipe = nextLine.indexOf("|");
+            const secondPipe = nextLine.indexOf("|", firstPipe + 1);
+            const cellStart = nextLineStart + firstPipe + 1;
+            const cellEnd = secondPipe !== -1 ? nextLineStart + secondPipe : cellStart;
+            ta.setSelectionRange(cellStart, cellEnd);
+          } else {
+            const cols = currentLine.split("|").length - 2;
+            const newRow = makeTableRow(cols);
+            replaceRange(ta, lineEnd, lineEnd, "\n" + newRow);
+            ta.setSelectionRange(lineEnd + 2, lineEnd + 2);
+            onEditorInput();
+          }
         }
       }
       return;
@@ -571,6 +600,39 @@ export function insCodeBlock() {
 
 // ── Formatar tabela (alinha colunas) ──────────────────────────────────────────
 
+// Recebe linhas de tabela (cabeçalho + dados, SEM linha separadora) e o
+// alinhamento de cada coluna ("left"|"center"|"right"); devolve o markdown
+// já com colunas alinhadas e a linha separadora gerada a partir do
+// alinhamento. Usado tanto por formatTable() quanto pelo construtor visual
+// de tabelas (table-builder.js), que já trabalha com uma grade estruturada
+// e nunca guarda a linha separadora à parte.
+export function alignTableRows(rows, colAligns) {
+  const numCols = Math.max(colAligns.length, ...rows.map((r) => r.length));
+  const colWidths = Array(numCols).fill(3);
+  rows.forEach((row) => {
+    row.forEach((cell, i) => {
+      colWidths[i] = Math.max(colWidths[i], (cell || "").length);
+    });
+  });
+
+  const padRow = (row) =>
+    "| " +
+    Array.from({ length: numCols }, (_, i) => (row[i] ?? "").padEnd(colWidths[i])).join(" | ") +
+    " |";
+
+  const sepCells = Array.from({ length: numCols }, (_, i) => {
+    const align = colAligns[i] || "left";
+    const L = align === "center";
+    const R = align === "center" || align === "right";
+    const dashes = "-".repeat(Math.max(1, colWidths[i] - (L ? 1 : 0) - (R ? 1 : 0)));
+    return (L ? ":" : "") + dashes + (R ? ":" : "");
+  });
+  const sepRow = "| " + sepCells.join(" | ") + " |";
+
+  const [header, ...dataRows] = rows.map(padRow);
+  return [header, sepRow, ...dataRows].join("\n");
+}
+
 export function formatTable() {
   const ta = document.getElementById("md-editor");
   const pos = ta.selectionStart;
@@ -609,32 +671,44 @@ export function formatTable() {
       .map((c) => c.trim()),
   );
 
-  const numCols = Math.max(...rows.map((r) => r.length));
-
-  // Largura máxima por coluna (mínimo 3 para linhas separadoras)
-  const colWidths = Array(numCols).fill(3);
-  rows.forEach((row) => {
-    row.forEach((cell, i) => {
-      if (!/^:?-+:?$/.test(cell))
-        colWidths[i] = Math.max(colWidths[i], cell.length);
+  let formatted;
+  if (rows.length > 1 && rows[1].length > 0 && rows[1].every((c) => /^:?-+:?$/.test(c))) {
+    // Caso normal: linha 1 é a separadora — extrai o alinhamento dela,
+    // remove-a do array e delega o realinhamento pro helper compartilhado.
+    const colAligns = rows[1].map((cell) => {
+      const L = cell.startsWith(":");
+      const R = cell.endsWith(":") && cell.length > 1;
+      return L && R ? "center" : R ? "right" : "left";
     });
-  });
-
-  // Reconstrói cada linha com padding
-  const formatted = rows.map((row) => {
-    const cells = Array.from({ length: numCols }, (_, i) => {
-      const cell = row[i] ?? "";
-      const isSep = /^:?-+:?$/.test(cell);
-      if (isSep) {
-        const L = cell.startsWith(":");
-        const R = cell.endsWith(":") && cell.length > 1;
-        const dashes = "-".repeat(colWidths[i] - (L ? 1 : 0) - (R ? 1 : 0));
-        return (L ? ":" : "") + dashes + (R ? ":" : "");
-      }
-      return cell.padEnd(colWidths[i]);
+    const bodyRows = [rows[0], ...rows.slice(2)];
+    formatted = alignTableRows(bodyRows, colAligns).split("\n");
+  } else {
+    // Sem linha separadora reconhecível (tabela ainda incompleta): mantém
+    // o comportamento antigo, reformatando cada linha in-place sem
+    // inserir uma separadora que não existia.
+    const numCols = Math.max(...rows.map((r) => r.length));
+    const colWidths = Array(numCols).fill(3);
+    rows.forEach((row) => {
+      row.forEach((cell, i) => {
+        if (!/^:?-+:?$/.test(cell))
+          colWidths[i] = Math.max(colWidths[i], cell.length);
+      });
     });
-    return "| " + cells.join(" | ") + " |";
-  });
+    formatted = rows.map((row) => {
+      const cells = Array.from({ length: numCols }, (_, i) => {
+        const cell = row[i] ?? "";
+        const isSep = /^:?-+:?$/.test(cell);
+        if (isSep) {
+          const L = cell.startsWith(":");
+          const R = cell.endsWith(":") && cell.length > 1;
+          const dashes = "-".repeat(colWidths[i] - (L ? 1 : 0) - (R ? 1 : 0));
+          return (L ? ":" : "") + dashes + (R ? ":" : "");
+        }
+        return cell.padEnd(colWidths[i]);
+      });
+      return "| " + cells.join(" | ") + " |";
+    });
+  }
 
   const tableCharStart = lines
     .slice(0, start)
@@ -697,30 +771,8 @@ Object.assign(window, {
   showRetroTagSuggestions,
   selectRetroTag,
   filterRetroTagSuggestions,
-  updateTaskDuration,
   insertWikiLink,
 });
-
-export function updateTaskDuration() {
-  const execVal = document.getElementById("date-execution")?.value;
-  const conclVal = document.getElementById("date-conclusion")?.value;
-  const badge = document.getElementById("task-duration-badge");
-  if (!badge) return;
-
-  if (execVal && conclVal) {
-    const execDate = new Date(execVal);
-    const conclDate = new Date(conclVal);
-    const diffMs = conclDate - execDate;
-    if (diffMs >= 0) {
-      const diffHours = diffMs / (1000 * 60 * 60);
-      const formatted = diffHours % 1 === 0 ? diffHours : diffHours.toFixed(1);
-      badge.textContent = `⏱ ${formatted}h`;
-      badge.style.display = "inline-flex";
-      return;
-    }
-  }
-  badge.style.display = "none";
-}
 
 /* ── Custom select dropdown functions (Pip-Boy themed status selector) ── */
 export function toggleRetroSelect(event) {

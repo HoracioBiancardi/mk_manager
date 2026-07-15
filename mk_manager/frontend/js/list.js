@@ -12,7 +12,7 @@ let _statusFilter = ""; // "" = todos os status
 let _tagFilter = ""; // "" = todas
 let _folderFilter = ""; // "" = todas
 let _titleQuery = "";
-let _sortCol = "modified"; // title | type | status | progress | folder | modified | date_conclusion
+let _sortCol = "modified"; // title | type | status | progress | folder | modified | status_changed_at
 let _sortDir = "desc";
 let _groupBy = "none"; // none | status | folder | tag | type
 const _collapsedGroups = new Set();
@@ -25,7 +25,7 @@ const COLUMNS = [
   { key: "folder", label: "Pasta", sortable: true },
   { key: "tags", label: "Tags", sortable: false },
   { key: "modified", label: "Modificado", sortable: true },
-  { key: "date_conclusion", label: "Concluído em", sortable: true },
+  { key: "status_changed_at", label: "Status alterado em", sortable: true },
 ];
 
 export function renderList() {
@@ -98,8 +98,8 @@ function getFilteredSortedFiles() {
         return f.task_total ? f.task_done / f.task_total : -1;
       case "folder":
         return f.folder || "";
-      case "date_conclusion":
-        return f.date_conclusion || "";
+      case "status_changed_at":
+        return f.status_changed_at || "";
       case "modified":
       default:
         return f.modified || "";
@@ -256,8 +256,8 @@ function renderListRow(f) {
         .join("")}${tags.length > 3 ? `<span class="kanban-tag list-tag-more">+${tags.length - 3}</span>` : ""}</div>`
     : "";
 
-  const conclCell = f.date_conclusion
-    ? esc(new Date(f.date_conclusion).toLocaleDateString("pt-BR"))
+  const statusChangedCell = f.status_changed_at
+    ? esc(new Date(f.status_changed_at).toLocaleDateString("pt-BR"))
     : `<span class="list-dash">—</span>`;
 
   return `<tr class="list-row" data-id="${f.id}">
@@ -268,7 +268,7 @@ function renderListRow(f) {
     <td>${esc(f.folder || "")}</td>
     <td>${tagsCell}</td>
     <td title="${esc(f.modified)}">${timeAgo(f.modified)}</td>
-    <td>${conclCell}</td>
+    <td>${statusChangedCell}</td>
   </tr>`;
 }
 

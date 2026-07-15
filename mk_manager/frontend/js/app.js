@@ -9,7 +9,7 @@
 
 import { toast } from "./utils.js";
 import { apiFetch } from "./api.js";
-import { initSidebarActions } from "./sidebar.js";
+import { initSidebarActions, initSidebarResizer } from "./sidebar.js";
 import { setSaveCallback, initResizer } from "./editor.js";
 import { initPreviewSourceSync } from "./preview.js";
 import { initAssetDropZone } from "./assets.js";
@@ -39,6 +39,7 @@ import "./views.js";
 import "./export.js";
 import "./search-filter.js";
 import "./diagram-builder.js";
+import "./table-builder.js";
 import "./format-code.js";
 import "./settings.js";
 
@@ -100,6 +101,7 @@ document.addEventListener("keydown", (e) => {
   // editor/kanban por cima cobrindo o efeito; as auroras via CSS abaixo já
   // dão a sensação de "vivo" sem esse custo contínuo de CPU)
   initResizer();
+  initSidebarResizer();
   initPreviewSourceSync();
   initAssetDropZone();
   const ok = await checkConn();

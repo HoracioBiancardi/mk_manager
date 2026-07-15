@@ -363,17 +363,9 @@ class FileService:
             The newly persisted ``FileRecord``.
         """
         now = _utc_now()
-        date_planning = request.date_planning
-        date_execution = request.date_execution
-        date_conclusion = request.date_conclusion
-        today_str = datetime.now().strftime("%Y-%m-%dT%H:%M")
-
-        if request.status == "planning" and not date_planning:
-            date_planning = today_str
-        elif request.status == "development" and not date_execution:
-            date_execution = today_str
-        elif request.status == "done" and not date_conclusion:
-            date_conclusion = today_str
+        status_changed_at = request.status_changed_at
+        if request.status and not status_changed_at:
+            status_changed_at = datetime.now().strftime("%Y-%m-%dT%H:%M")
 
         return self._repo.create(
             file_id=_id_for_title(request.title),
@@ -385,9 +377,7 @@ class FileService:
             modified=now,
             folder=request.folder,
             status=request.status,
-            date_planning=date_planning,
-            date_execution=date_execution,
-            date_conclusion=date_conclusion,
+            status_changed_at=status_changed_at,
         )
 
     def update_file(self, file_id: str, request: FileUpdateRequest) -> FileRecord:
@@ -407,18 +397,11 @@ class FileService:
         """
         existing = self._repo.get_by_id(file_id)
 
-        date_planning = request.date_planning if request.date_planning is not None else existing.date_planning
-        date_execution = request.date_execution if request.date_execution is not None else existing.date_execution
-        date_conclusion = request.date_conclusion if request.date_conclusion is not None else existing.date_conclusion
-        today_str = datetime.now().strftime("%Y-%m-%dT%H:%M")
-
+        status_changed_at = (
+            request.status_changed_at if request.status_changed_at is not None else existing.status_changed_at
+        )
         if request.status is not None and request.status != existing.status:
-            if request.status == "planning" and not date_planning:
-                date_planning = today_str
-            elif request.status == "development" and not date_execution:
-                date_execution = today_str
-            elif request.status == "done" and not date_conclusion:
-                date_conclusion = today_str
+            status_changed_at = datetime.now().strftime("%Y-%m-%dT%H:%M")
 
         return self._repo.update(
             file_id,
@@ -428,9 +411,7 @@ class FileService:
             modified=_utc_now(),
             folder=request.folder,
             status=request.status,
-            date_planning=date_planning,
-            date_execution=date_execution,
-            date_conclusion=date_conclusion,
+            status_changed_at=status_changed_at,
         )
 
     def rename_tag(self, old_tag: str, new_tag: str) -> int:
@@ -557,11 +538,11 @@ class FileService:
         return self._repo.unarchive(file_id)
 
     def archive_completed_before(self, days: int) -> int:
-        """Archive every "done" task whose conclusion date is older than *days*.
+        """Archive every "done" task whose status change is older than *days*.
 
         Only tasks that actually have a ``status == "done"`` and a stamped
-        ``date_conclusion`` are considered — tasks marked done without ever
-        going through the kanban transition (no conclusion date) are left
+        ``status_changed_at`` are considered — tasks marked done without ever
+        going through the kanban transition (no stamped date) are left
         alone rather than guessed at.
 
         Args:
@@ -574,10 +555,10 @@ class FileService:
         cutoff = datetime.now() - timedelta(days=days)
         archived_count = 0
         for record in self._repo.list_all():
-            if record.status != "done" or not record.date_conclusion:
+            if record.status != "done" or not record.status_changed_at:
                 continue
             try:
-                concluded_at = datetime.fromisoformat(record.date_conclusion)
+                concluded_at = datetime.fromisoformat(record.status_changed_at)
             except ValueError:
                 continue
             if concluded_at <= cutoff:
