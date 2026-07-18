@@ -26,19 +26,22 @@ Backend em **FastAPI**, frontend em HTML/JS vanilla, arquivos salvos como `.md` 
 | Feature | Descrição |
 |---|---|
 | **Notas** | Criar, editar e deletar notas em Markdown |
-| **Tasks** | Tasks com checkboxes interativas (`- [ ]` / `- [x]`) |
+| **Tasks** | Tasks com checkboxes interativas (`- [ ]` / `- [x]`), incluindo subtarefas indentadas; quando **todas** as subtarefas de uma tarefa-mãe ficam concluídas, a mãe é marcada automaticamente (cascata em múltiplos níveis de aninhamento) |
 | **Pastas** | Organização em pastas/subpastas; renomear/mover move tudo que está aninhado; "deletar" uma pasta apenas move o conteúdo para a pasta pai (nunca destrói dados) |
-| **Kanban** | Status (`planning`/`development`/`review`/`done`, colunas customizáveis) com datas de planejamento, execução e conclusão preenchidas automaticamente na primeira transição |
+| **Kanban** | Status (`planning`/`development`/`review`/`done`, colunas customizáveis) com `status_changed_at` preenchido/atualizado automaticamente a cada mudança de status; modal de edição rápida das tasks direto do card |
 | **Lista** | Tela estilo ClickUp: tabela de notas/tasks ordenável por qualquer coluna, filtrável por tipo/status/tag/pasta/título, com status editável direto na linha e agrupamento opcional (por status, pasta, tag ou tipo) em seções recolhíveis |
 | **Arquivo** | Arquivar notas/tasks tira do Kanban/Lista/Grafo sem apagar nada (fica em `_archive/`, restaurável a qualquer momento); arquivamento manual (botão no card do Kanban ou na tela Arquivo) ou em lote por idade da conclusão |
 | **Grafo de notas** | Visualização das notas conectadas por `[[wikilinks]]`, filtrável por tipo/tag/pasta; links para títulos inexistentes viram nós "phantom" (fantasma) em vez de serem descartados |
 | **Tags** | Tags de frontmatter + tags inline `#tag` extraídas do corpo do texto (ignorando código e URLs); filtro hierárquico (`area` também casa com `area/sub`); renomear/mesclar uma tag em todos os arquivos de uma vez |
 | **Busca full-text** | Pesquisa em título, tags e conteúdo com ranking de relevância |
+| **Abas de arquivos recentes** | Até 5 últimos arquivos abertos como abas acima do editor, com botão de fechar (`×`, só remove da lista — não apaga o arquivo) e atalhos de teclado para navegar entre elas |
+| **Temas & CRT (Pip-Boy)** | 7 temas de cor (Verde Fósforo, Âmbar Fallout NV, Azul Fallout 4, Branco, Vermelho Enclave, Roxo Vault-Tec, Corporativo/neutro) + efeitos CRT opcionais (scanlines, flicker, estática, curvatura, transição, varredura de radar) e efeitos sonoros mecânicos, tudo persistido no navegador |
 | **Auto-save** | Salvo automaticamente 800ms após parar de digitar |
 | **Split view** | Editor + Preview lado a lado |
 | **Preview ao vivo** | Markdown renderizado em tempo real |
 | **Quick Open** | Abrir qualquer arquivo rapidamente (`Ctrl+K`) |
 | **Diagram builder** | Editor visual de diagramas embutido |
+| **Table builder** | Editor visual de tabelas Markdown (grade de células, edição in-place de tabelas existentes) |
 | **Assets** | Upload de imagens/arquivos anexados às notas (deduplicação automática de nome) |
 | **Backup** | Download de um `.zip` com todo o diretório de notas |
 | **Export** | Download de arquivos `.md` individuais ou todos de uma vez |
@@ -70,27 +73,31 @@ mk_manager/
     │   ├── css/
     │   │   └── style.css
     │   └── js/
-    │       ├── app.js            # Bootstrap + atalhos de teclado globais
+    │       ├── app.js            # Bootstrap + listener de teclado global
+    │       ├── config.js         # Atalhos de teclado centralizados (ex.: abas recentes)
     │       ├── state.js          # Estado global da SPA
     │       ├── api.js            # Client HTTP
     │       ├── editor.js         # Textarea + toolbar de formatação
-    │       ├── preview.js        # Renderização Markdown ao vivo
+    │       ├── preview.js        # Renderização Markdown ao vivo + vínculo subtarefa/tarefa-mãe
     │       ├── sidebar.js        # Árvore de arquivos/pastas
-    │       ├── files.js          # CRUD de arquivos no frontend
+    │       ├── files.js          # CRUD de arquivos no frontend + abas de recentes
     │       ├── search-filter.js  # Busca e filtros
     │       ├── graph.js          # Visualização do grafo de notas
-    │       ├── kanban.js         # Quadro kanban
+    │       ├── kanban.js         # Quadro kanban + modal de edição rápida
     │       ├── list.js           # Tela Lista (tabela ordenável/agrupável)
     │       ├── archive.js        # Tela Arquivo (restaurar/excluir arquivadas)
     │       ├── diagram-builder.js# Editor visual de diagramas
+    │       ├── table-builder.js  # Editor visual de tabelas Markdown
     │       ├── quickopen.js      # Busca rápida (Ctrl+K)
     │       ├── contextmenu.js    # Menu de contexto
     │       ├── delete-modal.js   # Modal de confirmação de exclusão
     │       ├── settings.js       # Modal de configurações
+    │       ├── prefs.js          # Preferências persistidas (tema, CRT, fonte, sidebar)
     │       ├── assets.js         # Upload de assets
     │       ├── export.js         # Export de arquivos
     │       ├── format-code.js    # Formatação de blocos de código
     │       ├── sfx.js            # Efeitos sonoros
+    │       ├── views.js          # Alternância entre as "telas cheias" (panes)
     │       └── utils.js
     ├── domain/                   # Camada de domínio (sem dependências externas)
     │   └── entities.py           # FileRecord, SearchResult
@@ -213,7 +220,7 @@ Todas as configurações usam o prefixo `MK_` e podem ser definidas em `.env`:
 # .env
 MK_NOTES_DIR=./notes       # Diretório dos arquivos markdown
 MK_ASSETS_DIR=             # Diretório de assets (vazio = {MK_NOTES_DIR}/assets)
-MK_HOST=0.0.0.0             # Endereço de bind do servidor
+MK_HOST=127.0.0.1           # Endereço de bind do servidor
 MK_PORT=8099                 # Porta TCP
 MK_DEBUG=true                 # Habilita hot-reload
 ```
@@ -222,7 +229,7 @@ MK_DEBUG=true                 # Habilita hot-reload
 |---|---|---|
 | `MK_NOTES_DIR` | `./notes` | Diretório onde os `.md` são salvos |
 | `MK_ASSETS_DIR` | `{MK_NOTES_DIR}/assets` | Diretório de uploads (imagens, PDFs etc.) |
-| `MK_HOST` | `0.0.0.0` | Host do servidor |
+| `MK_HOST` | `127.0.0.1` | Host do servidor |
 | `MK_PORT` | `8099` | Porta do servidor |
 | `MK_DEBUG` | `true` | Hot-reload automático |
 
@@ -260,9 +267,7 @@ Lista todos os arquivos (sem conteúdo), ordenados por data de modificação.
     "task_items": [],
     "folder": "projetos/backend",
     "status": "development",
-    "date_planning": "2024-01-10T09:00",
-    "date_execution": "2024-01-12T09:00",
-    "date_conclusion": ""
+    "status_changed_at": "2024-01-12T09:00"
   }
 ]
 ```
@@ -283,9 +288,7 @@ Cria um novo arquivo. Todos os campos têm default, então `{}` já cria um rasc
   "content": "## Introdução\n\nConteúdo aqui...",
   "folder": "pessoal",
   "status": "",
-  "date_planning": "",
-  "date_execution": "",
-  "date_conclusion": ""
+  "status_changed_at": ""
 }
 ```
 
@@ -366,7 +369,7 @@ Restaura um arquivo arquivado para a pasta em que estava antes.
 ---
 
 #### `POST /api/files/archive-completed?days=30`
-Arquiva em lote toda task com `status=done` cuja `date_conclusion` seja mais antiga que `days` dias.
+Arquiva em lote toda task com `status=done` cujo `status_changed_at` seja mais antigo que `days` dias.
 
 **Resposta `200`:** `{"archived_count": 4}`
 
@@ -493,11 +496,9 @@ tags:
 - sprint
 folder: projetos/backend
 status: development
+status_changed_at: '2024-01-12T09:00'
 created: '2024-01-15T10:30:00+00:00'
 modified: '2024-01-15T11:00:00+00:00'
-date_planning: '2024-01-10T09:00'
-date_execution: '2024-01-12T09:00'
-date_conclusion: ''
 ---
 ## Pauta
 
@@ -525,9 +526,13 @@ modified: '2024-01-15T17:30:00+00:00'
 - [x] Atualizar documentação
 - [ ] Deploy em staging
 - [ ] Code review da feature X
+  - [ ] Aprovação do time de backend
+  - [ ] Aprovação do time de frontend
 ```
 
-`folder`, `status`, `date_planning`, `date_execution` e `date_conclusion` são opcionais — ficam vazios (`""`) quando o arquivo não participa do quadro kanban. `#tags` inline no corpo e links `[[Nota]]` também são reconhecidos automaticamente, sem precisar declarar no frontmatter.
+> Subtarefas indentadas (como as duas acima) contam para o vínculo automático de conclusão — quando "Aprovação do time de backend" e "Aprovação do time de frontend" ficarem marcadas, "Code review da feature X" é marcada sozinha. Só as tasks de primeiro nível (sem indentação) entram na contagem `task_total`/`task_done` usada nos badges de progresso do Kanban e da sidebar; subtarefas só "contam" indiretamente, completando a mãe.
+
+`folder`, `status` e `status_changed_at` são opcionais — ficam vazios (`""`) quando o arquivo não participa do quadro kanban. `status_changed_at` é preenchido/atualizado automaticamente pelo backend a cada mudança de status (não precisa ser setado manualmente). `#tags` inline no corpo e links `[[Nota]]` também são reconhecidos automaticamente, sem precisar declarar no frontmatter.
 
 `_archive/` é uma pasta reservada na raiz de `notes/` (não use esse nome para suas próprias pastas). Arquivar um arquivo o move fisicamente para lá e preenche `archived_from` com a pasta de origem; restaurar move de volta e limpa o campo. Arquivos arquivados ficam fora de toda listagem por padrão (Kanban, Lista, Grafo, Busca) até serem restaurados pela tela Arquivo.
 
@@ -544,17 +549,20 @@ O diretório `frontend/` é uma SPA (Single Page Application) sem build step, co
 - **Editor**: textarea monospace com toolbar de formatação Markdown
 - **Preview**: renderização ao vivo via [marked.js](https://marked.js.org/)
 - **Split view** / Editor only / Preview only
-- **Checkboxes interativos** no preview — clicar atualiza o arquivo
-- **Kanban**: quadro com colunas de status customizáveis, drag-and-drop entre etapas, botão de arquivar por card
+- **Checkboxes interativos** no preview — clicar atualiza o arquivo; marcar todas as subtarefas de uma tarefa conclui a mãe automaticamente (também funciona no modal de edição rápida do Kanban)
+- **Abas de arquivos recentes**: até 5 abas acima do editor, com botão `×` para fechar (só remove da lista, não apaga o arquivo) e navegação por atalho de teclado
+- **Kanban**: quadro com colunas de status customizáveis, drag-and-drop entre etapas, modal de edição rápida de checkboxes direto no card, botão de arquivar por card
 - **Lista**: tabela ordenável/filtrável de notas e tasks, com agrupamento por status/pasta/tag/tipo em seções recolhíveis
 - **Arquivo**: tela de itens arquivados, com restaurar ou excluir definitivamente
 - **Grafo de notas**: visualização interativa dos links `[[wikilink]]`, filtrável por tipo/tag/pasta
 - **Diagram builder**: editor visual de diagramas embutido no app
+- **Table builder**: editor visual de tabelas Markdown (grade de células, edição in-place)
 - **Quick Open**: busca rápida de arquivos por título (`Ctrl+K`)
 - **Menu de contexto** na árvore de arquivos/pastas
 - **Tags**: adicionar com Enter ou vírgula, remover com ×
 - **Auto-save** com debounce de 800ms
 - **Indicador de conexão** (● online / ● offline)
+- **Temas Pip-Boy**: 7 temas de cor + efeitos CRT (scanlines, flicker, estática, curvatura, transição, varredura de radar), todos configuráveis e persistidos no navegador
 - **Efeitos sonoros** (opcionais, configuráveis)
 
 **Atalhos de teclado:**
@@ -569,7 +577,11 @@ O diretório `frontend/` é uma SPA (Single Page Application) sem build step, co
 | `Ctrl+I` | Itálico (no editor) |
 | `Tab` | Indentar (2 espaços) |
 | `Enter` | Continuar lista/tabela automaticamente |
+| `Ctrl+Tab` / `Ctrl+Shift+Tab` | Alternar para a próxima/anterior aba de arquivo recente |
+| `Alt+1` … `Alt+9` | Pular direto para a N-ésima aba de arquivo recente |
 | `Esc` | Fechar modal (delete, settings, quick open, edição rápida do kanban) |
+
+> Os atalhos das abas de arquivos recentes são definidos centralmente em `frontend/js/config.js` (`RECENT_TABS_SHORTCUTS`) — troque a combinação ali para remapear em todo o app. `Ctrl+Tab`/`Ctrl+Shift+Tab` são reservados pela maioria dos navegadores para trocar de aba do próprio navegador (não dá pra interceptar em uma aba comum); `Alt+1`…`Alt+9` são a alternativa que sempre funciona.
 
 ---
 

@@ -128,15 +128,55 @@ export function renderRecentFiles() {
     return;
   }
   bar.style.display = "flex";
-  bar.innerHTML = st.recentFiles.map(f => {
+  bar.innerHTML = st.recentFiles.map((f, i) => {
     const active = f.id === st.activeId ? "active" : "";
-    return `<span class="recent-file-tab ${active}" onclick="openFileFromTab('${f.id}')" title="${esc(f.title)}">${esc(f.title)}</span>`;
+    const hint = i < 9 ? ` (Alt+${i + 1})` : "";
+    return `<span class="recent-file-tab ${active}" onclick="openFileFromTab('${f.id}')" title="${esc(f.title)}${hint}">
+      <span class="recent-file-tab-label">${esc(f.title)}</span>
+      <button type="button" class="recent-file-tab-close" onclick="closeRecentTab(event,'${f.id}')" title="Fechar aba" aria-label="Fechar aba">×</button>
+    </span>`;
   }).join("");
 }
 
 window.openFileFromTab = (id) => {
   openFile(id);
 };
+
+// Remove o arquivo apenas da barra de recentes (não afeta o arquivo em disco).
+// Se a aba fechada era a ativa, abre a vizinha mais próxima (ou esvazia o painel).
+export function closeRecentTab(e, id) {
+  e?.stopPropagation();
+  const idx = st.recentFiles.findIndex((f) => f.id === id);
+  if (idx === -1) return;
+  const wasActive = st.activeId === id;
+  st.recentFiles.splice(idx, 1);
+  if (wasActive) {
+    const next = st.recentFiles[idx] || st.recentFiles[idx - 1];
+    if (next) {
+      openFile(next.id);
+      return;
+    }
+    st.activeId = null;
+    if (st.mainView === "editor") showEmptyPanel();
+  }
+  renderRecentFiles();
+}
+window.closeRecentTab = closeRecentTab;
+
+// Alterna entre as abas recentes (Ctrl+Tab / Ctrl+Shift+Tab): direction = 1 ou -1.
+export function cycleRecentTab(direction) {
+  if (!st.recentFiles || st.recentFiles.length < 2) return;
+  const idx = st.recentFiles.findIndex((f) => f.id === st.activeId);
+  const base = idx === -1 ? 0 : idx;
+  const next = (base + direction + st.recentFiles.length) % st.recentFiles.length;
+  openFile(st.recentFiles[next].id);
+}
+
+// Pula direto para a N-ésima aba recente (Alt+1..Alt+9), 0-based.
+export function jumpToRecentTab(index) {
+  const f = st.recentFiles && st.recentFiles[index];
+  if (f) openFile(f.id);
+}
 
 export async function openFile(id) {
   if (st.mainView !== "editor") setMainView("editor");

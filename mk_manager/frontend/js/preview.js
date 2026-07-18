@@ -79,6 +79,54 @@ function checkboxCharIndex(content, idx) {
   return -1;
 }
 
+// Todas as linhas de task do documento, na mesma ordem (e numeração) dos
+// checkboxes renderizados — indent é usado para inferir a relação
+// subtarefa/tarefa-mãe a partir do nível de indentação da lista.
+function parseTaskLines(content) {
+  const re = /^([ \t]*)[-*+] \[([ xX])\] /;
+  return content.split("\n").reduce((tasks, line) => {
+    const m = re.exec(line);
+    if (m) tasks.push({ indent: m[1].length, checked: /[xX]/.test(m[2]) });
+    return tasks;
+  }, []);
+}
+
+// Regra de negócio: quando TODAS as subtarefas de uma tarefa-mãe ficam
+// concluídas, a tarefa-mãe deve ser marcada como concluída automaticamente
+// (efeito em cascata para tarefas aninhadas em múltiplos níveis). Só age no
+// sentido de completar — desmarcar uma subtarefa nunca desmarca a mãe de volta.
+// Retorna os índices de checkbox (mesma numeração de checkboxCharIndex/
+// toggleCheckboxAt) que ainda precisam ser marcados como concluídos.
+export function findAutoCompleteParents(content, toggledIdx) {
+  const tasks = parseTaskLines(content);
+  const toAutoCheck = [];
+  let curPos = toggledIdx;
+  if (!tasks[curPos]?.checked) return toAutoCheck;
+
+  while (true) {
+    const current = tasks[curPos];
+    let parentPos = -1;
+    for (let i = curPos - 1; i >= 0; i--) {
+      if (tasks[i].indent < current.indent) { parentPos = i; break; }
+    }
+    if (parentPos === -1) break;
+    const parent = tasks[parentPos];
+    if (parent.checked) break;
+
+    let end = tasks.length;
+    for (let i = parentPos + 1; i < tasks.length; i++) {
+      if (tasks[i].indent <= parent.indent) { end = i; break; }
+    }
+    const children = tasks.slice(parentPos + 1, end);
+    if (!children.length || !children.every((t) => t.checked)) break;
+
+    toAutoCheck.push(parentPos);
+    parent.checked = true;
+    curPos = parentPos;
+  }
+  return toAutoCheck;
+}
+
 // Renderiza bloco a bloco (via marked.lexer) marcando cada wrapper com a linha
 // de origem em que o bloco começa, para permitir navegação preview → editor.
 // ``.md-block`` usa `display: contents` (ver style.css) para não afetar o
@@ -158,6 +206,10 @@ export function renderPreview() {
       if (pos !== -1) {
         const ch = ta.value[pos];
         replaceRange(ta, pos, pos + 1, /[xX]/.test(ch) ? " " : "x");
+      }
+      for (const parentIdx of findAutoCompleteParents(ta.value, idx)) {
+        const parentPos = checkboxCharIndex(ta.value, parentIdx);
+        if (parentPos !== -1) replaceRange(ta, parentPos, parentPos + 1, "x");
       }
       onEditorInput();
     },

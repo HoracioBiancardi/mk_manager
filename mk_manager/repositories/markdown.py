@@ -44,6 +44,18 @@ def _slugify(text: str) -> str:
 
 
 def _coerce_str(value: Any) -> str:
+    """Coerce a raw YAML-parsed value into a plain string field.
+
+    YAML parses unquoted ISO timestamps as ``datetime`` objects rather than
+    strings, and missing keys as ``None`` — this normalizes both back to the
+    plain ``str`` shape ``FileRecord`` expects.
+
+    Args:
+        value: Raw value decoded from YAML frontmatter (any type, or ``None``).
+
+    Returns:
+        ``value`` as a string, or ``""`` if ``value`` is ``None``.
+    """
     if isinstance(value, datetime):
         return value.isoformat()
     return str(value) if value is not None else ""
@@ -64,12 +76,25 @@ def _cleanup_empty_dirs(start: Path, stop_at: Path) -> None:
 
 
 class MarkdownFileRepository(AbstractFileRepository):
+    """Filesystem-backed implementation of ``AbstractFileRepository``.
+
+    Each file record is stored as a real ``.md`` file with a YAML frontmatter
+    header under ``notes_dir`` (see module docstring for the on-disk layout).
+    Maintains an in-memory, mtime-invalidated parse cache plus an id→path
+    index so repeated single-file lookups (get/update/delete) don't require
+    a full directory scan.
+    """
 
     # Reserved top-level folder for archived files (excluded from list_all()
     # by default). Kept flat under notes_dir like "assets" already is.
     ARCHIVE_FOLDER = "_archive"
 
     def __init__(self, notes_dir: Path) -> None:
+        """Initialize the repository, creating *notes_dir* if needed.
+
+        Args:
+            notes_dir: Root directory where markdown files are stored.
+        """
         self._dir: Path = notes_dir
         self._dir.mkdir(parents=True, exist_ok=True)
         # In-memory cache keyed by path, invalidated per-entry via mtime so a
@@ -189,6 +214,21 @@ class MarkdownFileRepository(AbstractFileRepository):
         return path
 
     def _parse(self, path: Path) -> FileRecord:
+        """Read and parse a single ``.md`` file from disk into a ``FileRecord``.
+
+        Tolerates files with no frontmatter (treats the whole file as
+        content) and derives ``folder``/``id``/``title`` from the filesystem
+        path when frontmatter doesn't supply them, so files dropped in
+        manually are still readable. Also falls back to the legacy
+        ``date_conclusion``/``date_execution``/``date_planning`` frontmatter
+        keys for ``status_changed_at`` when that field itself is absent.
+
+        Args:
+            path: Absolute path to the ``.md`` file.
+
+        Returns:
+            The parsed ``FileRecord``.
+        """
         text = path.read_text("utf-8")
         match = _FRONTMATTER_RE.match(text)
 
@@ -233,6 +273,14 @@ class MarkdownFileRepository(AbstractFileRepository):
         )
 
     def _write(self, path: Path, record: FileRecord) -> None:
+        """Serialize *record* as YAML frontmatter + Markdown body and save it.
+
+        Creates any missing parent directories first.
+
+        Args:
+            path: Absolute destination path for the ``.md`` file.
+            record: The record to persist.
+        """
         path.parent.mkdir(parents=True, exist_ok=True)
         fm_data: dict[str, Any] = {
             "id": record.id,
@@ -254,6 +302,18 @@ class MarkdownFileRepository(AbstractFileRepository):
     # ── AbstractFileRepository ─────────────────────────────────────────────
 
     def list_all(self, include_archived: bool = False) -> list[FileRecord]:
+        """Return all stored file records, newest-modified first.
+
+        When *include_archived* is ``False``, the ``_archive/`` subtree is
+        skipped entirely during the directory walk (not filtered out after
+        scanning), so a large archive never slows down normal listings.
+
+        Args:
+            include_archived: Whether to also scan and include archived files.
+
+        Returns:
+            Ordered list of ``FileRecord`` objects, newest-modified first.
+        """
         archive_dir = self._dir / self.ARCHIVE_FOLDER
         paths: list[Path] = []
         for child in self._dir.iterdir():
@@ -282,6 +342,12 @@ class MarkdownFileRepository(AbstractFileRepository):
         return records
 
     def list_archived(self) -> list[FileRecord]:
+        """Return only archived file records, newest-modified first.
+
+        Returns:
+            Ordered list of ``FileRecord`` objects under ``_archive/``, or
+            an empty list if no file has ever been archived.
+        """
         archive_dir = self._dir / self.ARCHIVE_FOLDER
         if not archive_dir.is_dir():
             return []
@@ -295,6 +361,17 @@ class MarkdownFileRepository(AbstractFileRepository):
         return records
 
     def get_by_id(self, file_id: str) -> FileRecord:
+        """Fetch a single record by its unique identifier.
+
+        Args:
+            file_id: The file's unique identifier (filename stem).
+
+        Returns:
+            The corresponding ``FileRecord`` with full content.
+
+        Raises:
+            FileNotFoundError: If no file with *file_id* exists.
+        """
         return self._parse_cached(self._require_path(file_id))
 
     def create(
@@ -311,6 +388,29 @@ class MarkdownFileRepository(AbstractFileRepository):
         status: str = "",
         status_changed_at: str = "",
     ) -> FileRecord:
+        """Persist a new file record.
+
+        The final id is *file_id* deduplicated against existing files (a
+        numeric suffix is appended on conflict), not necessarily *file_id*
+        verbatim.
+
+        Args:
+            file_id: Desired identifier for the new file (typically a slug
+                of the title); may be altered to avoid a collision.
+            title: Human-readable title.
+            file_type: Semantic type string (``"note"`` or ``"task"``).
+            tags: List of tag strings.
+            content: Markdown body content.
+            created: ISO 8601 UTC creation timestamp.
+            modified: ISO 8601 UTC modification timestamp.
+            folder: Folder path relative to the notes root.
+            status: Kanban status, or ``""`` if not on the board.
+            status_changed_at: Timestamp of the last status change.
+
+        Returns:
+            The persisted ``FileRecord``, with its actual (possibly
+            deduplicated) id and filename.
+        """
         folder = folder.strip("/")
         # Use slug of title as ID; fall back to whatever the caller provided
         actual_id = self._unique_id(file_id)
@@ -345,6 +445,29 @@ class MarkdownFileRepository(AbstractFileRepository):
         status: str | None = None,
         status_changed_at: str | None = None,
     ) -> FileRecord:
+        """Apply a partial update to an existing file record.
+
+        Fields left as ``None`` preserve their current stored value. If the
+        new title's slug differs from the current id, the file is renamed
+        (and physically relocated on disk if the folder also changed).
+
+        Args:
+            file_id: Identifier of the file to update.
+            title: New title, or ``None`` to keep the current value.
+            tags: New tag list, or ``None`` to keep the current value.
+            content: New content, or ``None`` to keep the current value.
+            modified: ISO 8601 UTC timestamp for this modification.
+            folder: New folder path, or ``None`` to keep the current value.
+            status: New kanban status, or ``None`` to keep the current value.
+            status_changed_at: New status-changed timestamp, or ``None`` to
+                keep the current value.
+
+        Returns:
+            The updated ``FileRecord``.
+
+        Raises:
+            FileNotFoundError: If no file with *file_id* exists.
+        """
         old_path = self._require_path(file_id)
         existing = self._parse_cached(old_path)
 
@@ -388,6 +511,16 @@ class MarkdownFileRepository(AbstractFileRepository):
         return updated
 
     def delete(self, file_id: str) -> None:
+        """Permanently remove a file record from the store.
+
+        Also cleans up any now-empty ancestor folders left behind.
+
+        Args:
+            file_id: Identifier of the file to delete.
+
+        Raises:
+            FileNotFoundError: If no file with *file_id* exists.
+        """
         path = self._require_path(file_id)
         path.unlink()
         _cleanup_empty_dirs(path.parent, self._dir)
@@ -417,18 +550,54 @@ class MarkdownFileRepository(AbstractFileRepository):
         return updated
 
     def archive(self, file_id: str) -> FileRecord:
+        """Move a file into the reserved ``_archive/`` folder.
+
+        Stamps ``archived_from`` with the file's current folder so
+        ``unarchive`` can restore it exactly.
+
+        Args:
+            file_id: Identifier of the file to archive.
+
+        Returns:
+            The updated ``FileRecord``.
+
+        Raises:
+            FileNotFoundError: If no file with *file_id* exists.
+        """
         existing = self.get_by_id(file_id)
         return self._relocate(file_id, new_folder=self.ARCHIVE_FOLDER, archived_from=existing.folder)
 
     def unarchive(self, file_id: str) -> FileRecord:
+        """Restore a previously archived file to its original folder.
+
+        Args:
+            file_id: Identifier of the file to restore.
+
+        Returns:
+            The updated ``FileRecord``, with ``archived_from`` cleared.
+
+        Raises:
+            FileNotFoundError: If no file with *file_id* exists.
+        """
         existing = self.get_by_id(file_id)
         return self._relocate(file_id, new_folder=existing.archived_from, archived_from="")
 
     def count_by_type(self) -> dict[str, int]:
+        """Aggregate file counts grouped by type, including archived files.
+
+        Returns:
+            Mapping of ``type`` string to file count,
+            e.g. ``{"note": 5, "task": 3}``.
+        """
         counts: dict[str, int] = {}
         for record in self.list_all(include_archived=True):
             counts[record.type] = counts.get(record.type, 0) + 1
         return counts
 
     def total_size_bytes(self) -> int:
+        """Compute total storage consumed by all files, including archived ones.
+
+        Returns:
+            Sum of file sizes in bytes.
+        """
         return sum(p.stat().st_size for p in self._dir.rglob("*.md"))

@@ -21,4 +21,12 @@ router = APIRouter(prefix="/api/graph", tags=["graph"])
     ),
 )
 def get_graph(service: FileService = Depends(get_file_service)) -> GraphResponse:
+    """Build and return the notes graph.
+
+    Args:
+        service: Injected file service.
+
+    Returns:
+        The graph's nodes (files + phantom link targets) and edges.
+    """
     return service.build_graph()

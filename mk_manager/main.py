@@ -82,11 +82,21 @@ def create_app() -> FastAPI:
     @app.get("/", include_in_schema=False)
     @app.get("/index.html", include_in_schema=False)
     async def serve_frontend() -> FileResponse:
+        """Serve the SPA's entry HTML file.
+
+        Returns:
+            The ``index.html`` file from the frontend directory.
+        """
         return FileResponse(_FRONTEND_DIR / "index.html")
 
     @app.get("/favicon.svg", include_in_schema=False)
     @app.get("/favicon.ico", include_in_schema=False)
     async def serve_favicon() -> FileResponse:
+        """Serve the application favicon regardless of the requested extension.
+
+        Returns:
+            The ``favicon.svg`` file from the frontend directory.
+        """
         return FileResponse(_FRONTEND_DIR / "favicon.svg")
 
     app.mount("/static", StaticFiles(directory=str(_FRONTEND_DIR)), name="static")
@@ -96,6 +106,22 @@ def create_app() -> FastAPI:
     # the settings endpoint.
     @app.get("/assets/{asset_path:path}", include_in_schema=False)
     async def serve_asset(asset_path: str) -> FileResponse:
+        """Serve an uploaded asset file from the configured assets directory.
+
+        Resolved on every request (rather than mounted once) so it keeps
+        pointing at the right directory after ``assets_dir``/``notes_dir``
+        change at runtime via the settings endpoint.
+
+        Args:
+            asset_path: Relative path of the asset within the assets directory.
+
+        Returns:
+            The requested asset file.
+
+        Raises:
+            HTTPException: 404 if *asset_path* escapes the assets directory
+                (path traversal) or doesn't resolve to an existing file.
+        """
         assets_dir = get_settings().resolved_assets_dir().resolve()
         target = (assets_dir / asset_path).resolve()
         if not target.is_relative_to(assets_dir) or not target.is_file():

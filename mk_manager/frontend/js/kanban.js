@@ -3,7 +3,7 @@
 import { st } from "./state.js";
 import { esc, toast } from "./utils.js";
 import { apiFetch } from "./api.js";
-import { renderMarkdown, toggleCheckboxAt } from "./preview.js";
+import { renderMarkdown, toggleCheckboxAt, findAutoCompleteParents } from "./preview.js";
 import { updateRetroStatusLabel } from "./editor.js";
 import { refreshListIfActive } from "./list.js";
 
@@ -343,6 +343,9 @@ export async function openKanbanQEdit(id) {
 export async function toggleKanbanQEditItem(index) {
   if (_kqedit.saving) return;
   _kqedit.content = toggleCheckboxAt(_kqedit.content, index);
+  for (const parentIdx of findAutoCompleteParents(_kqedit.content, index)) {
+    _kqedit.content = toggleCheckboxAt(_kqedit.content, parentIdx);
+  }
   _rerenderQEditModal();
 
   _kqedit.saving = true;

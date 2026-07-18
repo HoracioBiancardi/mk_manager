@@ -63,5 +63,17 @@ def search_files(
     ] = None,
     service: FileService = Depends(get_file_service),
 ) -> list[SearchResultResponse]:
+    """Run a full-text search across title, tags, and content.
+
+    Args:
+        q: Search term (case-insensitive); empty string matches everything.
+        type: Optional file-type filter, ``"note"`` or ``"task"``.
+        tag: Optional tag filter(s); repeated params are AND-matched, and
+            matching is hierarchical (``area`` also matches ``area/sub``).
+        service: Injected file service.
+
+    Returns:
+        Matching files ranked by relevance, each with a highlighted snippet.
+    """
     results = service.search_files(query=q, type_filter=type, tag_filter=tag)
     return [_to_search_response(r) for r in results]

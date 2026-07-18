@@ -1541,9 +1541,11 @@ kbd {
 
 .editor-topbar {
   display: flex; align-items: center; justify-content: space-between;
+  gap: .875rem;
   padding: .5rem .875rem;
   border-bottom: 1px solid var(--border);
   background: var(--surface); flex-shrink: 0;
+  --topbar-ctrl-h: 32px;
 }
 
 .file-meta-bar {
@@ -1566,15 +1568,28 @@ kbd {
 
 .title-input {
   flex: 1; min-width: 0;
+  height: var(--topbar-ctrl-h);
+  box-sizing: border-box;
   background: transparent; border: none;
   border-bottom: 1px solid transparent;
   outline: none; color: var(--text);
   font-size: 1rem; font-weight: 600;
-  padding: 0 0 1px; font-family: inherit;
+  padding: 0 .1rem 1px; font-family: inherit;
   transition: border-color .2s;
 }
 .title-input::placeholder { color: var(--text-subtle); }
 .title-input:focus { border-bottom-color: var(--primary); }
+
+.editor-topbar-right { height: var(--topbar-ctrl-h); }
+.editor-topbar-right .btn {
+  height: var(--topbar-ctrl-h);
+  box-sizing: border-box;
+}
+.editor-topbar-right .view-toggle { height: var(--topbar-ctrl-h); }
+.editor-topbar-right .view-btn {
+  height: var(--topbar-ctrl-h);
+  box-sizing: border-box;
+}
 
 .view-toggle { display: flex; gap: .2rem; flex-shrink: 0; }
 .view-btn {
@@ -2815,16 +2830,16 @@ body.crt-glitch-active {
   gap: 5px;
   background: var(--surface-alt);
   border-bottom: 1px solid var(--border);
-  padding: 4px 10px 0 10px;
+  padding: 6px 10px 0 10px;
   flex-shrink: 0;
-  height: 28px;
+  height: 34px;
   box-sizing: border-box;
   align-items: flex-end;
 }
 .recent-file-tab {
-  font-size: .68rem;
+  font-size: .72rem;
   font-family: 'Share Tech Mono', monospace !important;
-  padding: 3px 10px;
+  padding: 0 .3rem 0 .65rem;
   background: var(--surface-hover);
   border: 1px solid var(--border);
   border-bottom: none;
@@ -2832,16 +2847,18 @@ body.crt-glitch-active {
   border-top-right-radius: var(--r-sm);
   color: var(--text-muted);
   cursor: pointer;
-  max-width: 145px;
+  flex: 1 1 0;
+  min-width: 70px;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
   transition: all var(--t);
   position: relative;
   bottom: -1px;
-  height: 20px;
+  height: 25px;
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
+  gap: .35rem;
 }
 .recent-file-tab:hover {
   color: var(--text);
@@ -2856,7 +2873,29 @@ body.crt-glitch-active {
   font-weight: bold;
   text-shadow: var(--glow-text);
   z-index: 2;
-  height: 22px;
+  height: 27px;
+}
+.recent-file-tab-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+.recent-file-tab-close {
+  flex-shrink: 0;
+  width: 16px; height: 16px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 3px;
+  border: none; background: transparent;
+  color: var(--text-subtle);
+  font-size: .9rem; line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+.recent-file-tab-close:hover {
+  background: var(--danger-dim);
+  color: var(--danger);
 }
 
 /* ── Progresso de Tasks na Sidebar ───────────────────────────────────────── */

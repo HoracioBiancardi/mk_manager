@@ -29,10 +29,26 @@ from mk_manager.repositories.base import AbstractFileRepository
 
 
 def _utc_now() -> str:
+    """Return the current UTC timestamp in ISO 8601 format.
+
+    Returns:
+        ISO 8601 timestamp string, e.g. ``"2024-01-15T10:30:00+00:00"``.
+    """
     return datetime.now(timezone.utc).isoformat()
 
 
 def _slugify(text: str) -> str:
+    """Convert arbitrary text into a URL/filename-safe slug.
+
+    Strips accents, lowercases, and collapses any run of non-alphanumeric
+    characters into a single hyphen.
+
+    Args:
+        text: Arbitrary input text (e.g. a file title).
+
+    Returns:
+        A lowercase, hyphen-separated slug with no leading/trailing hyphens.
+    """
     text = unicodedata.normalize("NFD", text)
     text = "".join(c for c in text if unicodedata.category(c) != "Mn")
     text = text.lower().strip()
@@ -41,7 +57,14 @@ def _slugify(text: str) -> str:
 
 
 def _id_for_title(title: str) -> str:
-    """Return a slug of *title*, or a timestamp-based fallback for empty titles."""
+    """Return a slug of *title*, or a timestamp-based fallback for empty titles.
+
+    Args:
+        title: File title to derive an id from.
+
+    Returns:
+        A slug suitable for use as a file id, never empty.
+    """
     slug = _slugify(title)
     if slug:
         return slug
