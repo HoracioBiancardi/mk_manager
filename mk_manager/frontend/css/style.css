@@ -84,7 +84,7 @@ body.theme-green {
 
   --glow-color:      rgba(26, 255, 128, 0.5);
   --glow-text:       0 0 4px rgba(26, 255, 128, 0.5);
-  
+
   --success:         #1aff80;
   --warn:            #ff9900;
   --danger:          #ff3333;
@@ -115,7 +115,7 @@ body.theme-amber {
 
   --glow-color:      rgba(255, 170, 0, 0.5);
   --glow-text:       0 0 4px rgba(255, 170, 0, 0.5);
-  
+
   --success:         #ffaa00;
   --warn:            #ffaa00;
   --danger:          #ff3333;
@@ -146,7 +146,7 @@ body.theme-blue {
 
   --glow-color:      rgba(0, 210, 255, 0.5);
   --glow-text:       0 0 4px rgba(0, 210, 255, 0.5);
-  
+
   --success:         #00d2ff;
   --warn:            #ff9900;
   --danger:          #ff3333;
@@ -177,7 +177,7 @@ body.theme-white {
 
   --glow-color:      rgba(240, 240, 240, 0.4);
   --glow-text:       0 0 4px rgba(240, 240, 240, 0.4);
-  
+
   --success:         #f0f0f0;
   --warn:            #ff9900;
   --danger:          #ff3333;
@@ -292,7 +292,7 @@ body.theme-corporate.flicker-enabled {
 body.theme-green, body.theme-amber, body.theme-blue, body.theme-white, body.theme-red, body.theme-purple {
   font-family: 'Share Tech Mono', ui-monospace, 'SFMono-Regular', monospace;
   text-shadow: var(--glow-text);
-  
+
   --r-sm:            2px;
   --r-md:            3px;
   --r-lg:            4px;
@@ -2305,7 +2305,7 @@ body.theme-green .empty-state::after, body.theme-amber .empty-state::after, body
   border-right: 2px solid var(--primary);
 }
 
-/* Silhueta do Vault Boy (polegar para cima) ao fundo da tela vazia (sem nota/task aberta) — só nos temas retrô */
+/* Vault Boy (polegar para cima) ao fundo da tela vazia (sem nota/task aberta) — só nos temas retrô */
 .empty-panel { position: relative; overflow: hidden; }
 
 body.theme-green .empty-panel::before,
@@ -2318,18 +2318,13 @@ body.theme-purple .empty-panel::before {
   position: absolute;
   inset: 0;
   margin: auto;
-  width: min(48vh, 340px);
-  height: min(48vh, 340px);
-  background-color: var(--primary);
-  opacity: 0.07;
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 260'%3E%3Ccircle cx='100' cy='34' r='25'/%3E%3Crect x='65' y='60' width='70' height='96' rx='24'/%3E%3Crect x='72' y='150' width='24' height='64' rx='11'/%3E%3Crect x='104' y='150' width='24' height='64' rx='11'/%3E%3Crect x='44' y='66' width='22' height='82' rx='11' transform='rotate(6 55 66)'/%3E%3Crect x='122' y='60' width='24' height='52' rx='12' transform='rotate(-38 134 66)'/%3E%3Crect x='146' y='14' width='22' height='52' rx='11' transform='rotate(4 157 62)'/%3E%3Ccircle cx='158' cy='16' r='17'/%3E%3Crect x='172' y='8' width='22' height='14' rx='7'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 260'%3E%3Ccircle cx='100' cy='34' r='25'/%3E%3Crect x='65' y='60' width='70' height='96' rx='24'/%3E%3Crect x='72' y='150' width='24' height='64' rx='11'/%3E%3Crect x='104' y='150' width='24' height='64' rx='11'/%3E%3Crect x='44' y='66' width='22' height='82' rx='11' transform='rotate(6 55 66)'/%3E%3Crect x='122' y='60' width='24' height='52' rx='12' transform='rotate(-38 134 66)'/%3E%3Crect x='146' y='14' width='22' height='52' rx='11' transform='rotate(4 157 62)'/%3E%3Ccircle cx='158' cy='16' r='17'/%3E%3Crect x='172' y='8' width='22' height='14' rx='7'/%3E%3C/svg%3E");
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  -webkit-mask-size: contain;
-  mask-size: contain;
+  width: min(48vh, 440px);
+  height: min(48vh, 440px);
+  background-image: url("/static/img/vault-boy.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  opacity: 0.12;
   pointer-events: none;
   z-index: 0;
 }
@@ -2719,18 +2714,18 @@ body.crt-transition-active .crt-transition-overlay {
 
 /* ── Grade Vetorial de Radar (Radar Vector Grid Background) ────────────────── */
 .app-layout, .sidebar-panel {
-  background-image: 
+  background-image:
     linear-gradient(rgba(16, 185, 129, 0.012) 1px, transparent 1px),
     linear-gradient(90deg, rgba(16, 185, 129, 0.012) 1px, transparent 1px);
   background-size: 30px 30px;
 }
 body.theme-amber .app-layout, body.theme-amber .sidebar-panel {
-  background-image: 
+  background-image:
     linear-gradient(rgba(245, 158, 11, 0.012) 1px, transparent 1px),
     linear-gradient(90deg, rgba(245, 158, 11, 0.012) 1px, transparent 1px);
 }
 body.theme-blue .app-layout, body.theme-blue .sidebar-panel {
-  background-image: 
+  background-image:
     linear-gradient(rgba(59, 130, 246, 0.012) 1px, transparent 1px),
     linear-gradient(90deg, rgba(59, 130, 246, 0.012) 1px, transparent 1px);
 }
@@ -2753,7 +2748,7 @@ body.theme-purple .app-layout, body.theme-purple .sidebar-panel {
 /* ── Grafo estilo Radar Pip-Boy ─────────────────────────────────────────── */
 .graph-container {
   position: relative;
-  background-image: 
+  background-image:
     radial-gradient(circle, transparent 35%, rgba(0, 0, 0, 0.6) 100%),
     repeating-radial-gradient(circle, transparent, transparent 30px, var(--primary-dim) 31px, transparent 32px) !important;
   overflow: hidden;
