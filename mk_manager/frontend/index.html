@@ -186,7 +186,7 @@
           <span class="panel-title">Explorador</span>
           <div class="panel-header-actions">
             <button class="icon-btn" id="btn-new-note" onclick="newFile('note')" title="Nova Nota (Ctrl+N)">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="currentColor"
                   stroke-width="1.8" stroke-linejoin="round" />
                 <path d="M14 2v6h6" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
@@ -194,7 +194,7 @@
               </svg>
             </button>
             <button class="icon-btn" id="btn-new-task" onclick="newFile('task')" title="Nova Task (Ctrl+⇧N)">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <path d="M9 11l3 3L22 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                   stroke-linejoin="round" />
                 <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" stroke-width="2"
@@ -202,7 +202,7 @@
               </svg>
             </button>
             <button class="icon-btn" onclick="startNewFolderInput()" title="Nova Pasta">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" stroke="currentColor"
                   stroke-width="1.8" stroke-linejoin="round" />
                 <path d="M12 13v4M10 15h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
@@ -595,7 +595,7 @@
               <span>Efeitos SFX</span>
             </label>
           </div>
-          
+
           <div style="display: flex; flex-direction: column; gap: 0.2rem; margin-top: 1rem;">
             <label class="form-label" style="font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 0;">
               Brilho das Scanlines CRT: <span id="settings-crt-opacity-label">6%</span>
@@ -603,7 +603,7 @@
             <input id="settings-crt-opacity" type="range" min="0" max="0.2" step="0.01" style="width: 100%; cursor: pointer;"
               oninput="changeCrtOpacity(parseFloat(this.value))">
           </div>
-          
+
           <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.8rem;">
             <label for="settings-theme" style="font-size: 0.8125rem; color: var(--text-muted); white-space: nowrap;">Tema de Cor:</label>
             <select id="settings-theme" class="form-input" style="flex: 1; padding: 0.25rem 0.5rem;"
