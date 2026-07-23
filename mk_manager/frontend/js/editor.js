@@ -720,6 +720,116 @@ export function formatTable() {
   toast("Tabela alinhada!", "success");
 }
 
+// ── Linhas → Task / transformações de texto ────────────────────────────────────
+
+// Expande [s, e) para cobrir as linhas inteiras que a seleção toca (snap para
+// início/fim de linha), do mesmo jeito que o handler de Tab multi-linha faz.
+function expandToLines(ta, s, e) {
+  const lineStart = ta.value.lastIndexOf("\n", s - 1) + 1;
+  let end = e;
+  if (end > lineStart && ta.value[end - 1] === "\n") end -= 1;
+  const nlIdx = ta.value.indexOf("\n", end);
+  const blockEnd = nlIdx === -1 ? ta.value.length : nlIdx;
+  return { blockStart: lineStart, blockEnd };
+}
+
+// Transforma cada linha selecionada (ou só a linha do cursor, sem seleção) em
+// um item de task list, preservando indentação e trocando bullets/numeradas
+// existentes em vez de duplicar o marcador; idempotente sobre linhas já-task.
+export function linesToTaskList() {
+  const ta = document.getElementById("md-editor");
+  const { blockStart, blockEnd } = expandToLines(ta, ta.selectionStart, ta.selectionEnd);
+  const lines = ta.value.slice(blockStart, blockEnd).split("\n");
+
+  const newLines = lines.map((line) => {
+    if (/^\s*$/.test(line)) return line;
+    if (/^\s*- \[[ x]\] /.test(line)) return line;
+    const bullet = line.match(/^(\s*)(- |\* |\d+\. )/);
+    if (bullet) return bullet[1] + "- [ ] " + line.slice(bullet[0].length);
+    const indent = line.match(/^\s*/)[0];
+    return indent + "- [ ] " + line.slice(indent.length);
+  });
+
+  const newBlock = newLines.join("\n");
+  replaceRange(ta, blockStart, blockEnd, newBlock);
+  ta.setSelectionRange(blockStart, blockStart + newBlock.length);
+  ta.focus();
+  onEditorInput();
+}
+
+// Coloca a seleção em MAIÚSCULAS ("upper") ou minúsculas ("lower").
+export function transformCase(mode) {
+  const ta = document.getElementById("md-editor");
+  const s = ta.selectionStart,
+    e = ta.selectionEnd;
+  if (s === e) {
+    toast("Selecione um texto para transformar.", "info");
+    return;
+  }
+  const sel = ta.value.slice(s, e);
+  const out = mode === "upper" ? sel.toUpperCase() : sel.toLowerCase();
+  replaceRange(ta, s, e, out);
+  ta.setSelectionRange(s, s + out.length);
+  ta.focus();
+  onEditorInput();
+}
+
+// Alinha "colunas" separadas por 2+ espaços ou Tab nas linhas selecionadas,
+// tipo uma tabela ASCII sem `|` — não mexe em tabelas Markdown (ver formatTable).
+export function alignPlainColumns() {
+  const ta = document.getElementById("md-editor");
+  const s = ta.selectionStart,
+    e = ta.selectionEnd;
+  if (s === e || !ta.value.slice(s, e).includes("\n")) {
+    toast("Selecione linhas para alinhar em colunas.", "info");
+    return;
+  }
+  const { blockStart, blockEnd } = expandToLines(ta, s, e);
+  const lines = ta.value.slice(blockStart, blockEnd).split("\n");
+  const rows = lines.map((line) => line.trim().split(/\s{2,}|\t+/));
+
+  const numCols = Math.max(...rows.map((r) => r.length));
+  const colWidths = Array(numCols).fill(0);
+  rows.forEach((row) => {
+    row.forEach((cell, i) => {
+      colWidths[i] = Math.max(colWidths[i], cell.length);
+    });
+  });
+
+  const formatted = rows
+    .map((row) =>
+      row.map((cell, i) => (i === row.length - 1 ? cell : cell.padEnd(colWidths[i]))).join("  "),
+    )
+    .join("\n");
+
+  replaceRange(ta, blockStart, blockEnd, formatted);
+  ta.setSelectionRange(blockStart, blockStart + formatted.length);
+  ta.focus();
+  onEditorInput();
+  toast("Colunas alinhadas!", "success");
+}
+
+// Remove a indentação inicial desigual das linhas selecionadas, todas passam
+// a começar na coluna 0.
+export function normalizeIndent() {
+  const ta = document.getElementById("md-editor");
+  const s = ta.selectionStart,
+    e = ta.selectionEnd;
+  if (s === e || !ta.value.slice(s, e).includes("\n")) {
+    toast("Selecione linhas para normalizar a indentação.", "info");
+    return;
+  }
+  const { blockStart, blockEnd } = expandToLines(ta, s, e);
+  const lines = ta.value.slice(blockStart, blockEnd).split("\n");
+  const formatted = lines.map((line) => line.replace(/^[ \t]+/, "")).join("\n");
+
+  replaceRange(ta, blockStart, blockEnd, formatted);
+  ta.setSelectionRange(blockStart, blockStart + formatted.length);
+  ta.focus();
+  onEditorInput();
+  toast("Indentação normalizada!", "success");
+}
+
 // ── Footer ────────────────────────────────────────────────────────────────────
 
 export function updateFooter() {
@@ -763,6 +873,10 @@ Object.assign(window, {
   insCodeBlock,
   insTable,
   formatTable,
+  linesToTaskList,
+  transformCase,
+  alignPlainColumns,
+  normalizeIndent,
   setView,
   toggleRetroSelect,
   closeAllRetroSelects,
