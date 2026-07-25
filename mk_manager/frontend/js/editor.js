@@ -189,6 +189,10 @@ export function setView(v) {
     rh.style.display = "block";
     applyRatio();
     renderPreview();
+    // Alinha o scroll do preview com o do editor ao entrar no split (o preview
+    // pode ter ficado com um scrollTop desatualizado de quando estava oculto).
+    _scrollSyncSuppress = null;
+    syncScrollPanes("editor", document.getElementById("md-editor"), pp);
   } else {
     ep.style.display = "none";
     pp.style.display = "block";
@@ -212,6 +216,36 @@ export function jumpToSourceLine(lineNumber) {
   ta.setSelectionRange(pos, pos);
   const lineHeight = parseFloat(getComputedStyle(ta).lineHeight) || 20;
   ta.scrollTop = Math.max(0, lineHeight * lineNumber - ta.clientHeight / 2);
+}
+
+// ── Scroll sincronizado (modo split) ──────────────────────────────────────────
+// Guarda qual pane deve ter seu próximo evento de scroll ignorado — evita eco
+// infinito quando um scroll programático (setar scrollTop) dispara o listener
+// do outro pane, que tentaria sincronizar de volta.
+let _scrollSyncSuppress = null;
+
+function syncScrollPanes(sourceTag, source, target) {
+  if (st.view !== "split") return;
+  if (_scrollSyncSuppress === sourceTag) {
+    _scrollSyncSuppress = null;
+    return;
+  }
+  const sourceMax = source.scrollHeight - source.clientHeight;
+  if (sourceMax <= 0) return;
+  const ratio = source.scrollTop / sourceMax;
+  const targetMax = target.scrollHeight - target.clientHeight;
+  const newTop = ratio * Math.max(0, targetMax);
+  if (Math.abs(target.scrollTop - newTop) < 1) return;
+  _scrollSyncSuppress = sourceTag === "editor" ? "preview" : "editor";
+  target.scrollTop = newTop;
+}
+
+export function initScrollSync() {
+  const ta = document.getElementById("md-editor");
+  const pp = document.getElementById("preview-pane");
+  if (!ta || !pp) return;
+  ta.addEventListener("scroll", () => syncScrollPanes("editor", ta, pp));
+  pp.addEventListener("scroll", () => syncScrollPanes("preview", pp, ta));
 }
 
 // ── Resize handle ─────────────────────────────────────────────────────────────
@@ -465,7 +499,9 @@ export function onEditorKeydown(e) {
     return;
   }
 
-  // ── Ctrl+B Bold, Ctrl+I Itálico, Ctrl+K Link ────────────────────────────
+  // ── Ctrl+B Bold, Ctrl+I Itálico ──────────────────────────────────────────
+  // (Ctrl+K não fica aqui: é reservado pra busca rápida global — link fica só
+  // no botão 🔗 da toolbar, pra não competir com o document-level listener.)
   if (e.ctrlKey && !e.shiftKey && e.key === "b") {
     e.preventDefault();
     fmt("**", "**");
@@ -474,11 +510,6 @@ export function onEditorKeydown(e) {
   if (e.ctrlKey && !e.shiftKey && e.key === "i") {
     e.preventDefault();
     fmt("*", "*");
-    return;
-  }
-  if (e.ctrlKey && !e.shiftKey && e.key === "k") {
-    e.preventDefault();
-    fmt("[", "](url)");
     return;
   }
 

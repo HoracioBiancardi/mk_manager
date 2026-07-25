@@ -6,7 +6,7 @@
 import { st } from "./state.js";
 import { esc } from "./utils.js";
 import { apiFetch } from "./api.js";
-import { openFile } from "./files.js";
+import { openFile, newFile } from "./files.js";
 
 let _matches = [];
 let _activeIndex = 0;
@@ -58,6 +58,33 @@ function renderRecent() {
   renderMatches(st.files.slice(0, 30));
 }
 
+// "@título" cria uma task, "#título" cria uma nota — atalho pra não precisar
+// sair do modal de busca rápida pra criar algo novo. Sempre cria um arquivo
+// novo (mesmo com título repetido), igual aos botões "Nova Nota"/"Nova Task".
+function parseCreateIntent(q) {
+  const prefix = q[0];
+  if (prefix !== "@" && prefix !== "#") return null;
+  const title = q.slice(1).trim();
+  if (!title) return null;
+  return { type: prefix === "@" ? "task" : "note", title };
+}
+
+function renderCreatePrompt(create) {
+  _matches = [{ __create: true, type: create.type, title: create.title }];
+  _activeIndex = 0;
+  const label = create.type === "task" ? "task" : "nota";
+  const icon = create.type === "task" ? "☑" : "📝";
+  list().innerHTML = `<div class="quickopen-item active" onclick="selectQuickOpen(0)">
+    <span class="quickopen-type ${create.type}">${icon}</span>
+    <div class="quickopen-main">
+      <div class="quickopen-title-row">
+        <span class="quickopen-title">Criar ${label} "${esc(create.title)}"</span>
+      </div>
+      <div class="quickopen-snippet">Enter para criar</div>
+    </div>
+  </div>`;
+}
+
 async function renderSearch(q) {
   const token = ++_requestToken;
   try {
@@ -75,6 +102,11 @@ export function onQuickOpenInput() {
   clearTimeout(_searchTimer);
   if (!q) {
     renderRecent();
+    return;
+  }
+  const create = parseCreateIntent(q);
+  if (create) {
+    renderCreatePrompt(create);
     return;
   }
   _searchTimer = setTimeout(() => renderSearch(q), 200);
@@ -108,6 +140,10 @@ export async function selectQuickOpen(idx) {
   const f = _matches[idx];
   if (!f) return;
   closeQuickOpen();
+  if (f.__create) {
+    await newFile(f.type, "", f.title);
+    return;
+  }
   await openFile(f.id);
 }
 

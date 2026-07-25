@@ -9,7 +9,7 @@ export const st = {
   activeStatus: "",
   filter: "all",
   search: "",
-  view: "edit",
+  view: "split",
   isDirty: false,
   splitRatio: 0.5,
   tagFilters: [],

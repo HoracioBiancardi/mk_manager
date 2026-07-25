@@ -128,10 +128,9 @@ export function renderRecentFiles() {
     return;
   }
   bar.style.display = "flex";
-  bar.innerHTML = st.recentFiles.map((f, i) => {
+  bar.innerHTML = st.recentFiles.map((f) => {
     const active = f.id === st.activeId ? "active" : "";
-    const hint = i < 9 ? ` (Alt+${i + 1})` : "";
-    return `<span class="recent-file-tab ${active}" onclick="openFileFromTab('${f.id}')" title="${esc(f.title)}${hint}">
+    return `<span class="recent-file-tab ${active}" onclick="openFileFromTab('${f.id}')" title="${esc(f.title)}">
       <span class="recent-file-tab-label">${esc(f.title)}</span>
       <button type="button" class="recent-file-tab-close" onclick="closeRecentTab(event,'${f.id}')" title="Fechar aba" aria-label="Fechar aba">×</button>
     </span>`;
@@ -162,21 +161,6 @@ export function closeRecentTab(e, id) {
   renderRecentFiles();
 }
 window.closeRecentTab = closeRecentTab;
-
-// Alterna entre as abas recentes (Ctrl+Tab / Ctrl+Shift+Tab): direction = 1 ou -1.
-export function cycleRecentTab(direction) {
-  if (!st.recentFiles || st.recentFiles.length < 2) return;
-  const idx = st.recentFiles.findIndex((f) => f.id === st.activeId);
-  const base = idx === -1 ? 0 : idx;
-  const next = (base + direction + st.recentFiles.length) % st.recentFiles.length;
-  openFile(st.recentFiles[next].id);
-}
-
-// Pula direto para a N-ésima aba recente (Alt+1..Alt+9), 0-based.
-export function jumpToRecentTab(index) {
-  const f = st.recentFiles && st.recentFiles[index];
-  if (f) openFile(f.id);
-}
 
 export async function openFile(id) {
   if (st.mainView !== "editor") setMainView("editor");

@@ -103,8 +103,6 @@
     <div class="topbar-right">
       <div class="topbar-shortcuts">
         <span><kbd>Ctrl+K</kbd> abrir</span>
-        <span><kbd>Ctrl+N</kbd> nota</span>
-        <span><kbd>Ctrl+⇧N</kbd> task</span>
         <span><kbd>Ctrl+S</kbd> salvar</span>
       </div>
       <span id="conn-badge" class="conn-badge">● offline</span>
@@ -185,7 +183,7 @@
         <div class="panel-header">
           <span class="panel-title">Explorador</span>
           <div class="panel-header-actions">
-            <button class="icon-btn" id="btn-new-note" onclick="newFile('note')" title="Nova Nota (Ctrl+N)">
+            <button class="icon-btn" id="btn-new-note" onclick="newFile('note')" title="Nova Nota">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="currentColor"
                   stroke-width="1.8" stroke-linejoin="round" />
@@ -193,7 +191,7 @@
                 <path d="M12 18v-6M9 15h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
               </svg>
             </button>
-            <button class="icon-btn" id="btn-new-task" onclick="newFile('task')" title="Nova Task (Ctrl+⇧N)">
+            <button class="icon-btn" id="btn-new-task" onclick="newFile('task')" title="Nova Task">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <path d="M9 11l3 3L22 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                   stroke-linejoin="round" />
@@ -636,7 +634,7 @@
   <!-- QUICK OPEN (Ctrl+K) -->
   <div class="overlay" id="quickopen-overlay" onclick="onQuickOpenOverlayClick(event)">
     <div class="modal quickopen-modal">
-      <input id="quickopen-input" type="text" class="quickopen-input" placeholder="Digite o nome de uma nota ou task…"
+      <input id="quickopen-input" type="text" class="quickopen-input" placeholder="Digite pra buscar… @título cria task, #título cria nota"
         autocomplete="off" oninput="onQuickOpenInput()" onkeydown="onQuickOpenKeydown(event)">
       <div id="quickopen-list" class="quickopen-list"></div>
     </div>

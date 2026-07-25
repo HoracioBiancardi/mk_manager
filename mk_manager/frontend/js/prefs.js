@@ -9,7 +9,7 @@ const VALID_VIEWS = new Set(["edit", "split", "preview"]);
 
 export function getDefaultView() {
   const saved = localStorage.getItem(VIEW_KEY);
-  return VALID_VIEWS.has(saved) ? saved : "edit";
+  return VALID_VIEWS.has(saved) ? saved : "split";
 }
 
 export function setDefaultView(view) {

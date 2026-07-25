@@ -10,7 +10,7 @@
 import { toast } from "./utils.js";
 import { apiFetch } from "./api.js";
 import { initSidebarActions, initSidebarResizer } from "./sidebar.js";
-import { setSaveCallback, initResizer } from "./editor.js";
+import { setSaveCallback, initResizer, initScrollSync } from "./editor.js";
 import { initPreviewSourceSync } from "./preview.js";
 import { initAssetDropZone } from "./assets.js";
 import {
@@ -29,15 +29,12 @@ import {
   renameFolder,
   deleteFolder,
   archiveFile,
-  cycleRecentTab,
-  jumpToRecentTab,
 } from "./files.js";
 import { closeDeleteModal, openDeleteModal } from "./delete-modal.js";
 import { closeSettingsModal } from "./settings.js";
 import { openQuickOpen, closeQuickOpen } from "./quickopen.js";
 import { applyPrefsOnBoot } from "./prefs.js";
 import { playBootSfx, playClickSfx } from "./sfx.js";
-import { RECENT_TABS_SHORTCUTS, matchesShortcut, matchesJumpShortcut } from "./config.js";
 import "./views.js";
 import "./export.js";
 import "./search-filter.js";
@@ -68,35 +65,9 @@ marked.use({ breaks: true, gfm: true });
 setSaveCallback(saveFile);
 
 document.addEventListener("keydown", (e) => {
-  if (
-    e.ctrlKey &&
-    e.key === "n" &&
-    !e.shiftKey &&
-    !e.target.matches("input,textarea")
-  ) {
-    e.preventDefault();
-    newFile("note");
-  }
-  if (e.ctrlKey && e.shiftKey && e.key === "N") {
-    e.preventDefault();
-    newFile("task");
-  }
   if (e.ctrlKey && e.key.toLowerCase() === "k") {
     e.preventDefault();
     openQuickOpen();
-  }
-  if (matchesShortcut(e, RECENT_TABS_SHORTCUTS.next)) {
-    e.preventDefault();
-    cycleRecentTab(1);
-  }
-  if (matchesShortcut(e, RECENT_TABS_SHORTCUTS.prev)) {
-    e.preventDefault();
-    cycleRecentTab(-1);
-  }
-  const jumpIdx = matchesJumpShortcut(e, RECENT_TABS_SHORTCUTS.jump);
-  if (jumpIdx !== null && !e.target.matches("input,textarea")) {
-    e.preventDefault();
-    jumpToRecentTab(jumpIdx);
   }
   if (e.key === "Escape") {
     closeDeleteModal();
@@ -117,6 +88,7 @@ document.addEventListener("keydown", (e) => {
   // editor/kanban por cima cobrindo o efeito; as auroras via CSS abaixo já
   // dão a sensação de "vivo" sem esse custo contínuo de CPU)
   initResizer();
+  initScrollSync();
   initSidebarResizer();
   initPreviewSourceSync();
   initAssetDropZone();

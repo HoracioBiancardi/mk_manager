@@ -25,9 +25,9 @@ export function archiveTaskFromKanban(event, id) {
 // ── Configuração de colunas ────────────────────────────────────────────────────
 const KANBAN_DEFAULT_COLS = [
   { key: "", label: "Backlog", color: "" },
-  { key: "planning", label: "Planejado", color: "#60a5fa" },
-  { key: "development", label: "Em desenvolvimento", color: "#f59e0b" },
-  { key: "done", label: "Concluído", color: "#10b981" },
+  { key: "planning", label: "Planning", color: "#60a5fa" },
+  { key: "development", label: "Development", color: "#f59e0b" },
+  { key: "done", label: "Done", color: "#10b981" },
 ];
 
 const KANBAN_PALETTE = [
@@ -133,8 +133,10 @@ export function renderKanban() {
         return `<div class="kanban-card" data-id="${f.id}"
         style="animation-delay:${Math.min(i * 25, 250)}ms"
         draggable="true"
-        onclick="openKanbanQEdit('${f.id}')"
-        ondragstart="onKanbanCardDragStart(event,'${f.id}')">
+        onclick="onKanbanCardClick('${f.id}')"
+        ondblclick="openKanbanCardEditor(event,'${f.id}')"
+        ondragstart="onKanbanCardDragStart(event,'${f.id}')"
+        title="Clique: edição rápida · Duplo-clique: abrir no editor">
         <button class="kanban-card-archive-btn" title="Arquivar" onclick="archiveTaskFromKanban(event,'${f.id}')">📦</button>
         <div class="kanban-card-title">${esc(f.title || "Sem título")}</div>
         ${taskPreview}${progress}${tags}
@@ -147,7 +149,7 @@ export function renderKanban() {
       ondrop="onKanbanColDrop(event,'${esc(col.key)}')"
       ondragleave="onKanbanColDragLeave(event)">
       <div class="kanban-col-header">
-        <span style="${colorStyle}">${esc(col.label)}</span>
+        <span style="${colorStyle};font-size:16px;">${esc(col.label)}</span>
         <div class="kanban-col-header-actions">
           <span class="kanban-col-count">${colTasks.length}</span>
           <button class="kanban-col-del" onclick="deleteKanbanCol('${esc(col.key)}')" title="Excluir coluna">×</button>
@@ -200,7 +202,7 @@ export async function moveTaskStatus(id, status) {
       const sel = document.getElementById("status-select");
       if (sel) sel.value = updated.status || "";
       updateRetroStatusLabel();
-      
+
       // Sincroniza o input de data do editor ativo se a tarefa estiver aberta
       const statusChangedEl = document.getElementById("status-changed-at");
       if (statusChangedEl) statusChangedEl.value = updated.status_changed_at || "";
@@ -319,6 +321,18 @@ function _rerenderQEditModal() {
   });
 }
 
+// Clique único abre a edição rápida, mas com um pequeno atraso: a edição
+// rápida abre um overlay síncrono que cobriria o card antes do segundo clique
+// do duplo-clique chegar até ele, então adiamos a ação de clique único pra dar
+// tempo do ondblclick (que cancela esse timer) decidir primeiro.
+let _cardClickTimer = null;
+const CARD_CLICK_DELAY = 220;
+
+export function onKanbanCardClick(id) {
+  clearTimeout(_cardClickTimer);
+  _cardClickTimer = setTimeout(() => openKanbanQEdit(id), CARD_CLICK_DELAY);
+}
+
 export async function openKanbanQEdit(id) {
   const file = st.files.find((f) => f.id === id);
   if (!file) return;
@@ -389,6 +403,15 @@ export async function openEditorFromKanbanQEdit() {
   await openFileFromKanban(id);
 }
 
+// Duplo-clique no card: pula direto pro editor completo, cancelando a
+// edição rápida adiada do clique único (e fechando-a, por via das dúvidas).
+export async function openKanbanCardEditor(e, id) {
+  e.stopPropagation();
+  clearTimeout(_cardClickTimer);
+  closeKanbanQEdit();
+  await openFileFromKanban(id);
+}
+
 // ── Expor ao DOM (necessário para event handlers inline) ──────────────────────
 Object.assign(window, {
   openFileFromKanban,
@@ -409,5 +432,7 @@ Object.assign(window, {
   onKanbanQEditOverlayClick,
   toggleKanbanQEditItem,
   openEditorFromKanbanQEdit,
+  onKanbanCardClick,
+  openKanbanCardEditor,
   archiveTaskFromKanban,
 });
