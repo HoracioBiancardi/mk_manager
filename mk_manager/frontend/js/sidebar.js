@@ -117,11 +117,12 @@ export function renderTree() {
   const tree = document.getElementById('file-tree');
   if (!tree) return;
 
-  const { files } = st;
-  if (!files.length) {
+  if (!st.files.length) {
     tree.innerHTML = '<div class="tree-empty">Nenhum arquivo ainda.<br>Crie uma nota ou task.</div>';
     return;
   }
+
+  const files = st.filter === 'all' ? st.files : st.files.filter(f => f.type === st.filter);
 
   const allFolderPaths = folderPathsFromFiles(files);
   const rootFiles = files
@@ -186,6 +187,10 @@ export function renderTree() {
     }
   });
 
+  if (!html) {
+    const label = st.filter === 'task' ? 'task' : 'nota';
+    html = `<div class="tree-empty">Nenhuma ${label} encontrada.</div>`;
+  }
   tree.innerHTML = html;
 
   if (st.creatingFolder) {

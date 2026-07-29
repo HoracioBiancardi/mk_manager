@@ -7,10 +7,11 @@
 // o import já roda o `Object.assign(window, ...)` de cada um — e cuidar da
 // sequência de inicialização e dos atalhos globais.
 
+import { st } from "./state.js";
 import { toast } from "./utils.js";
 import { apiFetch } from "./api.js";
 import { initSidebarActions, initSidebarResizer } from "./sidebar.js";
-import { setSaveCallback, initResizer, initScrollSync } from "./editor.js";
+import { setSaveCallback, initResizer, initScrollSync, setZenMode } from "./editor.js";
 import { initPreviewSourceSync } from "./preview.js";
 import { initAssetDropZone } from "./assets.js";
 import {
@@ -69,7 +70,12 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
     openQuickOpen();
   }
+  if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "f") {
+    e.preventDefault();
+    setZenMode(!st.zenMode);
+  }
   if (e.key === "Escape") {
+    if (st.zenMode) setZenMode(false);
     closeDeleteModal();
     closeKanbanQEdit();
     closeSettingsModal();

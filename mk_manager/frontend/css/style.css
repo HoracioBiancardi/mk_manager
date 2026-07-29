@@ -929,6 +929,25 @@ kbd {
 .sidebar-panel.collapsed ~ .sidebar-resize-handle {
   display: none;
 }
+
+/* ── Modo tela cheia (zen) ───────────────────────────────────────── */
+/* Esconde a topbar do app + activity bar + sidebar do Explorer pra maximizar
+   a área de edição/preview. st.view (split/edit/preview) continua valendo
+   por baixo. */
+body.zen-mode > .topbar {
+  display: none;
+}
+body.zen-mode .app-layout {
+  height: 100vh;
+}
+body.zen-mode .app-layout > .activity-bar,
+body.zen-mode .app-layout > .sidebar-panel,
+body.zen-mode .app-layout > .sidebar-resize-handle {
+  display: none;
+}
+#btn-zen.active {
+  color: var(--primary);
+}
 .panel-content {
   display: none; flex: 1; min-height: 0;
   flex-direction: column; overflow: hidden;
@@ -1875,6 +1894,7 @@ kbd {
 .capture-wrap > table { width: 100%; margin: 0; }
 
 .capture-wrap:hover .capture-btn,
+.capture-wrap:hover .code-edit-btn,
 .mermaid-wrap:hover  .capture-btn,
 .mermaid-wrap:hover  .mermaid-modal-btn,
 .mermaid-wrap:hover  .mermaid-edit-btn { opacity: 1; }
@@ -1908,6 +1928,57 @@ kbd {
   z-index: 20; line-height: 1.4; white-space: nowrap; pointer-events: auto;
 }
 .mermaid-edit-btn:hover { background: var(--primary-dim); color: var(--primary); opacity: 1; }
+
+.code-edit-btn {
+  position: absolute; top: .4rem; right: 5rem;
+  background: var(--surface-alt); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: .18rem .5rem;
+  cursor: pointer; font-size: .67rem; color: var(--text-muted);
+  opacity: 0; transition: opacity .15s, background .15s, color .15s;
+  z-index: 20; line-height: 1.4; white-space: nowrap; pointer-events: auto;
+}
+.code-edit-btn:hover { background: var(--primary-dim); color: var(--primary); opacity: 1; }
+
+.code-edit-lang-input {
+  background: var(--bg); border: 1px solid var(--border); color: var(--text);
+  border-radius: var(--r-sm); padding: .18rem .45rem;
+  font-size: .72rem; width: 8rem;
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
+}
+.code-edit-lang-input:focus { outline: none; border-color: var(--primary); }
+
+/* ── Modal de edição de bloco de código (reaproveita o chrome do zoom Mermaid) ── */
+.code-edit-content {
+  flex: 1; display: flex; overflow: hidden; background: var(--bg);
+}
+.code-edit-editor {
+  flex: 1 1 50%; min-width: 0; display: flex;
+  border-right: 1px solid var(--border); overflow: hidden;
+}
+.code-edit-gutter {
+  flex-shrink: 0; overflow: hidden;
+  padding: .85rem .5rem .85rem 0; text-align: right;
+  background: var(--surface-alt); color: var(--text-subtle);
+  font-size: .82rem; line-height: 1.6;
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
+  white-space: pre; user-select: none;
+}
+.code-edit-textarea {
+  flex: 1 1 auto; min-width: 0;
+  background: var(--bg); color: var(--text); border: none;
+  padding: .85rem; font-size: .82rem; line-height: 1.6;
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
+  resize: none; outline: none; white-space: pre; overflow: auto;
+}
+.code-edit-preview {
+  flex: 1 1 50%; min-width: 0; margin: 0;
+  padding: .85rem; overflow: auto; background: var(--bg);
+}
+.code-edit-preview code {
+  white-space: pre;
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
+  font-size: .82rem; line-height: 1.6;
+}
 
 /* ── Modal de zoom do Mermaid ─────────────────────────────────────── */
 .mermaid-zoom-overlay {

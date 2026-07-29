@@ -202,6 +202,22 @@ export function setView(v) {
   }
 }
 
+// ── Modo tela cheia (zen) ────────────────────────────────────────────────────
+// Esconde a topbar, a activity bar e a sidebar pra maximizar a área de
+// edição/preview — não mexe em st.view (split/edit/preview continuam
+// funcionando por baixo). Classe fica no <body> (não no #app-layout) porque
+// a .topbar é irmã de #app-layout, não filha.
+export function setZenMode(on) {
+  st.zenMode = on;
+  document.body.classList.toggle("zen-mode", on);
+  const btn = document.getElementById("btn-zen");
+  if (btn) btn.classList.toggle("active", on);
+}
+
+export function toggleZenMode() {
+  setZenMode(!st.zenMode);
+}
+
 // ── Preview → editor: navega até a linha de origem correspondente ─────────────
 
 export function jumpToSourceLine(lineNumber) {
@@ -909,6 +925,7 @@ Object.assign(window, {
   alignPlainColumns,
   normalizeIndent,
   setView,
+  toggleZenMode,
   toggleRetroSelect,
   closeAllRetroSelects,
   selectRetroOption,

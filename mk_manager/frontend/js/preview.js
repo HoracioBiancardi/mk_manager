@@ -4,6 +4,7 @@ import { st } from "./state.js";
 import { esc, toast } from "./utils.js";
 import { onEditorInput, jumpToSourceLine, replaceRange } from "./editor.js";
 import { openDiagramBuilder } from "./diagram-builder.js";
+import { closeKanbanQEdit } from "./kanban.js";
 
 // ── Links internos [[Nota]] / [[Nota|Apelido]] ─────────────────────────────────
 // Extensão inline do marked: resolve o alvo só no clique (não no render), pra
@@ -35,6 +36,16 @@ marked.use({
       },
     },
   ],
+  renderer: {
+    // Links "normais" (`[texto](url)`) que apontem pra fora do app abrem numa
+    // aba nova do navegador em vez de navegar a SPA inteira pra longe.
+    link(href, title, text) {
+      const isExternal = /^https?:\/\//i.test(href || "");
+      const titleAttr = title ? ` title="${esc(title)}"` : "";
+      const target = isExternal ? ' target="_blank" rel="noopener noreferrer"' : "";
+      return `<a href="${esc(href || "")}"${titleAttr}${target}>${text}</a>`;
+    },
+  },
 });
 
 function findFileByTitle(target) {
@@ -42,18 +53,23 @@ function findFileByTitle(target) {
   return st.files.find((f) => (f.title || f.id).trim().toLowerCase() === key);
 }
 
-async function onWikilinkClick(e, target) {
+async function onWikilinkClick(e, target, insideKanbanModal) {
   e.preventDefault();
+  if (insideKanbanModal) closeKanbanQEdit();
   await window.openOrCreateByTitle?.(target);
 }
 
 function wireWikilinks(container) {
+  // Um wikilink clicado dentro do modal de edição rápida do Kanban deve
+  // fechar o modal antes de navegar — do contrário a nota/task abre atrás
+  // dele e o modal parece "travado" na tela.
+  const insideKanbanModal = !!container.closest("#kanban-qedit-body");
   container.querySelectorAll("a.wikilink").forEach((a) => {
     const target = a.dataset.target;
     const resolved = !!findFileByTitle(target);
     a.classList.toggle("phantom", !resolved);
     a.title = resolved ? `Abrir "${target}"` : `Criar nota "${target}"`;
-    a.addEventListener("click", (e) => onWikilinkClick(e, target));
+    a.addEventListener("click", (e) => onWikilinkClick(e, target, insideKanbanModal));
   });
 }
 
@@ -311,11 +327,12 @@ function fixMermaidLabels(svgEl) {
 // ── Captura de elementos como imagem ─────────────────────────────────────────
 
 function addCaptureButtons(container) {
-  // Blocos de código: envolve em .capture-wrap e adiciona botão de copiar
+  // Blocos de código: envolve em .capture-wrap e adiciona botões de copiar/editar
   container.querySelectorAll("pre").forEach((pre) => {
     if (pre.closest(".capture-wrap")) return;
     const wrap = wrapInCapture(pre);
     wrap.appendChild(makeCopyBtn(pre));
+    wrap.appendChild(makeCodeEditBtn(() => openCodeBlockModal(pre)));
   });
 
   // Tabelas
@@ -358,6 +375,155 @@ function editMermaidBlock(wrap) {
   openDiagramBuilder();
 }
 
+// Acha o bloco ```lang ... ``` cuja faixa [start,end) contém `pos` — mesma
+// estratégia do findMermaidBlockAt do diagram-builder, generalizada pra
+// qualquer linguagem (mermaid nunca chega aqui: ele renderiza como
+// .mermaid-wrap, não como <pre>, então nunca ganha o botão de editar código).
+function findCodeBlockAt(text, pos) {
+  const re = /```([^\n`]*)\n([\s\S]*?)```/g;
+  let m;
+  while ((m = re.exec(text))) {
+    const start = m.index, end = m.index + m[0].length;
+    if (pos >= start && pos <= end) return { start, end, lang: m[1].trim(), body: m[2] };
+  }
+  return null;
+}
+
+// Modal maior pra editar um bloco de código, com preview de syntax-highlight
+// ao vivo ao lado (mesma ideia de split editor/preview, só que pro bloco).
+// Reaproveita o chrome .mermaid-zoom-* (overlay/modal/toolbar/botões).
+function openCodeBlockModal(pre) {
+  const block = pre.closest("[data-line]");
+  const line = block ? parseInt(block.dataset.line, 10) : NaN;
+  if (Number.isNaN(line)) {
+    toast("Não foi possível localizar este bloco no texto.", "error");
+    return;
+  }
+  jumpToSourceLine(line);
+  const ta = document.getElementById("md-editor");
+  const found = findCodeBlockAt(ta.value, ta.selectionStart);
+  if (!found) {
+    toast("Não foi possível localizar este bloco no texto.", "error");
+    return;
+  }
+  const { start, end, lang } = found;
+  const body = found.body.endsWith("\n") ? found.body.slice(0, -1) : found.body;
+
+  const overlay = document.createElement("div");
+  overlay.className = "mermaid-zoom-overlay";
+
+  const modal = document.createElement("div");
+  modal.className = "mermaid-zoom-modal";
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "mermaid-zoom-toolbar";
+
+  const label = document.createElement("span");
+  label.className = "mermaid-zoom-label";
+  label.textContent = "Código";
+
+  // Input com <datalist> das linguagens que o hljs conhece — dá pra escolher
+  // de uma lista OU digitar livremente (blocos podem ter tags arbitrárias).
+  ensureLangDatalist();
+  const langInput = document.createElement("input");
+  langInput.type = "text";
+  langInput.className = "code-edit-lang-input";
+  langInput.setAttribute("list", "code-edit-lang-datalist");
+  langInput.placeholder = "linguagem";
+  langInput.spellcheck = false;
+  langInput.value = lang;
+  langInput.title = "Linguagem do bloco (syntax highlight + tag salva no fence)";
+
+  const mkBtn = (text, title) => {
+    const b = document.createElement("button");
+    b.className = "mermaid-zoom-ctrl";
+    b.textContent = text;
+    b.title = title;
+    return b;
+  };
+  const btnSave = mkBtn("💾 Salvar", "Salvar alterações (Ctrl+Enter)");
+  const btnClose = mkBtn("✕ Fechar", "Fechar sem salvar (Esc)");
+  btnClose.style.marginLeft = "auto";
+  toolbar.append(label, langInput, btnSave, btnClose);
+
+  const content = document.createElement("div");
+  content.className = "code-edit-content";
+
+  const editorWrap = document.createElement("div");
+  editorWrap.className = "code-edit-editor";
+
+  const gutter = document.createElement("div");
+  gutter.className = "code-edit-gutter";
+
+  const textarea = document.createElement("textarea");
+  textarea.className = "code-edit-textarea";
+  textarea.spellcheck = false;
+  textarea.value = body;
+
+  editorWrap.append(gutter, textarea);
+
+  const previewPre = document.createElement("pre");
+  previewPre.className = "code-edit-preview";
+  const previewCode = document.createElement("code");
+  previewPre.appendChild(previewCode);
+
+  content.append(editorWrap, previewPre);
+  modal.append(toolbar, content);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  function updateGutter() {
+    const n = textarea.value.split("\n").length;
+    gutter.textContent = Array.from({ length: n }, (_, i) => i + 1).join("\n");
+  }
+
+  function highlight() {
+    const l = langInput.value.trim();
+    const language = l && hljs.getLanguage(l) ? l : "plaintext";
+    previewCode.className = `hljs language-${language}`;
+    previewCode.innerHTML = hljs.highlight(textarea.value, { language }).value;
+  }
+
+  function refresh() {
+    updateGutter();
+    highlight();
+  }
+  refresh();
+  textarea.addEventListener("input", refresh);
+  textarea.addEventListener("scroll", () => { gutter.scrollTop = textarea.scrollTop; });
+  langInput.addEventListener("input", highlight);
+  requestAnimationFrame(() => textarea.focus());
+
+  function save() {
+    replaceRange(ta, start, end, "```" + langInput.value.trim() + "\n" + textarea.value + "\n```");
+    onEditorInput();
+    close();
+  }
+  function close() {
+    document.removeEventListener("keydown", onKey);
+    overlay.remove();
+  }
+  function onKey(e) {
+    if (e.key === "Escape") { e.stopPropagation(); close(); }
+    else if (e.ctrlKey && e.key === "Enter") { e.preventDefault(); save(); }
+  }
+
+  btnSave.addEventListener("click", save);
+  btnClose.addEventListener("click", close);
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+  document.addEventListener("keydown", onKey);
+}
+
+// <datalist> compartilhado entre aberturas do modal — cria só uma vez.
+function ensureLangDatalist() {
+  if (document.getElementById("code-edit-lang-datalist")) return;
+  const datalist = document.createElement("datalist");
+  datalist.id = "code-edit-lang-datalist";
+  datalist.innerHTML = hljs.listLanguages().sort()
+    .map((l) => `<option value="${esc(l)}"></option>`).join("");
+  document.body.appendChild(datalist);
+}
+
 function wrapInCapture(el) {
   const wrap = document.createElement("div");
   wrap.className = "capture-wrap";
@@ -398,6 +564,18 @@ function makeEditBtn(onClick) {
   const btn = document.createElement("button");
   btn.className = "mermaid-edit-btn";
   btn.title = "Editar no construtor visual de diagramas";
+  btn.textContent = "✏️ Editar";
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    onClick();
+  });
+  return btn;
+}
+
+function makeCodeEditBtn(onClick) {
+  const btn = document.createElement("button");
+  btn.className = "code-edit-btn";
+  btn.title = "Editar em um modal maior, com preview ao vivo";
   btn.textContent = "✏️ Editar";
   btn.addEventListener("click", (e) => {
     e.stopPropagation();

@@ -20,6 +20,7 @@ export const st = {
   // Substitui o antigo kanbanMode — generaliza pra qualquer view em tela cheia.
   mainView: "editor",
   sidebarOpen: true,
+  zenMode: false,
   saveTimer: null,
   searchTimer: null,
   pendingDelete: null,
