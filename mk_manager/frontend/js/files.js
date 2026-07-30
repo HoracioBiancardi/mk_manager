@@ -34,8 +34,12 @@ async function updateStorageInfo() {
 // ── Carregar arquivos ──────────────────────────────────────────────────────────
 export async function loadFiles() {
   try {
-    const r = await apiFetch("/files");
-    st.files = await r.json();
+    const [filesRes, foldersRes] = await Promise.all([
+      apiFetch("/files"),
+      apiFetch("/files/folders"),
+    ]);
+    st.files = await filesRes.json();
+    st.knownFolders = new Set((await foldersRes.json()).folders);
     st.searchResults = null;
     renderSidebar();
     updateStorageInfo();
@@ -332,7 +336,6 @@ export async function moveFileToFolder(fileId, folderPath) {
       const folderInput = document.getElementById("folder-input");
       if (folderInput) folderInput.value = updated.folder || "";
     }
-    st.emptyFolders.delete(folderPath);
     renderSidebar();
     refreshGraphIfActive();
     refreshListIfActive();
@@ -377,7 +380,6 @@ export async function renameFolder(oldPath, newName) {
     });
     const { updated_count } = await r.json();
     st.expandedFolders = remapFolderSet(st.expandedFolders, oldPath, newPath);
-    st.emptyFolders = remapFolderSet(st.emptyFolders, oldPath, newPath);
     await loadFiles();
     syncActiveFolderFromState();
     toast(`Pasta renomeada (${updated_count} arquivo(s)).`, "success");
@@ -394,7 +396,6 @@ export async function deleteFolder(path) {
     });
     const { updated_count } = await r.json();
     st.expandedFolders = remapFolderSet(st.expandedFolders, path, parent);
-    st.emptyFolders = remapFolderSet(st.emptyFolders, path, parent);
     await loadFiles();
     syncActiveFolderFromState();
     toast(

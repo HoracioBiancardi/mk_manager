@@ -191,3 +191,48 @@ class AbstractFileRepository(ABC):
             Sum of file sizes in bytes.
         """
         ...
+
+    @abstractmethod
+    def list_folders(self) -> list[str]:
+        """Return every known folder path, including folders with no files.
+
+        Unlike deriving folders purely from file records, this reports
+        folders that exist but are currently empty. Implementations without
+        an independent concept of "empty folder" may return only folders
+        derived from existing records.
+
+        Returns:
+            Sorted list of folder paths (no leading/trailing slashes).
+        """
+        ...
+
+    @abstractmethod
+    def create_folder(self, folder: str) -> None:
+        """Ensure *folder* exists, even before any file is filed into it.
+
+        Idempotent — calling this for a folder that already exists (because
+        it already has files, or was already created) is a no-op.
+
+        Args:
+            folder: Folder path to create (with or without nesting).
+
+        Raises:
+            ValueError: If *folder* is empty, malformed, or a reserved name.
+        """
+        ...
+
+    @abstractmethod
+    def move_folder(self, old_folder: str, new_folder: str) -> None:
+        """Relocate whatever empty remnants of *old_folder* remain to *new_folder*.
+
+        Callers first move every file individually (each file's own
+        relocation already handles its immediate containing folder); this
+        covers what's left over — nested empty subfolders that no file
+        pointed at — so a rename/delete doesn't leave orphaned empty
+        directories behind. Safe no-op if *old_folder* has nothing left.
+
+        Args:
+            old_folder: Folder path moved from.
+            new_folder: Destination folder path (``""`` for the root).
+        """
+        ...

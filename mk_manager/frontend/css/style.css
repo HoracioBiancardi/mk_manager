@@ -1425,9 +1425,21 @@ body.zen-mode .app-layout > .sidebar-resize-handle {
   padding: .5rem .75rem; border: 1px solid var(--border); border-radius: var(--r-md);
   margin-bottom: .35rem; background: var(--surface);
 }
-.archive-row:hover { background: var(--surface-hover); }
+.archive-row:hover { background: var(--surface-hover); cursor: pointer; }
 .archive-row-title { flex: 1; color: var(--text); font-size: .8125rem; font-weight: 500; }
 .archive-row-date { font-size: .7rem; color: var(--text-subtle); flex-shrink: 0; }
+.archive-row-origin {
+  font-size: .7rem; color: var(--text-subtle); flex-shrink: 0;
+  white-space: nowrap; max-width: 12rem; overflow: hidden; text-overflow: ellipsis;
+}
+.archive-row-words { font-size: .7rem; color: var(--text-subtle); flex-shrink: 0; }
+
+.archive-detail-meta { flex: 0 0 auto; overflow: visible; padding-bottom: 0; }
+.archive-detail-meta-row {
+  display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+  margin-bottom: .5rem;
+}
+.archive-detail-meta-empty { font-size: .75rem; color: var(--text-subtle); }
 
 /* ── Tela de tags (full screen — árvore à esquerda, detalhe à direita) ── */
 .tags-pane { flex: 1; display: none; min-height: 0; overflow: hidden; background: var(--bg); }

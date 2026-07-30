@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import dataclasses
 import re
+import shutil
 import threading
 import unicodedata
 from datetime import datetime, timezone
@@ -88,6 +89,10 @@ class MarkdownFileRepository(AbstractFileRepository):
     # Reserved top-level folder for archived files (excluded from list_all()
     # by default). Kept flat under notes_dir like "assets" already is.
     ARCHIVE_FOLDER = "_archive"
+    # Reserved top-level folder for uploaded/pasted assets when MK_ASSETS_DIR
+    # isn't set explicitly (see Settings.resolved_assets_dir) — excluded from
+    # list_folders() so it never shows up as if it were a user note folder.
+    ASSETS_FOLDER = "assets"
 
     def __init__(self, notes_dir: Path) -> None:
         """Initialize the repository, creating *notes_dir* if needed.
@@ -502,7 +507,11 @@ class MarkdownFileRepository(AbstractFileRepository):
         if new_path != old_path:
             self._write(new_path, updated)
             old_path.unlink()
-            _cleanup_empty_dirs(old_path.parent, self._dir)
+            # Não limpa a pasta de origem mesmo que fique vazia — desde que
+            # pastas vazias passaram a ser um conceito persistido de verdade
+            # (list_folders/create_folder), uma pasta só some quando o usuário
+            # a exclui explicitamente, não como efeito colateral de mover o
+            # último arquivo pra fora dela.
             self._forget(old_path, file_id if file_id != new_id else None)
         else:
             self._write(old_path, updated)
@@ -513,8 +522,6 @@ class MarkdownFileRepository(AbstractFileRepository):
     def delete(self, file_id: str) -> None:
         """Permanently remove a file record from the store.
 
-        Also cleans up any now-empty ancestor folders left behind.
-
         Args:
             file_id: Identifier of the file to delete.
 
@@ -523,7 +530,7 @@ class MarkdownFileRepository(AbstractFileRepository):
         """
         path = self._require_path(file_id)
         path.unlink()
-        _cleanup_empty_dirs(path.parent, self._dir)
+        # Idem update(): a pasta que fica vazia não é removida automaticamente.
         self._forget(path, file_id)
 
     def _relocate(self, file_id: str, *, new_folder: str, archived_from: str) -> FileRecord:
@@ -542,7 +549,6 @@ class MarkdownFileRepository(AbstractFileRepository):
         if new_path != old_path:
             self._write(new_path, updated)
             old_path.unlink()
-            _cleanup_empty_dirs(old_path.parent, self._dir)
             self._forget(old_path, file_id)
         else:
             self._write(old_path, updated)
@@ -601,3 +607,66 @@ class MarkdownFileRepository(AbstractFileRepository):
             Sum of file sizes in bytes.
         """
         return sum(p.stat().st_size for p in self._dir.rglob("*.md"))
+
+    def list_folders(self) -> list[str]:
+        """Return every real directory under notes_dir, with files or empty.
+
+        Excludes the reserved ``_archive``/``assets`` top-level folders, so
+        a plain recursive directory scan is the single source of truth for
+        "which folders exist" — no separate bookkeeping for empty ones.
+
+        Returns:
+            Sorted list of folder paths relative to notes_dir, using ``/``.
+        """
+        reserved = {self.ARCHIVE_FOLDER, self.ASSETS_FOLDER}
+        paths: list[str] = []
+        for child in self._dir.rglob("*"):
+            if not child.is_dir():
+                continue
+            rel_parts = child.relative_to(self._dir).parts
+            if rel_parts[0] in reserved:
+                continue
+            paths.append("/".join(rel_parts))
+        return sorted(paths)
+
+    def create_folder(self, folder: str) -> None:
+        """Ensure *folder* exists as a real directory under notes_dir.
+
+        Args:
+            folder: Folder path to create (with or without nesting).
+
+        Raises:
+            ValueError: If *folder* is empty, contains ``..``, or its
+                top-level segment is a reserved name.
+        """
+        folder = folder.strip("/")
+        if not folder:
+            raise ValueError("Folder path cannot be empty.")
+        parts = Path(folder).parts
+        if ".." in parts:
+            raise ValueError("Invalid folder path.")
+        if parts[0] in (self.ARCHIVE_FOLDER, self.ASSETS_FOLDER):
+            raise ValueError(f"'{parts[0]}' is a reserved folder name.")
+        (self._dir / folder).mkdir(parents=True, exist_ok=True)
+
+    def move_folder(self, old_folder: str, new_folder: str) -> None:
+        """Relocate whatever's left of *old_folder* (nested empty subfolders
+        that no file pointed at, since every file was already moved
+        individually by the caller) to *new_folder*, then drop the empty
+        leftover tree.
+
+        Args:
+            old_folder: Folder path moved from.
+            new_folder: Destination folder path (``""`` for the root).
+        """
+        old_folder = old_folder.strip("/")
+        new_folder = new_folder.strip("/")
+        old_path = self._dir / old_folder
+        if not old_path.is_dir():
+            return
+        new_root = self._dir / new_folder if new_folder else self._dir
+        for sub in sorted(old_path.rglob("*")):
+            if sub.is_dir():
+                (new_root / sub.relative_to(old_path)).mkdir(parents=True, exist_ok=True)
+        shutil.rmtree(old_path, ignore_errors=True)
+        _cleanup_empty_dirs(old_path.parent, self._dir)

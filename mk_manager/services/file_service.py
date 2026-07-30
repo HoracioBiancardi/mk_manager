@@ -502,6 +502,10 @@ class FileService:
                 status=None,
             )
             updated_count += 1
+        # Cada arquivo movido acima já limpa sua própria pasta-mãe se ela ficar
+        # vazia — isto cobre o que sobra: subpastas vazias aninhadas que nenhum
+        # arquivo apontava, então a pasta de origem não fica órfã no disco.
+        self._repo.move_folder(old_folder, new_folder)
         return updated_count
 
     def delete_folder(self, folder: str) -> int:
@@ -520,6 +524,25 @@ class FileService:
         folder = folder.strip("/")
         parent = folder.rsplit("/", 1)[0] if "/" in folder else ""
         return self.rename_folder(folder, parent)
+
+    def create_folder(self, folder: str) -> None:
+        """Create an empty folder so it persists even before any file uses it.
+
+        Args:
+            folder: Folder path to create (with or without nesting).
+
+        Raises:
+            ValueError: If *folder* is empty, malformed, or a reserved name.
+        """
+        self._repo.create_folder(folder)
+
+    def list_folders(self) -> list[str]:
+        """Return every known folder path, including currently-empty ones.
+
+        Returns:
+            Sorted list of folder paths.
+        """
+        return self._repo.list_folders()
 
     def delete_file(self, file_id: str) -> None:
         """Permanently delete a file.

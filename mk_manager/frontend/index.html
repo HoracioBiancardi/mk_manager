@@ -484,6 +484,23 @@
     </div>
   </div>
 
+  <!-- ARCHIVE DETAIL MODAL (somente leitura) -->
+  <div class="overlay" id="archive-detail-overlay" onclick="onArchiveDetailOverlayClick(event)">
+    <div class="modal kanban-qedit-modal">
+      <div class="modal-header">
+        <h2 id="archive-detail-title" class="kanban-qedit-title-text"></h2>
+        <button class="close-btn" onclick="closeArchiveDetail()">✕</button>
+      </div>
+      <div class="modal-body archive-detail-meta" id="archive-detail-meta"></div>
+      <div class="modal-body kanban-qedit-body md-preview" id="archive-detail-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="restoreFromArchiveDetail()">Restaurar</button>
+        <button class="btn btn-ghost" onclick="deleteFromArchiveDetail()">Excluir definitivamente</button>
+        <button class="btn btn-ghost" onclick="closeArchiveDetail()">Fechar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- DELETE MODAL -->
   <div class="overlay" id="delete-overlay">
     <div class="modal">

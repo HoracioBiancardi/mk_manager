@@ -2,7 +2,8 @@
 // e interações da árvore (drag&drop, tooltip, rename/nova pasta inline)
 
 import { st } from './state.js';
-import { esc, timeAgo } from './utils.js';
+import { esc, timeAgo, toast } from './utils.js';
+import { apiFetch } from './api.js';
 import { showContextMenu } from './contextmenu.js';
 import { setSidebarWidth, SIDEBAR_WIDTH_DEFAULT } from './prefs.js';
 
@@ -82,7 +83,8 @@ const CARET_SVG = `<svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path
 
 // ── Utility ──────────────────────────────────────────────────────────────────
 
-export function folderPathsFromFiles(files) {
+// Acumula os caminhos de pasta (+ ancestrais) referenciados por `files`.
+function foldersWithFiles(files) {
   const paths = new Set();
   for (const f of files) {
     const folder = (f.folder || '').trim();
@@ -94,7 +96,21 @@ export function folderPathsFromFiles(files) {
       paths.add(acc);
     }
   }
-  for (const p of st.emptyFolders) paths.add(p);
+  return paths;
+}
+
+// `files` normalmente já vem filtrado por tipo (nota/task) de quem chama —
+// uma pasta que só tem arquivos do tipo filtrado fora some da árvore (é o
+// comportamento esperado do filtro). Mas uma pasta genuinamente vazia (sem
+// NENHUM arquivo, de nenhum tipo — st.knownFolders é a fonte real vinda do
+// disco via GET /files/folders) sempre aparece, já que o filtro de tipo não
+// se aplica a ela.
+export function folderPathsFromFiles(files) {
+  const paths = foldersWithFiles(files);
+  const anyTypeFolders = files === st.files ? paths : foldersWithFiles(st.files);
+  for (const p of st.knownFolders) {
+    if (!anyTypeFolders.has(p)) paths.add(p);
+  }
   return [...paths].sort();
 }
 
@@ -117,7 +133,7 @@ export function renderTree() {
   const tree = document.getElementById('file-tree');
   if (!tree) return;
 
-  if (!st.files.length) {
+  if (!st.files.length && !st.knownFolders.size && !st.creatingFolder) {
     tree.innerHTML = '<div class="tree-empty">Nenhum arquivo ainda.<br>Crie uma nota ou task.</div>';
     return;
   }
@@ -641,16 +657,28 @@ export function onNewFolderBlur(value) {
   if (st.creatingFolder) confirmNewFolder(value);
 }
 
-export function confirmNewFolder(name) {
+export async function confirmNewFolder(name) {
   st.creatingFolder = false;
   const trimmed = name.trim().replace(/^\/+|\/+$/g, '');
-  if (trimmed) {
-    const fullPath = st.creatingFolderIn ? `${st.creatingFolderIn}/${trimmed}` : trimmed;
-    st.emptyFolders.add(fullPath);
-    st.expandedFolders.add(fullPath);
-  }
+  const parentPath = st.creatingFolderIn;
   st.creatingFolderIn = null;
-  renderTree();
+  if (!trimmed) {
+    renderTree();
+    return;
+  }
+  const fullPath = parentPath ? `${parentPath}/${trimmed}` : trimmed;
+  try {
+    await apiFetch('/files/folder', {
+      method: 'POST',
+      body: JSON.stringify({ path: fullPath }),
+    });
+    st.knownFolders.add(fullPath);
+    st.expandedFolders.add(fullPath);
+    renderTree();
+  } catch (e) {
+    toast('Erro ao criar pasta: ' + e.message, 'error');
+    renderTree();
+  }
 }
 
 export function cancelNewFolderInput() {

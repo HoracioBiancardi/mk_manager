@@ -26,6 +26,7 @@ class FileMetaResponse(BaseModel):
         word_count: Number of words in the markdown body.
         task_total: Total task-list items (meaningful only for ``type="task"``).
         task_done: Completed task-list items (meaningful only for ``type="task"``).
+        archived_from: Folder the file lived in before being archived (empty if not archived).
     """
 
     id: str
@@ -42,6 +43,7 @@ class FileMetaResponse(BaseModel):
     folder: str = ""
     status: str = ""
     status_changed_at: str = ""
+    archived_from: str = ""
 
     model_config = {"from_attributes": True}
 
@@ -142,6 +144,26 @@ class FolderChangeResponse(BaseModel):
     """
 
     updated_count: int
+
+
+class FolderCreateRequest(BaseModel):
+    """Request body for creating an empty folder.
+
+    Attributes:
+        path: Folder path to create (with or without nesting).
+    """
+
+    path: str
+
+
+class FolderListResponse(BaseModel):
+    """List of every known folder path, including currently-empty ones.
+
+    Attributes:
+        folders: Sorted list of folder paths.
+    """
+
+    folders: list[str]
 
 
 class ArchiveBatchResponse(BaseModel):

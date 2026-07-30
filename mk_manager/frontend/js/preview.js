@@ -4,6 +4,7 @@ import { st } from "./state.js";
 import { esc, toast } from "./utils.js";
 import { onEditorInput, jumpToSourceLine, replaceRange } from "./editor.js";
 import { openDiagramBuilder } from "./diagram-builder.js";
+import { openTableBuilder } from "./table-builder.js";
 import { closeKanbanQEdit } from "./kanban.js";
 
 // ── Links internos [[Nota]] / [[Nota|Apelido]] ─────────────────────────────────
@@ -342,6 +343,9 @@ function addCaptureButtons(container) {
     wrap.appendChild(
       makeCaptureBtn(() => captureWithCanvas(table, `tabela-${i + 1}.png`)),
     );
+    wrap.appendChild(
+      makeCodeEditBtn(() => editTableBlock(table), "Editar no construtor visual de tabelas"),
+    );
   });
 
   // Mermaid (já tem position:relative no próprio .mermaid-wrap)
@@ -373,6 +377,20 @@ function editMermaidBlock(wrap) {
   }
   jumpToSourceLine(line);
   openDiagramBuilder();
+}
+
+// Mesma ideia, pro construtor visual de tabelas: manda o cursor pra linha de
+// origem da tabela renderizada e abre o construtor, que detecta a tabela sob
+// o cursor (findTableBlockAt) e carrega a grade pra edição.
+function editTableBlock(table) {
+  const block = table.closest("[data-line]");
+  const line = block ? parseInt(block.dataset.line, 10) : NaN;
+  if (Number.isNaN(line)) {
+    toast("Não foi possível localizar esta tabela no texto.", "error");
+    return;
+  }
+  jumpToSourceLine(line);
+  openTableBuilder();
 }
 
 // Acha o bloco ```lang ... ``` cuja faixa [start,end) contém `pos` — mesma
@@ -572,10 +590,10 @@ function makeEditBtn(onClick) {
   return btn;
 }
 
-function makeCodeEditBtn(onClick) {
+function makeCodeEditBtn(onClick, title = "Editar em um modal maior, com preview ao vivo") {
   const btn = document.createElement("button");
   btn.className = "code-edit-btn";
-  btn.title = "Editar em um modal maior, com preview ao vivo";
+  btn.title = title;
   btn.textContent = "✏️ Editar";
   btn.addEventListener("click", (e) => {
     e.stopPropagation();

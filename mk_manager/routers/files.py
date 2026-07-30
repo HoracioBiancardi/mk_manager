@@ -20,6 +20,8 @@ from mk_manager.models.schemas import (
     FileMetaResponse,
     FileUpdateRequest,
     FolderChangeResponse,
+    FolderCreateRequest,
+    FolderListResponse,
     FolderRenameRequest,
 )
 from mk_manager.services.file_service import FileService, extract_inline_tags
@@ -61,6 +63,7 @@ def _to_meta(record: FileRecord) -> FileMetaResponse:
         folder=record.folder,
         status=record.status,
         status_changed_at=record.status_changed_at,
+        archived_from=record.archived_from,
     )
 
 
@@ -92,6 +95,7 @@ def _to_detail(record: FileRecord) -> FileDetailResponse:
         folder=record.folder,
         status=record.status,
         status_changed_at=record.status_changed_at,
+        archived_from=record.archived_from,
         content=record.content,
     )
 
@@ -150,6 +154,59 @@ def create_file(
         Full detail of the newly created file.
     """
     return _to_detail(service.create_file(body))
+
+
+@router.get(
+    "/folders",
+    response_model=FolderListResponse,
+    summary="List every known folder, including currently-empty ones",
+)
+def list_folders(
+    service: FileService = Depends(get_file_service),
+) -> FolderListResponse:
+    """Return every folder path that exists under the notes directory.
+
+    Unlike deriving folders from file metadata alone, this also reports
+    folders that were explicitly created but don't have any files in them
+    yet — so they persist across reloads instead of living only in the
+    frontend's in-memory state.
+
+    Args:
+        service: Injected ``FileService`` instance.
+
+    Returns:
+        Sorted list of folder paths.
+    """
+    return FolderListResponse(folders=service.list_folders())
+
+
+@router.post(
+    "/folder",
+    response_model=FolderChangeResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create an empty folder",
+)
+def create_folder(
+    body: FolderCreateRequest,
+    service: FileService = Depends(get_file_service),
+) -> FolderChangeResponse:
+    """Create an empty folder so it persists even before any file uses it.
+
+    Args:
+        body: Folder path to create.
+        service: Injected ``FileService`` instance.
+
+    Returns:
+        ``updated_count=0`` — nothing else changes, just the new folder.
+
+    Raises:
+        HTTPException: 400 if the path is empty, malformed, or reserved.
+    """
+    try:
+        service.create_folder(body.path)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+    return FolderChangeResponse(updated_count=0)
 
 
 @router.put(

@@ -26,7 +26,9 @@ export const st = {
   pendingDelete: null,
   renamingId: null,
   renamingFolderPath: null,
-  emptyFolders: new Set(),
+  // Todas as pastas reais em disco (com ou sem arquivos) — vem de GET
+  // /files/folders, é a fonte da verdade pra quais pastas existem de fato.
+  knownFolders: new Set(),
   draggingFileId: null,
   creatingFolder: false,
   creatingFolderIn: null,
