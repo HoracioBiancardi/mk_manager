@@ -3,7 +3,7 @@
 import { esc, toast } from "./utils.js";
 import { apiFetch } from "./api.js";
 import { loadFiles } from "./files.js";
-import { applyEditorFontSize, getDefaultView, getEditorFontSize, setDefaultView, setEditorFontSize, getCrtScanlines, setCrtScanlines, getCrtFlicker, setCrtFlicker, getCrtTheme, setCrtTheme, getCrtStatic, setCrtStatic, getCrtCurved, setCrtCurved, getCrtTransition, setCrtTransition, getSfxEnabled, setSfxEnabled, getCrtOpacity, setCrtOpacity, getCrtRadar, setCrtRadar } from "./prefs.js";
+import { applyEditorFontSize, getDefaultView, getEditorFontSize, setDefaultView, setEditorFontSize, getCrtScanlines, setCrtScanlines, getCrtFlicker, setCrtFlicker, getCrtTheme, setCrtTheme, getCrtStatic, setCrtStatic, getCrtCurved, setCrtCurved, getCrtTransition, setCrtTransition, getSfxEnabled, setSfxEnabled, getCrtOpacity, setCrtOpacity, getCrtRadar, setCrtRadar, getUseCodeMirror, setUseCodeMirror } from "./prefs.js";
 
 let _assetsDirLoaded = "";
 let _assetsDirWasDefault = true;
@@ -17,6 +17,7 @@ export async function openSettingsModal() {
   document.getElementById("settings-default-view").value = getDefaultView();
   document.getElementById("settings-font-size").value = getEditorFontSize();
   document.getElementById("settings-font-size-label").textContent = `${getEditorFontSize()}px`;
+  document.getElementById("settings-use-codemirror").checked = getUseCodeMirror();
   
   // Inicializa inputs de aparência do Pip-Boy
   document.getElementById("settings-scanlines").checked = getCrtScanlines();
@@ -215,4 +216,5 @@ Object.assign(window, {
   toggleSfx: setSfxEnabled,
   changeCrtOpacity: setCrtOpacity,
   changeTheme: setCrtTheme,
+  toggleUseCodeMirror: setUseCodeMirror,
 });

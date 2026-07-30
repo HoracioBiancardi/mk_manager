@@ -44,6 +44,7 @@ class FileMetaResponse(BaseModel):
     status: str = ""
     status_changed_at: str = ""
     archived_from: str = ""
+    trashed_from: str = ""
 
     model_config = {"from_attributes": True}
 

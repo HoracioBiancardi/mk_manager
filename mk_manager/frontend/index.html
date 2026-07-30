@@ -11,6 +11,16 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Share+Tech+Mono&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="/static/css/style.css">
+  <!-- CodeMirror 5 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/markdown/markdown.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/mode/overlay.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/gfm/gfm.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
   <!-- marked deve ser carregado antes do módulo ES (scripts regulares são síncronos) -->
   <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
@@ -75,6 +85,11 @@
 
   <!-- TOPBAR -->
   <div class="topbar">
+    <button id="mobile-sidebar-toggle" class="mobile-sidebar-toggle" onclick="toggleMobileSidebar()" title="Menu lateral">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <path d="M3 12h18M3 6h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
     <div class="brand">
       <div class="brand-icon">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -119,6 +134,7 @@
 
   <!-- APP LAYOUT -->
   <div class="app-layout" id="app-layout">
+    <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeMobileSidebar()"></div>
 
     <!-- ACTIVITY BAR -->
     <nav class="activity-bar">
@@ -585,6 +601,13 @@
           <label class="form-label" for="settings-font-size">Tamanho da fonte do editor — <span
               id="settings-font-size-label">14px</span></label>
           <input id="settings-font-size" type="range" min="11" max="24" step="1" oninput="onFontSizeInput(this.value)">
+        </div>
+        <div class="form-group">
+          <label style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
+            <input type="checkbox" id="settings-use-codemirror" onchange="toggleUseCodeMirror(this.checked)">
+            <span>Ativar destaque de sintaxe avançado (CodeMirror)</span>
+          </label>
+          <div class="form-hint">Desmarque para manter o editor nativo clássico com as cores originais do tema.</div>
         </div>
 
         <div class="settings-sec-title">📺 Aparência Pip-Boy (CRT)</div>

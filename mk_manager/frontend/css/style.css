@@ -3213,6 +3213,117 @@ body.crt-glitch-active {
   font-family: 'Share Tech Mono', monospace !important;
 }
 
+/* ── Mobile Responsiveness & Drawer Layout ──────────────────────── */
+.mobile-sidebar-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  padding: 0 .4rem;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+}
+
+.mobile-sidebar-toggle:hover {
+  background: var(--surface-hover);
+}
+
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+  z-index: 99;
+}
+
+@media (max-width: 768px) {
+  .mobile-sidebar-toggle {
+    display: flex;
+  }
+
+  .topbar-shortcuts {
+    display: none !important;
+  }
+
+  .brand-tagline {
+    display: none;
+  }
+
+  .sidebar-panel {
+    position: fixed !important;
+    top: 48px;
+    left: 0;
+    bottom: 0;
+    z-index: 100;
+    width: 280px !important;
+    background: var(--bg);
+    border-right: 1px solid var(--border-bright);
+    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.5);
+    transform: translateX(-100%);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .sidebar-panel.mobile-open {
+    transform: translateX(0);
+  }
+
+  .editor-topbar {
+    flex-wrap: wrap;
+    gap: .3rem;
+  }
+
+  .editor-topbar-right {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+/* ── CodeMirror Integration Styling ───────────────────────────── */
+.CodeMirror {
+  height: 100% !important;
+  font-family: inherit !important;
+  font-size: 1rem !important;
+  background: var(--bg) !important;
+  color: var(--text) !important;
+  line-height: 1.6 !important;
+  text-shadow: var(--glow-text);
+}
+
+.CodeMirror-gutters {
+  background: var(--surface) !important;
+  border-right: 1px solid var(--border) !important;
+}
+
+.CodeMirror-linenumber {
+  color: var(--text-subtle) !important;
+  font-family: inherit !important;
+  font-size: .8rem !important;
+}
+
+.CodeMirror-cursor {
+  border-left: 2px solid var(--primary) !important;
+  box-shadow: 0 0 6px var(--primary-glow) !important;
+}
+
+.CodeMirror-selected,
+.CodeMirror-focused .CodeMirror-selected {
+  background: var(--primary-dim) !important;
+}
+
+.cm-header { color: var(--primary) !important; font-weight: bold; text-shadow: var(--glow-text); }
+.cm-strong { color: var(--text) !important; font-weight: bold; }
+.cm-em { color: var(--text) !important; font-style: italic; }
+.cm-link { color: var(--info, var(--primary)) !important; text-decoration: underline; }
+.cm-url { color: var(--text-muted) !important; }
+.cm-quote { color: var(--text-subtle) !important; font-style: italic; }
+.cm-code { color: var(--warn, var(--primary)) !important; }
+.cm-variable-2 { color: var(--success, var(--primary)) !important; }
+.cm-comment { color: var(--text-subtle) !important; }
+.cm-formatting { color: var(--text-muted) !important; }
+
 
 
 

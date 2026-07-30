@@ -10,6 +10,7 @@ build/
 
 # uv
 .venv/
+.test_libs/
 uv.lock
 
 # Environment

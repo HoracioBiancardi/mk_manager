@@ -722,8 +722,26 @@ export function setSidebarFilter(filter) {
   renderSidebar();
 }
 
+export function toggleMobileSidebar() {
+  const panel = document.querySelector('.sidebar-panel');
+  const overlay = document.getElementById('sidebar-overlay');
+  if (panel) {
+    const isOpen = panel.classList.toggle('mobile-open');
+    if (overlay) overlay.style.display = isOpen ? 'block' : 'none';
+  }
+}
+
+export function closeMobileSidebar() {
+  const panel = document.querySelector('.sidebar-panel');
+  const overlay = document.getElementById('sidebar-overlay');
+  if (panel) panel.classList.remove('mobile-open');
+  if (overlay) overlay.style.display = 'none';
+}
+
 // ── Expor ao DOM (necessário para event handlers inline gerados acima) ────────
 Object.assign(window, {
+  toggleMobileSidebar,
+  closeMobileSidebar,
   toggleTreeFolder,
   toggleFolder,
   showFileTooltip,

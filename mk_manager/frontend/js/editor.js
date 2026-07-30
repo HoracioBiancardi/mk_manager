@@ -3,6 +3,7 @@
 import { st } from "./state.js";
 import { esc, toast } from "./utils.js";
 import { renderPreview } from "./preview.js";
+import { getUseCodeMirror } from "./prefs.js";
 
 let _scheduleSave = null;
 export function setSaveCallback(fn) {
@@ -22,8 +23,83 @@ function makeTableSep(cols) {
   return "|" + " --- |".repeat(Math.max(1, cols));
 }
 
-// Substitui [start, end) por text preservando o undo stack nativo do browser
+let _cm = null;
+let _suppressCmChange = false;
+
+export function getCodeMirrorInstance() {
+  return _cm;
+}
+
+export function setEditorContent(text) {
+  const ta = document.getElementById("md-editor");
+  if (ta) ta.value = text || "";
+  if (_cm && getUseCodeMirror()) {
+    _suppressCmChange = true;
+    _cm.setValue(text || "");
+    _suppressCmChange = false;
+    setTimeout(() => _cm.refresh(), 20);
+  }
+}
+
+export function initCodeMirror() {
+  const ta = document.getElementById("md-editor");
+  if (!ta || _cm || typeof CodeMirror === "undefined" || !getUseCodeMirror()) return;
+
+  const mode = (typeof CodeMirror.overlayMode === "function" && CodeMirror.modes.gfm) ? "gfm" : "markdown";
+
+  try {
+    _cm = CodeMirror.fromTextArea(ta, {
+      mode: mode,
+      theme: "default",
+      lineNumbers: true,
+      lineWrapping: true,
+      indentWithTabs: false,
+      tabSize: 2,
+      extraKeys: {
+        "Ctrl-B": () => fmt("**", "**"),
+        "Ctrl-I": () => fmt("*", "*"),
+        "Ctrl-S": () => {
+          clearTimeout(st.saveTimer);
+          _scheduleSave?.();
+        },
+      },
+    });
+
+    _cm.on("change", () => {
+      ta.value = _cm.getValue();
+      if (!_suppressCmChange) {
+        onEditorInput();
+      }
+    });
+
+    _cm.on("scroll", () => {
+      if (st.view === "split") {
+        const pp = document.getElementById("preview-pane");
+        const info = _cm.getScrollInfo();
+        const max = info.height - info.clientHeight;
+        if (max > 0 && pp) {
+          const ratio = info.top / max;
+          pp.scrollTop = ratio * Math.max(0, pp.scrollHeight - pp.clientHeight);
+        }
+      }
+    });
+  } catch (e) {
+    console.warn("Falha ao inicializar o CodeMirror, mantendo editor padrão:", e);
+    _cm = null;
+  }
+}
+
+// Substitui [start, end) por text preservando o undo stack nativo do browser ou CodeMirror
 export function replaceRange(ta, start, end, text) {
+  if (_cm && getUseCodeMirror()) {
+    const doc = _cm.getDoc();
+    const from = doc.posFromIndex(start);
+    const to = doc.posFromIndex(end);
+    doc.replaceRange(text, from, to);
+    _cm.focus();
+    ta.value = _cm.getValue();
+    return;
+  }
   ta.focus();
   ta.setSelectionRange(start, end);
   if (!document.execCommand("insertText", false, text)) {
@@ -37,6 +113,20 @@ export function replaceRange(ta, start, end, text) {
 export function showEditorPanel() {
   document.getElementById("empty-panel").style.display = "none";
   document.getElementById("editor-area").style.display = "flex";
+  const ta = document.getElementById("md-editor");
+  if (getUseCodeMirror()) {
+    if (!_cm) initCodeMirror();
+    if (_cm) {
+      const cmEl = document.querySelector(".CodeMirror");
+      if (cmEl) cmEl.style.display = "block";
+      if (ta) ta.style.display = "none";
+      setTimeout(() => _cm.refresh(), 50);
+    }
+  } else {
+    const cmEl = document.querySelector(".CodeMirror");
+    if (cmEl) cmEl.style.display = "none";
+    if (ta) ta.style.display = "block";
+  }
 }
 
 export function showEmptyPanel() {
@@ -222,7 +312,14 @@ export function toggleZenMode() {
 
 export function jumpToSourceLine(lineNumber) {
   if (st.view === "preview") setView("split");
+  if (_cm) {
+    _cm.focus();
+    _cm.setCursor({ line: lineNumber, ch: 0 });
+    _cm.scrollIntoView({ line: lineNumber, ch: 0 }, 100);
+    return;
+  }
   const ta = document.getElementById("md-editor");
+  if (!ta) return;
   const lines = ta.value.split("\n");
   let pos = 0;
   for (let i = 0; i < lineNumber && i < lines.length; i++) {

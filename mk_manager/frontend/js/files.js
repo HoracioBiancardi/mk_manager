@@ -13,6 +13,7 @@ import {
   setSaveStatus,
   updateStatusVis,
   updateRetroStatusLabel,
+  setEditorContent,
 } from "./editor.js";
 import { updateStatusSelect, renderKanban } from "./kanban.js";
 import { setMainView } from "./views.js";
@@ -170,7 +171,7 @@ export async function openFile(id) {
   if (st.mainView !== "editor") setMainView("editor");
   if (st.isDirty && st.activeId) await saveFile();
   try {
-    const r = await apiFetch(`/files/${id}`);
+    const r = await apiFetch(`/files/${encodeURIComponent(id)}`);
     const file = await r.json();
     st.activeId = id;
     st.activeTags = [...(file.tags || [])];
@@ -179,7 +180,7 @@ export async function openFile(id) {
     st.isDirty = false;
 
     document.getElementById("title-input").value = file.title;
-    document.getElementById("md-editor").value = file.content;
+    setEditorContent(file.content || "");
     const folderInput = document.getElementById("folder-input");
     if (folderInput) folderInput.value = file.folder || "";
     updateStatusSelect();

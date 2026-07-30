@@ -174,6 +174,54 @@ class AbstractFileRepository(ABC):
         ...
 
     @abstractmethod
+    def list_trash(self) -> list[FileRecord]:
+        """Return only trashed file records, newest-modified first.
+
+        Returns:
+            Ordered list of trashed ``FileRecord`` objects.
+        """
+        ...
+
+    @abstractmethod
+    def trash(self, file_id: str) -> FileRecord:
+        """Soft-delete a file by moving it to the trash folder.
+
+        Args:
+            file_id: Identifier of the file to move to trash.
+
+        Returns:
+            The updated ``FileRecord``.
+
+        Raises:
+            FileNotFoundError: If no file with *file_id* exists.
+        """
+        ...
+
+    @abstractmethod
+    def untrash(self, file_id: str) -> FileRecord:
+        """Restore a trashed file to its original location.
+
+        Args:
+            file_id: Identifier of the file to restore.
+
+        Returns:
+            The updated ``FileRecord``.
+
+        Raises:
+            FileNotFoundError: If no file with *file_id* exists.
+        """
+        ...
+
+    @abstractmethod
+    def purge_trash(self, file_id: str | None = None) -> None:
+        """Permanently delete a file from trash, or purge all trashed files.
+
+        Args:
+            file_id: Identifier of the file to purge, or ``None`` to purge all.
+        """
+        ...
+
+    @abstractmethod
     def count_by_type(self) -> dict[str, int]:
         """Aggregate file counts grouped by type field, including archived files.
 

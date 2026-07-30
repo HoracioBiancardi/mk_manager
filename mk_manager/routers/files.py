@@ -64,6 +64,7 @@ def _to_meta(record: FileRecord) -> FileMetaResponse:
         status=record.status,
         status_changed_at=record.status_changed_at,
         archived_from=record.archived_from,
+        trashed_from=record.trashed_from,
     )
 
 
@@ -96,6 +97,7 @@ def _to_detail(record: FileRecord) -> FileDetailResponse:
         status=record.status,
         status_changed_at=record.status_changed_at,
         archived_from=record.archived_from,
+        trashed_from=record.trashed_from,
         content=record.content,
     )
 
@@ -429,18 +431,7 @@ def unarchive_file(
     file_id: str,
     service: FileService = Depends(get_file_service),
 ) -> FileMetaResponse:
-    """Restore a previously archived file to its original folder.
-
-    Args:
-        file_id: Unique file identifier.
-        service: Injected ``FileService`` instance.
-
-    Returns:
-        Updated file metadata.
-
-    Raises:
-        HTTPException: 404 if no file with *file_id* exists.
-    """
+    """Restore a previously archived file to its original folder."""
     try:
         return _to_meta(service.unarchive_file(file_id))
     except FileNotFoundError:
@@ -448,3 +439,60 @@ def unarchive_file(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"File '{file_id}' not found.",
         )
+
+
+@router.get(
+    "/trashed",
+    response_model=list[FileMetaResponse],
+    summary="List trashed files",
+    description="Return metadata for every soft-deleted file in the trash.",
+)
+def list_trashed_files(
+    service: FileService = Depends(get_file_service),
+) -> list[FileMetaResponse]:
+    """Return metadata for all trashed files."""
+    return [_to_meta(r) for r in service.list_trash_files()]
+
+
+@router.post(
+    "/{file_id}/untrash",
+    response_model=FileMetaResponse,
+    summary="Restore a trashed file",
+)
+def untrash_file(
+    file_id: str,
+    service: FileService = Depends(get_file_service),
+) -> FileMetaResponse:
+    """Restore a soft-deleted file to its original folder."""
+    try:
+        return _to_meta(service.untrash_file(file_id))
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"File '{file_id}' not found in trash.",
+        )
+
+
+@router.delete(
+    "/trash/purge",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Purge all files from trash",
+)
+def purge_all_trash(
+    service: FileService = Depends(get_file_service),
+) -> None:
+    """Permanently delete all files in the trash folder."""
+    service.purge_trash()
+
+
+@router.delete(
+    "/{file_id}/purge",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Permanently purge a file from trash",
+)
+def purge_file(
+    file_id: str,
+    service: FileService = Depends(get_file_service),
+) -> None:
+    """Permanently delete a single file from the trash folder."""
+    service.purge_trash(file_id)

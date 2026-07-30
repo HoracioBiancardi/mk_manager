@@ -10,8 +10,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Literal
 
-_TASK_ANY_RE: re.Pattern[str] = re.compile(r"^- \[[ x]\] ", re.MULTILINE)
-_TASK_DONE_RE: re.Pattern[str] = re.compile(r"^- \[x\] ", re.MULTILINE)
+_TASK_ANY_RE: re.Pattern[str] = re.compile(r"^\s*- \[[ x]\] ", re.MULTILINE)
+_TASK_DONE_RE: re.Pattern[str] = re.compile(r"^\s*- \[x\] ", re.MULTILINE)
 _TASK_ITEM_RE: re.Pattern[str] = re.compile(r"^(\s*)- \[([ x])\] (.+)", re.MULTILINE)
 
 
@@ -48,6 +48,7 @@ class FileRecord:
     status: str = field(default="")
     status_changed_at: str = field(default="")
     archived_from: str = field(default="")
+    trashed_from: str = field(default="")
 
     @property
     def word_count(self) -> int:

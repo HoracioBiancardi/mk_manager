@@ -544,16 +544,63 @@ class FileService:
         """
         return self._repo.list_folders()
 
-    def delete_file(self, file_id: str) -> None:
-        """Permanently delete a file.
+    def delete_file(self, file_id: str) -> FileRecord:
+        """Soft-delete a file by moving it to the trash folder.
 
         Args:
             file_id: Identifier of the file to delete.
 
+        Returns:
+            The updated ``FileRecord``.
+
         Raises:
             FileNotFoundError: If no file with *file_id* exists.
         """
-        self._repo.delete(file_id)
+        return self._repo.trash(file_id)
+
+    def trash_file(self, file_id: str) -> FileRecord:
+        """Soft-delete a file by moving it to the trash folder.
+
+        Args:
+            file_id: Identifier of the file to move to trash.
+
+        Returns:
+            The updated ``FileRecord``.
+
+        Raises:
+            FileNotFoundError: If no file with *file_id* exists.
+        """
+        return self._repo.trash(file_id)
+
+    def untrash_file(self, file_id: str) -> FileRecord:
+        """Restore a previously trashed file to its original folder.
+
+        Args:
+            file_id: Identifier of the file to restore.
+
+        Returns:
+            The updated ``FileRecord``.
+
+        Raises:
+            FileNotFoundError: If no file with *file_id* exists.
+        """
+        return self._repo.untrash(file_id)
+
+    def list_trash_files(self) -> list[FileRecord]:
+        """Return all soft-deleted files currently in the trash.
+
+        Returns:
+            List of trashed ``FileRecord`` objects.
+        """
+        return self._repo.list_trash()
+
+    def purge_trash(self, file_id: str | None = None) -> None:
+        """Permanently delete a file from trash, or purge all trashed files.
+
+        Args:
+            file_id: Identifier of the file to purge, or ``None`` to purge all.
+        """
+        self._repo.purge_trash(file_id)
 
     def archive_file(self, file_id: str) -> FileRecord:
         """Move a file into the archive, out of default listings.

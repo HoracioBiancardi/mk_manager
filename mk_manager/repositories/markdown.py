@@ -89,6 +89,8 @@ class MarkdownFileRepository(AbstractFileRepository):
     # Reserved top-level folder for archived files (excluded from list_all()
     # by default). Kept flat under notes_dir like "assets" already is.
     ARCHIVE_FOLDER = "_archive"
+    # Reserved top-level folder for soft-deleted / trashed files.
+    TRASH_FOLDER = "_trash"
     # Reserved top-level folder for uploaded/pasted assets when MK_ASSETS_DIR
     # isn't set explicitly (see Settings.resolved_assets_dir) — excluded from
     # list_folders() so it never shows up as if it were a user note folder.
@@ -275,6 +277,7 @@ class MarkdownFileRepository(AbstractFileRepository):
                 or ""
             ),
             archived_from=_coerce_str(meta.get("archived_from", "")),
+            trashed_from=_coerce_str(meta.get("trashed_from", "")),
         )
 
     def _write(self, path: Path, record: FileRecord) -> None:
@@ -298,6 +301,7 @@ class MarkdownFileRepository(AbstractFileRepository):
             "status": record.status,
             "status_changed_at": record.status_changed_at,
             "archived_from": record.archived_from,
+            "trashed_from": record.trashed_from,
         }
         frontmatter = yaml.dump(
             fm_data, allow_unicode=True, default_flow_style=False
@@ -320,11 +324,14 @@ class MarkdownFileRepository(AbstractFileRepository):
             Ordered list of ``FileRecord`` objects, newest-modified first.
         """
         archive_dir = self._dir / self.ARCHIVE_FOLDER
+        trash_dir = self._dir / self.TRASH_FOLDER
         paths: list[Path] = []
         for child in self._dir.iterdir():
             if child == archive_dir:
                 if include_archived:
                     paths.extend(child.rglob("*.md"))
+                continue
+            if child == trash_dir:
                 continue
             if child.is_dir():
                 paths.extend(child.rglob("*.md"))
@@ -533,8 +540,15 @@ class MarkdownFileRepository(AbstractFileRepository):
         # Idem update(): a pasta que fica vazia não é removida automaticamente.
         self._forget(path, file_id)
 
-    def _relocate(self, file_id: str, *, new_folder: str, archived_from: str) -> FileRecord:
-        """Shared move logic for `archive`/`unarchive` (both are just a folder move)."""
+    def _relocate(
+        self,
+        file_id: str,
+        *,
+        new_folder: str,
+        archived_from: str | None = None,
+        trashed_from: str | None = None,
+    ) -> FileRecord:
+        """Shared move logic for `archive`/`unarchive`/`trash`/`untrash`."""
         old_path = self._require_path(file_id)
         existing = self._parse_cached(old_path)
         new_path = self._build_path(existing.id, new_folder)
@@ -542,7 +556,8 @@ class MarkdownFileRepository(AbstractFileRepository):
         updated = dataclasses.replace(
             existing,
             folder=new_folder,
-            archived_from=archived_from,
+            archived_from=archived_from if archived_from is not None else existing.archived_from,
+            trashed_from=trashed_from if trashed_from is not None else existing.trashed_from,
             filename=rel_filename,
             modified=datetime.now(timezone.utc).isoformat(),
         )
@@ -556,37 +571,54 @@ class MarkdownFileRepository(AbstractFileRepository):
         return updated
 
     def archive(self, file_id: str) -> FileRecord:
-        """Move a file into the reserved ``_archive/`` folder.
-
-        Stamps ``archived_from`` with the file's current folder so
-        ``unarchive`` can restore it exactly.
-
-        Args:
-            file_id: Identifier of the file to archive.
-
-        Returns:
-            The updated ``FileRecord``.
-
-        Raises:
-            FileNotFoundError: If no file with *file_id* exists.
-        """
+        """Move a file into the reserved ``_archive/`` folder."""
         existing = self.get_by_id(file_id)
         return self._relocate(file_id, new_folder=self.ARCHIVE_FOLDER, archived_from=existing.folder)
 
     def unarchive(self, file_id: str) -> FileRecord:
-        """Restore a previously archived file to its original folder.
-
-        Args:
-            file_id: Identifier of the file to restore.
-
-        Returns:
-            The updated ``FileRecord``, with ``archived_from`` cleared.
-
-        Raises:
-            FileNotFoundError: If no file with *file_id* exists.
-        """
+        """Restore a previously archived file to its original folder."""
         existing = self.get_by_id(file_id)
         return self._relocate(file_id, new_folder=existing.archived_from, archived_from="")
+
+    def list_trash(self) -> list[FileRecord]:
+        """Return only trashed file records under ``_trash/``."""
+        trash_dir = self._dir / self.TRASH_FOLDER
+        if not trash_dir.is_dir():
+            return []
+        paths = sorted(trash_dir.rglob("*.md"), key=lambda p: p.stat().st_mtime, reverse=True)
+        records: list[FileRecord] = []
+        for p in paths:
+            try:
+                records.append(self._parse_cached(p))
+            except (OSError, ValueError, yaml.YAMLError):
+                continue
+        return records
+
+    def trash(self, file_id: str) -> FileRecord:
+        """Soft-delete a file by moving it into the reserved ``_trash/`` folder."""
+        existing = self.get_by_id(file_id)
+        return self._relocate(file_id, new_folder=self.TRASH_FOLDER, trashed_from=existing.folder)
+
+    def untrash(self, file_id: str) -> FileRecord:
+        """Restore a previously trashed file to its original folder."""
+        existing = self.get_by_id(file_id)
+        target = existing.trashed_from if existing.trashed_from != self.TRASH_FOLDER else ""
+        return self._relocate(file_id, new_folder=target, trashed_from="")
+
+    def purge_trash(self, file_id: str | None = None) -> None:
+        """Permanently delete a file from trash, or purge all trashed files."""
+        trash_dir = self._dir / self.TRASH_FOLDER
+        if not trash_dir.is_dir():
+            return
+        if file_id:
+            path = self._require_path(file_id)
+            if self.TRASH_FOLDER in path.relative_to(self._dir).parts:
+                path.unlink()
+                self._forget(path, file_id)
+        else:
+            for p in list(trash_dir.rglob("*.md")):
+                p.unlink()
+                self._forget(p)
 
     def count_by_type(self) -> dict[str, int]:
         """Aggregate file counts grouped by type, including archived files.
@@ -611,14 +643,9 @@ class MarkdownFileRepository(AbstractFileRepository):
     def list_folders(self) -> list[str]:
         """Return every real directory under notes_dir, with files or empty.
 
-        Excludes the reserved ``_archive``/``assets`` top-level folders, so
-        a plain recursive directory scan is the single source of truth for
-        "which folders exist" — no separate bookkeeping for empty ones.
-
-        Returns:
-            Sorted list of folder paths relative to notes_dir, using ``/``.
+        Excludes the reserved ``_archive``/``assets``/``_trash`` top-level folders.
         """
-        reserved = {self.ARCHIVE_FOLDER, self.ASSETS_FOLDER}
+        reserved = {self.ARCHIVE_FOLDER, self.ASSETS_FOLDER, self.TRASH_FOLDER}
         paths: list[str] = []
         for child in self._dir.rglob("*"):
             if not child.is_dir():
@@ -645,7 +672,7 @@ class MarkdownFileRepository(AbstractFileRepository):
         parts = Path(folder).parts
         if ".." in parts:
             raise ValueError("Invalid folder path.")
-        if parts[0] in (self.ARCHIVE_FOLDER, self.ASSETS_FOLDER):
+        if parts[0] in (self.ARCHIVE_FOLDER, self.ASSETS_FOLDER, self.TRASH_FOLDER):
             raise ValueError(f"'{parts[0]}' is a reserved folder name.")
         (self._dir / folder).mkdir(parents=True, exist_ok=True)
 
