@@ -1,4 +1,4 @@
-// Responsabilidade: exportação de Notas (PDF / Standalone HTML)
+// Responsabilidade: exportação de Notas (PDF / MD / Standalone HTML)
 
 import { st } from "./state.js";
 import { toast } from "./utils.js";
@@ -9,7 +9,38 @@ export async function exportCurrentNoteAsPdf() {
     toast("Nenhuma nota aberta para exportar", "warning");
     return;
   }
-  window.print();
+
+  const prevView = st.view;
+  if (prevView === "edit" && window.setView) {
+    window.setView("split");
+  }
+
+  setTimeout(() => {
+    window.print();
+    if (prevView === "edit" && window.setView) {
+      window.setView("edit");
+    }
+  }, 150);
+}
+
+export async function exportCurrentNoteAsMd() {
+  if (!st.activeId) {
+    toast("Nenhuma nota aberta para exportar", "warning");
+    return;
+  }
+  const file = st.files.find((f) => f.id === st.activeId);
+  const content = document.getElementById("md-editor")?.value || file?.content || "";
+  const filename = `${file?.id || "nota"}.md`;
+  const blob = new Blob([content], { type: "text/markdown" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast("Arquivo .md baixado!", "success");
 }
 
 export async function exportCurrentNoteAsHtml() {
@@ -71,6 +102,9 @@ export async function exportCurrentNoteAsHtml() {
 }
 
 Object.assign(window, {
+  printPDF: exportCurrentNoteAsPdf,
+  exportCurrent: exportCurrentNoteAsMd,
   exportCurrentNoteAsPdf,
   exportCurrentNoteAsHtml,
+  exportCurrentNoteAsMd,
 });
