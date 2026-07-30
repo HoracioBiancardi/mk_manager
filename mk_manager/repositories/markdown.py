@@ -278,6 +278,7 @@ class MarkdownFileRepository(AbstractFileRepository):
             ),
             archived_from=_coerce_str(meta.get("archived_from", "")),
             trashed_from=_coerce_str(meta.get("trashed_from", "")),
+            due_date=_coerce_str(meta.get("due_date") or meta.get("due") or ""),
         )
 
     def _write(self, path: Path, record: FileRecord) -> None:
@@ -302,6 +303,7 @@ class MarkdownFileRepository(AbstractFileRepository):
             "status_changed_at": record.status_changed_at,
             "archived_from": record.archived_from,
             "trashed_from": record.trashed_from,
+            "due_date": record.due_date,
         }
         frontmatter = yaml.dump(
             fm_data, allow_unicode=True, default_flow_style=False
@@ -399,6 +401,7 @@ class MarkdownFileRepository(AbstractFileRepository):
         folder: str = "",
         status: str = "",
         status_changed_at: str = "",
+        due_date: str = "",
     ) -> FileRecord:
         """Persist a new file record.
 
@@ -418,6 +421,7 @@ class MarkdownFileRepository(AbstractFileRepository):
             folder: Folder path relative to the notes root.
             status: Kanban status, or ``""`` if not on the board.
             status_changed_at: Timestamp of the last status change.
+            due_date: Due date or empty string.
 
         Returns:
             The persisted ``FileRecord``, with its actual (possibly
@@ -439,6 +443,7 @@ class MarkdownFileRepository(AbstractFileRepository):
             folder=folder,
             status=status,
             status_changed_at=status_changed_at,
+            due_date=due_date,
         )
         path = self._build_path(actual_id, folder)
         self._write(path, record)
@@ -456,6 +461,7 @@ class MarkdownFileRepository(AbstractFileRepository):
         folder: str | None = None,
         status: str | None = None,
         status_changed_at: str | None = None,
+        due_date: str | None = None,
     ) -> FileRecord:
         """Apply a partial update to an existing file record.
 
@@ -473,6 +479,7 @@ class MarkdownFileRepository(AbstractFileRepository):
             status: New kanban status, or ``None`` to keep the current value.
             status_changed_at: New status-changed timestamp, or ``None`` to
                 keep the current value.
+            due_date: New due date, or ``None`` to keep the current value.
 
         Returns:
             The updated ``FileRecord``.
@@ -508,6 +515,7 @@ class MarkdownFileRepository(AbstractFileRepository):
             folder=new_folder,
             status=status if status is not None else existing.status,
             status_changed_at=status_changed_at if status_changed_at is not None else existing.status_changed_at,
+            due_date=due_date if due_date is not None else existing.due_date,
         )
 
         new_path = self._build_path(new_id, new_folder)

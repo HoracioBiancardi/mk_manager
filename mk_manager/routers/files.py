@@ -65,6 +65,7 @@ def _to_meta(record: FileRecord) -> FileMetaResponse:
         status_changed_at=record.status_changed_at,
         archived_from=record.archived_from,
         trashed_from=record.trashed_from,
+        due_date=record.due_date,
     )
 
 
@@ -98,6 +99,7 @@ def _to_detail(record: FileRecord) -> FileDetailResponse:
         status_changed_at=record.status_changed_at,
         archived_from=record.archived_from,
         trashed_from=record.trashed_from,
+        due_date=record.due_date,
         content=record.content,
     )
 

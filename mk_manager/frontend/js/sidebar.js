@@ -355,6 +355,11 @@ export function deleteFolderPrompt(path) {
 
 // ── Search panel ──────────────────────────────────────────────────────────────
 
+function renderSnippetHtml(snippet) {
+  if (!snippet) return '';
+  return esc(snippet).replace(/&lt;mark&gt;/g, '<mark>').replace(/&lt;\/mark&gt;/g, '</mark>');
+}
+
 export function renderSearchResults() {
   const el = document.getElementById('search-results');
   if (!el) return;
@@ -376,7 +381,7 @@ export function renderSearchResults() {
     const taskMeta = f.type === 'task' && f.task_total ? ` · ${f.task_done}/${f.task_total} tasks` : '';
     return `<div class="search-result${active}" onclick="openFile('${f.id}')">
       <div class="search-result-title">${esc(f.title || 'Sem título')}</div>
-      ${f.snippet ? `<div class="search-result-snippet">${esc(f.snippet)}</div>` : ''}
+      ${f.snippet ? `<div class="search-result-snippet">${renderSnippetHtml(f.snippet)}</div>` : ''}
       <div class="search-result-meta">${folder}${timeAgo(f.modified)} · ${f.word_count} pal.${taskMeta}</div>
     </div>`;
   }).join('');
@@ -576,19 +581,31 @@ export function onFolderDragOver(e, path) {
   e.preventDefault();
   e.stopPropagation();
   e.dataTransfer.dropEffect = 'move';
-  e.currentTarget.classList.add('drag-over');
+
+  const rootTree = document.getElementById('file-tree');
+
+  if (path !== "") {
+    rootTree?.classList.remove('drag-over');
+    e.currentTarget.classList.add('drag-over');
+  } else {
+    const isOverSubFolder = e.target.closest('.tree-folder-row');
+    if (isOverSubFolder) {
+      rootTree?.classList.remove('drag-over');
+    } else {
+      rootTree?.classList.add('drag-over');
+    }
+  }
 }
 
 export function onFolderDragLeave(e) {
-  if (!e.currentTarget.contains(e.relatedTarget)) {
-    e.currentTarget.classList.remove('drag-over');
-  }
+  e.currentTarget.classList.remove('drag-over');
 }
 
 export function onFolderDrop(e, path) {
   e.preventDefault();
   e.stopPropagation();
   e.currentTarget.classList.remove('drag-over');
+  document.getElementById('file-tree')?.classList.remove('drag-over');
   const id = st.draggingFileId;
   st.draggingFileId = null;
   if (id) _moveFileToFolder?.(id, path);

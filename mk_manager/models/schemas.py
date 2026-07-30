@@ -45,6 +45,7 @@ class FileMetaResponse(BaseModel):
     status_changed_at: str = ""
     archived_from: str = ""
     trashed_from: str = ""
+    due_date: str = ""
 
     model_config = {"from_attributes": True}
 
@@ -82,6 +83,7 @@ class FileCreateRequest(BaseModel):
     folder: str = Field(default="", description="Folder path, e.g. 'work/projects'")
     status: str = Field(default="", description="Kanban status: planning|development|review|done")
     status_changed_at: str = Field(default="", description="Timestamp of the last status change")
+    due_date: str = Field(default="", description="Due date YYYY-MM-DD")
 
 
 class FileUpdateRequest(BaseModel):
@@ -102,6 +104,7 @@ class FileUpdateRequest(BaseModel):
     folder: str | None = Field(default=None, description="New folder path")
     status: str | None = Field(default=None, description="New kanban status")
     status_changed_at: str | None = Field(default=None, description="New status-changed timestamp")
+    due_date: str | None = Field(default=None, description="New due date YYYY-MM-DD")
 
 
 class TagRenameRequest(BaseModel):

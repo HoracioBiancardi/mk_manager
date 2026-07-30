@@ -75,21 +75,9 @@ class AbstractFileRepository(ABC):
         folder: str = "",
         status: str = "",
         status_changed_at: str = "",
+        due_date: str = "",
     ) -> FileRecord:
-        """Persist a new file record.
-
-        Args:
-            file_id: Unique identifier for the new file.
-            title: Human-readable title.
-            file_type: Semantic type string (``"note"`` or ``"task"``).
-            tags: List of tag strings.
-            content: Markdown body content.
-            created: ISO 8601 UTC creation timestamp.
-            modified: ISO 8601 UTC modification timestamp.
-
-        Returns:
-            The persisted ``FileRecord``.
-        """
+        """Persist a new file record."""
         ...
 
     @abstractmethod
@@ -104,6 +92,7 @@ class AbstractFileRepository(ABC):
         folder: str | None = None,
         status: str | None = None,
         status_changed_at: str | None = None,
+        due_date: str | None = None,
     ) -> FileRecord:
         """Apply a partial update to an existing file record.
 

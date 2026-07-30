@@ -190,6 +190,17 @@
           <path d="M10 12h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
         </svg>
       </button>
+      <button class="activity-btn" data-panel="calendar" onclick="switchPanel('calendar')" title="Calendário / Prazos">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.8" />
+          <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+        </svg>
+      </button>
+      <button class="activity-btn" data-panel="trash" onclick="switchPanel('trash')" title="Lixeira">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
     </nav>
 
     <!-- SIDEBAR PANEL (só o Explorador — busca e tags viraram telas cheias) -->
@@ -229,7 +240,8 @@
           <button class="filter-tab" data-filter="note" onclick="setSidebarFilter('note')">Notas</button>
           <button class="filter-tab" data-filter="task" onclick="setSidebarFilter('task')">Tasks</button>
         </div>
-        <div id="file-tree" class="file-tree" oncontextmenu="onTreeBackgroundContextMenu(event)"></div>
+        <div id="file-tree" class="file-tree" oncontextmenu="onTreeBackgroundContextMenu(event)"
+          ondragover="onFolderDragOver(event,'')" ondrop="onFolderDrop(event,'')" ondragleave="onFolderDragLeave(event)"></div>
       </div>
 
       <div class="sidebar-footer" id="storage-info">–</div>
@@ -303,6 +315,11 @@
           <div id="task-dates-part" style="display:contents">
             <div class="info-sep"></div>
             <div class="info-group">
+              <span class="info-label" title="Prazo final YYYY-MM-DD">Prazo</span>
+              <input type="date" id="due-date-input" class="meta-input date-input" onchange="onMetaChange()" title="Prazo final">
+            </div>
+            <div class="info-sep"></div>
+            <div class="info-group">
               <span class="info-label" title="Data da última troca de status">Status em</span>
               <input type="datetime-local" id="status-changed-at" class="meta-input date-input" onchange="onMetaChange()"
                 title="Alterado em">
@@ -350,10 +367,12 @@
                 title="Construtor visual: arraste caixas e setas, gera Mermaid sozinho">🧩 Diagrama</button>
               <span class="tool-sep"></span>
               <button class="tool-btn" onclick="formatSmart()"
-                title="Formata o bloco de código onde está o cursor; sem cursor num bloco, formata o documento inteiro (Prettier p/ JS/TS/JSON/CSS/HTML/YAML, shfmt p/ Bash/Shell, sql-formatter p/ SQL; limpeza de espaçamento nas demais linguagens)">🧹
-                Formatar</button>
+                title="Formata o bloco de código onde está o cursor">🧹 Formatar</button>
               <button class="tool-btn tool-btn-import" onclick="triggerAssetImport()"
                 title="Importar arquivo (imagem, PDF, MD…)">📎 Importar</button>
+              <span class="tool-sep"></span>
+              <button class="tool-btn" onclick="exportCurrentNoteAsPdf()" title="Exportar como PDF / Imprimir">📄 PDF</button>
+              <button class="tool-btn" onclick="exportCurrentNoteAsHtml()" title="Exportar como HTML autônomo">🌐 HTML</button>
             </div>
             <textarea id="md-editor" class="md-textarea"
               placeholder="Comece a escrever em Markdown…&#10;&#10;Use - [ ] para criar tasks interativas"
@@ -481,6 +500,22 @@
           <span class="pane-title">Arquivo</span>
         </div>
         <div id="archive-list-container" class="archive-list-container"></div>
+      </div>
+
+      <!-- CALENDAR PANE -->
+      <div id="calendar-pane" class="main-pane" style="display:none">
+        <div class="pane-header">
+          <span class="pane-title">📅 Calendário de Tarefas e Prazos</span>
+        </div>
+        <div id="calendar-view-container" class="calendar-view-container"></div>
+      </div>
+
+      <!-- TRASH PANE -->
+      <div id="trash-pane" class="main-pane" style="display:none">
+        <div class="pane-header">
+          <span class="pane-title">🗑️ Lixeira</span>
+        </div>
+        <div id="trash-list" class="trash-list-container"></div>
       </div>
     </main>
   </div>
@@ -610,6 +645,12 @@
           <div class="form-hint">Desmarque para manter o editor nativo clássico com as cores originais do tema.</div>
         </div>
 
+        <div class="settings-sec-title">🧭 Ordem dos Ícones do Menu Lateral</div>
+        <div class="form-group">
+          <div id="settings-activity-order-list" class="activity-order-list" style="margin-bottom: .5rem;"></div>
+          <button class="btn btn-ghost btn-sm" onclick="resetActivityIconOrder()">↺ Restaurar Ordem Padrão</button>
+        </div>
+
         <div class="settings-sec-title">📺 Aparência Pip-Boy (CRT)</div>
         <div class="form-group">
           <div class="settings-grid-2">
@@ -693,6 +734,9 @@
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
 
   <!-- Módulo principal (deferred automaticamente, marked já está carregado) -->
+  <script type="module" src="/static/js/trash.js"></script>
+  <script type="module" src="/static/js/calendar.js"></script>
+  <script type="module" src="/static/js/export.js"></script>
   <script type="module" src="/static/js/app.js"></script>
 
 </body>

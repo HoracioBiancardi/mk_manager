@@ -9,6 +9,8 @@ import { renderTagsPanel, renderSearchResults, hideFileTooltip } from "./sidebar
 import { renderGraph } from "./graph.js";
 import { renderList } from "./list.js";
 import { renderArchivePane } from "./archive.js";
+import { renderTrashView } from "./trash.js";
+import { renderCalendarView } from "./calendar.js";
 import { getCrtTransition } from "./prefs.js";
 import { playTransitionSfx } from "./sfx.js";
 
@@ -19,13 +21,16 @@ const PANES = {
   graph: "graph-pane",
   list: "list-pane",
   archive: "archive-pane",
+  trash: "trash-pane",
+  calendar: "calendar-pane",
 };
 
 function hideAllPanes() {
   document.getElementById("empty-panel").style.display = "none";
   document.getElementById("editor-area").style.display = "none";
   for (const id of Object.values(PANES)) {
-    document.getElementById(id).style.display = "none";
+    const el = document.getElementById(id);
+    if (el) el.style.display = "none";
   }
 }
 
@@ -52,7 +57,8 @@ export function setMainView(view) {
         showEmptyPanel();
       }
     } else {
-      document.getElementById(PANES[view]).style.display = "flex";
+      const paneEl = document.getElementById(PANES[view]);
+      if (paneEl) paneEl.style.display = "flex";
       if (view === "kanban") {
         hideFileTooltip();
         renderKanban();
@@ -67,6 +73,10 @@ export function setMainView(view) {
         renderList();
       } else if (view === "archive") {
         renderArchivePane();
+      } else if (view === "trash") {
+        renderTrashView();
+      } else if (view === "calendar") {
+        renderCalendarView();
       }
     }
 

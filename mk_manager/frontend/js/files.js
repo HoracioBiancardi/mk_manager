@@ -79,6 +79,7 @@ export async function saveFile() {
   const status =
     document.getElementById("status-select")?.value ?? st.activeStatus;
   const statusChangedAt = document.getElementById("status-changed-at")?.value ?? "";
+  const dueDate = document.getElementById("due-date-input")?.value?.trim() ?? "";
   try {
     const prevId = st.activeId;
     const r = await apiFetch(`/files/${prevId}`, {
@@ -90,6 +91,7 @@ export async function saveFile() {
         folder,
         status,
         status_changed_at: statusChangedAt,
+        due_date: dueDate,
       }),
     });
     const updated = await r.json();
@@ -99,6 +101,8 @@ export async function saveFile() {
     // Sincroniza o input de data na tela com o retorno da API
     const statusChangedEl = document.getElementById("status-changed-at");
     if (statusChangedEl) statusChangedEl.value = updated.status_changed_at || "";
+    const dueDateEl = document.getElementById("due-date-input");
+    if (dueDateEl) dueDateEl.value = updated.due_date || "";
 
     // The file may have been renamed on disk (ID = slug of title)
     if (updated.id !== prevId) st.activeId = updated.id;
@@ -189,6 +193,8 @@ export async function openFile(id) {
     updateRetroStatusLabel();
     const statusChangedEl = document.getElementById("status-changed-at");
     if (statusChangedEl) statusChangedEl.value = file.status_changed_at || "";
+    const dueDateEl = document.getElementById("due-date-input");
+    if (dueDateEl) dueDateEl.value = file.due_date || "";
 
     const badge = document.getElementById("type-badge");
     badge.textContent = file.type === "task" ? "Task" : "Note";

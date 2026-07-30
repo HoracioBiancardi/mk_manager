@@ -79,6 +79,7 @@ export function applyPrefsOnBoot() {
   st.view = getDefaultView();
   applyEditorFontSize();
   applySidebarWidth();
+  applyActivityBarOrder();
 
   // Aplica as preferências do Pip-Boy CRT
   setCrtScanlines(getCrtScanlines());
@@ -212,6 +213,78 @@ export function setCrtRadar(enabled) {
   document.body.classList.toggle("radar-sweep-enabled", enabled);
   const el = document.getElementById("settings-radar-sweep");
   if (el) el.checked = enabled;
+}
+
+const ACTIVITY_BAR_ORDER_KEY = "mk-activity-bar-order";
+export const DEFAULT_ACTIVITY_BAR_ORDER = [
+  "explorer",
+  "search",
+  "tags",
+  "kanban",
+  "graph",
+  "list",
+  "calendar",
+  "archive",
+  "trash",
+];
+
+export const ACTIVITY_BAR_LABELS = {
+  explorer: "📂 Explorador",
+  search: "🔍 Busca",
+  tags: "🏷️ Tags",
+  kanban: "📋 Kanban",
+  graph: "🌐 Grafo",
+  list: "📑 Lista",
+  calendar: "📅 Calendário",
+  archive: "📦 Arquivo",
+  trash: "🗑️ Lixeira",
+};
+
+export function getActivityBarOrder() {
+  try {
+    const saved = localStorage.getItem(ACTIVITY_BAR_ORDER_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const set = new Set(parsed);
+        DEFAULT_ACTIVITY_BAR_ORDER.forEach((item) => {
+          if (!set.has(item)) parsed.push(item);
+        });
+        return parsed;
+      }
+    }
+  } catch (e) {}
+  return [...DEFAULT_ACTIVITY_BAR_ORDER];
+}
+
+export function setActivityBarOrder(orderArray) {
+  localStorage.setItem(ACTIVITY_BAR_ORDER_KEY, JSON.stringify(orderArray));
+  applyActivityBarOrder(orderArray);
+}
+
+export function applyActivityBarOrder(order = getActivityBarOrder()) {
+  const nav = document.querySelector(".activity-bar");
+  if (!nav) return;
+  order.forEach((id) => {
+    let btn = nav.querySelector(`button[data-panel="${id}"]`);
+    if (btn) nav.appendChild(btn);
+  });
+}
+
+export function moveActivityBarItem(id, direction) {
+  const current = getActivityBarOrder();
+  const idx = current.indexOf(id);
+  if (idx === -1) return;
+  const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+  if (targetIdx < 0 || targetIdx >= current.length) return;
+  const temp = current[idx];
+  current[idx] = current[targetIdx];
+  current[targetIdx] = temp;
+  setActivityBarOrder(current);
+}
+
+export function resetActivityBarOrder() {
+  setActivityBarOrder([...DEFAULT_ACTIVITY_BAR_ORDER]);
 }
 
 

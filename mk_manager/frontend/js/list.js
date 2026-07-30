@@ -21,6 +21,7 @@ const COLUMNS = [
   { key: "title", label: "Título", sortable: true },
   { key: "type", label: "Tipo", sortable: true },
   { key: "status", label: "Status", sortable: true },
+  { key: "due_date", label: "Prazo", sortable: true },
   { key: "progress", label: "Progresso", sortable: true },
   { key: "folder", label: "Pasta", sortable: true },
   { key: "tags", label: "Tags", sortable: false },
@@ -94,6 +95,8 @@ function getFilteredSortedFiles() {
         return f.type;
       case "status":
         return statusLabelFor(f.status);
+      case "due_date":
+        return f.due_date || "";
       case "progress":
         return f.task_total ? f.task_done / f.task_total : -1;
       case "folder":
@@ -260,10 +263,28 @@ function renderListRow(f) {
     ? esc(new Date(f.status_changed_at).toLocaleDateString("pt-BR"))
     : `<span class="list-dash">—</span>`;
 
+  const todayStr = new Date().toISOString().split("T")[0];
+  let dueCell = `<span class="list-dash">—</span>`;
+  if (f.due_date) {
+    const isDone = f.status === "done";
+    const isOverdue = f.due_date < todayStr && !isDone;
+    const isToday = f.due_date === todayStr && !isDone;
+    let badgeClass = "due-badge";
+    let icon = "📅";
+    if (isOverdue) {
+      badgeClass += " overdue";
+      icon = "⚠️";
+    } else if (isToday) {
+      icon = "⏰";
+    }
+    dueCell = `<span class="${badgeClass}">${icon} ${esc(f.due_date)}</span>`;
+  }
+
   return `<tr class="list-row" data-id="${f.id}">
     <td class="list-cell-title" onclick="openFileFromList('${f.id}')">${esc(f.title || "Sem título")}</td>
     <td><span class="type-badge ${f.type}">${f.type === "task" ? "Task" : "Note"}</span></td>
     <td>${statusCell}</td>
+    <td>${dueCell}</td>
     <td>${progressCell}</td>
     <td>${esc(f.folder || "")}</td>
     <td>${tagsCell}</td>

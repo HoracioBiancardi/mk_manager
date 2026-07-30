@@ -140,29 +140,24 @@ def extract_wikilink_targets(content: str) -> list[str]:
 
 
 def _build_snippet(content: str, query: str, radius: int = 120) -> str:
-    """Extract a relevant excerpt from *content* around *query*'s first occurrence.
-
-    Args:
-        content: Full markdown text to search within.
-        query: The search term whose location anchors the excerpt.
-        radius: Characters to include on each side of the match.
-
-    Returns:
-        An excerpt string.  Truncated edges are marked with ``"…"``.
-        If *query* is empty or not found, the first 240 characters are returned.
-    """
     stripped = content.strip()
     if not query:
         return (stripped[:240] + "…") if len(stripped) > 240 else stripped
 
     lower = content.lower()
-    idx = lower.find(query.lower())
+    q_lower = query.lower()
+    idx = lower.find(q_lower)
     if idx == -1:
         return (stripped[:240] + "…") if len(stripped) > 240 else stripped
 
     start = max(0, idx - radius)
     end = min(len(content), idx + len(query) + radius)
-    chunk = content[start:end].strip()
+
+    before = content[start:idx]
+    match_text = content[idx : idx + len(query)]
+    after = content[idx + len(query) : end]
+
+    chunk = f"{before}<mark>{match_text}</mark>{after}".strip()
     if start > 0:
         chunk = "…" + chunk
     if end < len(content):
@@ -401,23 +396,11 @@ class FileService:
             folder=request.folder,
             status=request.status,
             status_changed_at=status_changed_at,
+            due_date=request.due_date,
         )
 
     def update_file(self, file_id: str, request: FileUpdateRequest) -> FileRecord:
-        """Apply a partial update to an existing file.
-
-        Fields set to ``None`` in *request* are left unchanged in storage.
-
-        Args:
-            file_id: Identifier of the file to update.
-            request: Partial update data.
-
-        Returns:
-            The updated ``FileRecord``.
-
-        Raises:
-            FileNotFoundError: If no file with *file_id* exists.
-        """
+        """Apply a partial update to an existing file."""
         existing = self._repo.get_by_id(file_id)
 
         status_changed_at = (
@@ -435,6 +418,7 @@ class FileService:
             folder=request.folder,
             status=request.status,
             status_changed_at=status_changed_at,
+            due_date=request.due_date,
         )
 
     def rename_tag(self, old_tag: str, new_tag: str) -> int:

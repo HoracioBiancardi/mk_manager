@@ -49,6 +49,7 @@ class FileRecord:
     status_changed_at: str = field(default="")
     archived_from: str = field(default="")
     trashed_from: str = field(default="")
+    due_date: str = field(default="")
 
     @property
     def word_count(self) -> int:

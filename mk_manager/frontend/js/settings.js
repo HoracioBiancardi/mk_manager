@@ -3,10 +3,32 @@
 import { esc, toast } from "./utils.js";
 import { apiFetch } from "./api.js";
 import { loadFiles } from "./files.js";
-import { applyEditorFontSize, getDefaultView, getEditorFontSize, setDefaultView, setEditorFontSize, getCrtScanlines, setCrtScanlines, getCrtFlicker, setCrtFlicker, getCrtTheme, setCrtTheme, getCrtStatic, setCrtStatic, getCrtCurved, setCrtCurved, getCrtTransition, setCrtTransition, getSfxEnabled, setSfxEnabled, getCrtOpacity, setCrtOpacity, getCrtRadar, setCrtRadar, getUseCodeMirror, setUseCodeMirror } from "./prefs.js";
+import { applyEditorFontSize, getDefaultView, getEditorFontSize, setDefaultView, setEditorFontSize, getCrtScanlines, setCrtScanlines, getCrtFlicker, setCrtFlicker, getCrtTheme, setCrtTheme, getCrtStatic, setCrtStatic, getCrtCurved, setCrtCurved, getCrtTransition, setCrtTransition, getSfxEnabled, setSfxEnabled, getCrtOpacity, setCrtOpacity, getCrtRadar, setCrtRadar, getUseCodeMirror, setUseCodeMirror, getActivityBarOrder, moveActivityBarItem, resetActivityBarOrder, ACTIVITY_BAR_LABELS } from "./prefs.js";
 
 let _assetsDirLoaded = "";
 let _assetsDirWasDefault = true;
+
+export function renderActivityBarOrderList() {
+  const container = document.getElementById("settings-activity-order-list");
+  if (!container) return;
+  const order = getActivityBarOrder();
+  container.innerHTML = order
+    .map((id, index) => {
+      const label = ACTIVITY_BAR_LABELS[id] || id;
+      const isFirst = index === 0;
+      const isLast = index === order.length - 1;
+      return `
+        <div class="activity-order-item" style="display:flex; align-items:center; justify-content:space-between; padding:.3rem .6rem; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); margin-bottom:.3rem;">
+          <span style="font-size:.8rem; font-weight:500;">${esc(label)}</span>
+          <div style="display:flex; gap:.3rem;">
+            <button class="btn btn-ghost btn-sm" onclick="moveActivityIcon('${id}', 'up')" ${isFirst ? 'disabled' : ''} style="padding:0 .4rem;" title="Mover para cima">▲</button>
+            <button class="btn btn-ghost btn-sm" onclick="moveActivityIcon('${id}', 'down')" ${isLast ? 'disabled' : ''} style="padding:0 .4rem;" title="Mover para baixo">▼</button>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
 
 export async function openSettingsModal() {
   document.getElementById("settings-overlay").classList.add("open");
@@ -18,6 +40,7 @@ export async function openSettingsModal() {
   document.getElementById("settings-font-size").value = getEditorFontSize();
   document.getElementById("settings-font-size-label").textContent = `${getEditorFontSize()}px`;
   document.getElementById("settings-use-codemirror").checked = getUseCodeMirror();
+  renderActivityBarOrderList();
   
   // Inicializa inputs de aparência do Pip-Boy
   document.getElementById("settings-scanlines").checked = getCrtScanlines();
@@ -217,4 +240,12 @@ Object.assign(window, {
   changeCrtOpacity: setCrtOpacity,
   changeTheme: setCrtTheme,
   toggleUseCodeMirror: setUseCodeMirror,
+  moveActivityIcon: (id, direction) => {
+    moveActivityBarItem(id, direction);
+    renderActivityBarOrderList();
+  },
+  resetActivityIconOrder: () => {
+    resetActivityBarOrder();
+    renderActivityBarOrderList();
+  },
 });
