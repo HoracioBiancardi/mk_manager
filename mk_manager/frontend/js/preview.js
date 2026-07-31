@@ -407,6 +407,9 @@ function openCodeBlockModal(pre) {
   editorWrap.className = "code-edit-editor";
   editorWrap.style.borderRight = "none";
 
+  const gutter = document.createElement("div");
+  gutter.className = "code-edit-gutter";
+
   const textarea = document.createElement("textarea");
   textarea.className = "code-edit-textarea";
   textarea.spellcheck = false;
