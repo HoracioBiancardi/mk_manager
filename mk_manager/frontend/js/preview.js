@@ -1,4 +1,4 @@
-// Responsabilidade: renderização do preview markdown/mermaid e exportação de imagens
+// Responsabilidade: renderização do preview markdown/mermaid e exportação de imagens/tabelas/código
 
 import { st } from "./state.js";
 import { esc, toast } from "./utils.js";
@@ -8,9 +8,6 @@ import { openTableBuilder } from "./table-builder.js";
 import { closeKanbanQEdit } from "./kanban.js";
 
 // ── Links internos [[Nota]] / [[Nota|Apelido]] ─────────────────────────────────
-// Extensão inline do marked: resolve o alvo só no clique (não no render), pra
-// sempre refletir o estado atual de st.files mesmo que uma nota tenha sido
-// criada/renomeada entre um render e outro.
 const WIKILINK_RE = /^\[\[([^[\]|#]+)(?:#[^[\]|]*)?(?:\|([^[\]]+))?\]\]/;
 
 marked.use({
@@ -38,8 +35,6 @@ marked.use({
     },
   ],
   renderer: {
-    // Links "normais" (`[texto](url)`) que apontem pra fora do app abrem numa
-    // aba nova do navegador em vez de navegar a SPA inteira pra longe.
     link(href, title, text) {
       const isExternal = /^https?:\/\//i.test(href || "");
       const titleAttr = title ? ` title="${esc(title)}"` : "";
@@ -60,21 +55,14 @@ async function onWikilinkClick(e, target, insideKanbanModal) {
   await window.openOrCreateByTitle?.(target);
 }
 
-function wireWikilinks(container) {
-  // Um wikilink clicado dentro do modal de edição rápida do Kanban deve
-  // fechar o modal antes de navegar — do contrário a nota/task abre atrás
-  // dele e o modal parece "travado" na tela.
-  const insideKanbanModal = !!container.closest("#kanban-qedit-body");
+export function wireWikilinks(container, { insideKanbanModal = false } = {}) {
   container.querySelectorAll("a.wikilink").forEach((a) => {
-    const target = a.dataset.target;
-    const resolved = !!findFileByTitle(target);
-    a.classList.toggle("phantom", !resolved);
-    a.title = resolved ? `Abrir "${target}"` : `Criar nota "${target}"`;
-    a.addEventListener("click", (e) => onWikilinkClick(e, target, insideKanbanModal));
+    const target = a.dataset.target || a.textContent;
+    const found = findFileByTitle(target);
+    if (!found) a.classList.add("phantom");
+    a.onclick = (e) => onWikilinkClick(e, target, insideKanbanModal);
   });
 }
-
-// ── Renderização de markdown (compartilhada com o modal do kanban) ────────────
 
 export function toggleCheckboxAt(content, idx) {
   let count = 0;
@@ -84,8 +72,6 @@ export function toggleCheckboxAt(content, idx) {
   });
 }
 
-// Posição (índice) do caractere "[ ]"/"[x]" do idx-ésimo checkbox, para trocar
-// só esse caractere via replaceRange (preserva undo nativo do textarea).
 function checkboxCharIndex(content, idx) {
   const re = /^[ \t]*[-*+] \[[ xX]\] /gm;
   let count = 0;
@@ -96,9 +82,6 @@ function checkboxCharIndex(content, idx) {
   return -1;
 }
 
-// Todas as linhas de task do documento, na mesma ordem (e numeração) dos
-// checkboxes renderizados — indent é usado para inferir a relação
-// subtarefa/tarefa-mãe a partir do nível de indentação da lista.
 function parseTaskLines(content) {
   const re = /^([ \t]*)[-*+] \[([ xX])\] /;
   return content.split("\n").reduce((tasks, line) => {
@@ -108,12 +91,6 @@ function parseTaskLines(content) {
   }, []);
 }
 
-// Regra de negócio: quando TODAS as subtarefas de uma tarefa-mãe ficam
-// concluídas, a tarefa-mãe deve ser marcada como concluída automaticamente
-// (efeito em cascata para tarefas aninhadas em múltiplos níveis). Só age no
-// sentido de completar — desmarcar uma subtarefa nunca desmarca a mãe de volta.
-// Retorna os índices de checkbox (mesma numeração de checkboxCharIndex/
-// toggleCheckboxAt) que ainda precisam ser marcados como concluídos.
 export function findAutoCompleteParents(content, toggledIdx) {
   const tasks = parseTaskLines(content);
   const toAutoCheck = [];
@@ -144,10 +121,6 @@ export function findAutoCompleteParents(content, toggledIdx) {
   return toAutoCheck;
 }
 
-// Renderiza bloco a bloco (via marked.lexer) marcando cada wrapper com a linha
-// de origem em que o bloco começa, para permitir navegação preview → editor.
-// ``.md-block`` usa `display: contents` (ver style.css) para não afetar o
-// layout/CSS existente — os wrappers ficam invisíveis à árvore de renderização.
 function renderBlocksWithLineMap(content) {
   const tokens = marked.lexer(content);
   let line = 0;
@@ -165,24 +138,12 @@ function renderBlocksWithLineMap(content) {
   return html;
 }
 
-/**
- * Renderiza markdown em qualquer container.
- * @param {string} content  — source markdown
- * @param {HTMLElement} el  — container de destino
- * @param {{ onCheckboxChange?: (idx:number)=>void, enableCapture?: boolean, trackSourceLines?: boolean }} opts
- */
 export function renderMarkdown(content, el, { onCheckboxChange, enableCapture = true, trackSourceLines = false } = {}) {
   el.innerHTML = trackSourceLines ? renderBlocksWithLineMap(content) : marked.parse(content);
 
   const diagrams = el.querySelectorAll(".mermaid");
   if (diagrams.length && typeof mermaid !== "undefined") {
     diagrams.forEach((d) => d.removeAttribute("data-processed"));
-    // Espera a fonte (Google Fonts "Inter", carregada com font-display:swap)
-    // terminar de carregar antes de medir/renderizar. Sem isso, o mermaid mede
-    // os labels com a fonte de fallback, e quando a Inter chega depois o texto
-    // reflui para uma largura maior — os títulos de subgraph (que já ficaram
-    // com white-space:normal fixado em px por fixMermaidLabels) quebram linha
-    // e ficam cortados atrás das caixas.
     const fontsReady = document.fonts?.ready ?? Promise.resolve();
     fontsReady.then(() => mermaid.run({ nodes: diagrams })).then(() => {
       el.querySelectorAll(".mermaid-wrap svg").forEach(fixMermaidLabels);
@@ -211,8 +172,6 @@ export function renderMarkdown(content, el, { onCheckboxChange, enableCapture = 
   if (enableCapture) setTimeout(() => addCaptureButtons(el), 300);
 }
 
-// ── Preview do editor ─────────────────────────────────────────────────────────
-
 export function renderPreview() {
   const content = document.getElementById("md-editor").value;
   const el = document.getElementById("md-preview");
@@ -235,8 +194,6 @@ export function renderPreview() {
   });
 }
 
-// Duplo-clique num bloco do preview leva o cursor do editor até a linha de
-// origem correspondente (troca para split se estiver em "só preview").
 export function initPreviewSourceSync() {
   const el = document.getElementById("md-preview");
   if (!el) return;
@@ -249,36 +206,19 @@ export function initPreviewSourceSync() {
   });
 }
 
-// ── Corrige labels cortados em nós mermaid ────────────────────────────────────
-
 function fixMermaidLabels(svgEl) {
   svgEl.querySelectorAll("foreignObject").forEach(fo => {
     const foW = parseFloat(fo.getAttribute("width") || 0);
     const foH = parseFloat(fo.getAttribute("height") || 0);
-    if (foW < 10 || foH < 10) return; // pula edge-labels (w=0 ou h=0)
+    if (foW < 10 || foH < 10) return;
 
     const div = fo.querySelector("div");
     if (!div) return;
 
-    // Mede a largura natural do conteúdo (respeita os <br/> manuais do
-    // mermaid como quebras "duras", sem forçar reflow de palavra).
-    // O cálculo de largura do próprio mermaid pode ficar 1-2px menor que o
-    // necessário (diferença de métricas de fonte); nesse caso, com
-    // white-space:normal sozinho, a última palavra de uma linha curta
-    // ("Delivery", "Faturamento"...) acaba sendo quebrada letra a letra.
-    // Por isso medimos o conteúdo com width:max-content antes de decidir
-    // se precisa crescer, e só então fixamos uma largura explícita.
     div.style.whiteSpace = "normal";
     div.style.wordBreak = "break-word";
     div.style.width = "max-content";
-    // getBoundingClientRect() devolve sub-pixels (ex: 47.23px), enquanto
-    // scrollWidth arredonda para inteiros. Usar Math.ceil garante que nunca
-    // ficamos 1 pixel abaixo do necessário, evitando word-break quebrando
-    // palavras como "Invoice" → "Invoic/e" por margem de fração de pixel.
-    // Soma 2px de folga: white-space:normal + largura fixa em px é sensível a
-    // qualquer diferença de métrica entre a medição e o paint final (ex.: a
-    // fonte Inter do Google Fonts ainda trocando de fallback→Inter), e sem
-    // essa margem a última palavra pode quebrar linha por 1px de sobra.
+
     const naturalW = Math.ceil(div.getBoundingClientRect().width) + 2;
     const finalW = Math.max(foW, naturalW);
     div.style.width = finalW + "px";
@@ -288,14 +228,12 @@ function fixMermaidLabels(svgEl) {
     const deltaW = finalW - foW;
     if (deltaH < 2 && deltaW < 2) return;
 
-    // Expande foreignObject (largura e altura)
     if (deltaW >= 2) {
       fo.setAttribute("width", finalW);
       fo.setAttribute("x", parseFloat(fo.getAttribute("x") || 0) - deltaW / 2);
     }
     if (deltaH >= 2) fo.setAttribute("height", realH);
 
-    // Expande rect de fundo (padding de 7.5px em cada lado)
     const labelG = fo.closest("g.label, g[class~='label']");
     if (!labelG) return;
     const nodeG = labelG.parentElement;
@@ -313,7 +251,6 @@ function fixMermaidLabels(svgEl) {
       }
     }
 
-    // Reposiciona g.label verticalmente para manter centralizado
     const tf = labelG.getAttribute("transform") || "";
     const m = tf.match(/translate\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/);
     if (m) {
@@ -325,49 +262,46 @@ function fixMermaidLabels(svgEl) {
   });
 }
 
-// ── Captura de elementos como imagem ─────────────────────────────────────────
+// ── Captura & Ações nos Elementos do Preview (PNG, Copiar, Editar, Zoom) ─────
 
 function addCaptureButtons(container) {
-  // Blocos de código: envolve em .capture-wrap e adiciona botões de copiar/editar
+  // Blocos de código (<pre>)
   container.querySelectorAll("pre").forEach((pre) => {
     if (pre.closest(".capture-wrap")) return;
     const wrap = wrapInCapture(pre);
-    wrap.appendChild(makeCopyBtn(pre));
-    wrap.appendChild(makeCodeEditBtn(() => openCodeBlockModal(pre)));
+    const actions = document.createElement("div");
+    actions.className = "block-actions";
+    actions.appendChild(makeCopyBtn(pre));
+    actions.appendChild(makeCodeEditBtn(() => openCodeBlockModal(pre)));
+    wrap.appendChild(actions);
   });
 
   // Tabelas
   container.querySelectorAll("table").forEach((table, i) => {
     if (table.closest(".capture-wrap")) return;
     const wrap = wrapInCapture(table);
-    wrap.appendChild(
-      makeCaptureBtn(() => captureWithCanvas(table, `tabela-${i + 1}.png`)),
-    );
-    wrap.appendChild(
-      makeCodeEditBtn(() => editTableBlock(table), "Editar no construtor visual de tabelas"),
-    );
+    const actions = document.createElement("div");
+    actions.className = "block-actions";
+    actions.appendChild(makeCaptureBtn(() => captureWithCanvas(table, `tabela-${i + 1}.png`)));
+    actions.appendChild(makeTableCopyBtn(table));
+    actions.appendChild(makeCodeEditBtn(() => editTableBlock(table), "Editar no construtor visual de tabelas"));
+    actions.appendChild(makeExpandBtn(() => openTableModal(table)));
+    wrap.appendChild(actions);
   });
 
-  // Mermaid (já tem position:relative no próprio .mermaid-wrap)
+  // Diagramas Mermaid (.mermaid-wrap)
   container.querySelectorAll(".mermaid-wrap").forEach((wrap, i) => {
-    if (!wrap.querySelector(".capture-btn")) {
-      wrap.appendChild(
-        makeCaptureBtn(() => captureMermaid(wrap, `diagrama-${i + 1}.png`)),
-      );
-    }
-    if (!wrap.querySelector(".mermaid-edit-btn")) {
-      wrap.appendChild(makeEditBtn(() => editMermaidBlock(wrap)));
-    }
-    if (!wrap.querySelector(".mermaid-modal-btn")) {
-      wrap.appendChild(makeExpandBtn(() => openMermaidModal(wrap)));
-    }
+    if (wrap.querySelector(".block-actions")) return;
+    const actions = document.createElement("div");
+    actions.className = "block-actions";
+    actions.appendChild(makeCaptureBtn(() => captureMermaid(wrap, `diagrama-${i + 1}.png`)));
+    actions.appendChild(makeMermaidCopyBtn(wrap));
+    actions.appendChild(makeEditBtn(() => editMermaidBlock(wrap)));
+    actions.appendChild(makeExpandBtn(() => openMermaidModal(wrap)));
+    wrap.appendChild(actions);
   });
 }
 
-// Manda o cursor do editor para a linha de origem do bloco ```mermaid``` que
-// gerou este .mermaid-wrap (via data-line do .md-block ancestral, o mesmo
-// mecanismo usado pelo dblclick de sincronização preview→editor) e então abre
-// o construtor visual, que detecta o bloco na posição do cursor e o carrega.
 function editMermaidBlock(wrap) {
   const block = wrap.closest("[data-line]");
   const line = block ? parseInt(block.dataset.line, 10) : NaN;
@@ -379,9 +313,6 @@ function editMermaidBlock(wrap) {
   openDiagramBuilder();
 }
 
-// Mesma ideia, pro construtor visual de tabelas: manda o cursor pra linha de
-// origem da tabela renderizada e abre o construtor, que detecta a tabela sob
-// o cursor (findTableBlockAt) e carrega a grade pra edição.
 function editTableBlock(table) {
   const block = table.closest("[data-line]");
   const line = block ? parseInt(block.dataset.line, 10) : NaN;
@@ -393,10 +324,6 @@ function editTableBlock(table) {
   openTableBuilder();
 }
 
-// Acha o bloco ```lang ... ``` cuja faixa [start,end) contém `pos` — mesma
-// estratégia do findMermaidBlockAt do diagram-builder, generalizada pra
-// qualquer linguagem (mermaid nunca chega aqui: ele renderiza como
-// .mermaid-wrap, não como <pre>, então nunca ganha o botão de editar código).
 function findCodeBlockAt(text, pos) {
   const re = /```([^\n`]*)\n([\s\S]*?)```/g;
   let m;
@@ -407,9 +334,16 @@ function findCodeBlockAt(text, pos) {
   return null;
 }
 
-// Modal maior pra editar um bloco de código, com preview de syntax-highlight
-// ao vivo ao lado (mesma ideia de split editor/preview, só que pro bloco).
-// Reaproveita o chrome .mermaid-zoom-* (overlay/modal/toolbar/botões).
+function findMermaidBlockAt(text, pos) {
+  const re = /```mermaid\n([\s\S]*?)```/g;
+  let m;
+  while ((m = re.exec(text))) {
+    const start = m.index, end = m.index + m[0].length;
+    if (pos >= start && pos <= end) return { start, end, body: m[1] };
+  }
+  return null;
+}
+
 function openCodeBlockModal(pre) {
   const block = pre.closest("[data-line]");
   const line = block ? parseInt(block.dataset.line, 10) : NaN;
@@ -438,10 +372,8 @@ function openCodeBlockModal(pre) {
 
   const label = document.createElement("span");
   label.className = "mermaid-zoom-label";
-  label.textContent = "Código";
+  label.textContent = "Editor de Código";
 
-  // Input com <datalist> das linguagens que o hljs conhece — dá pra escolher
-  // de uma lista OU digitar livremente (blocos podem ter tags arbitrárias).
   ensureLangDatalist();
   const langInput = document.createElement("input");
   langInput.type = "text";
@@ -450,7 +382,7 @@ function openCodeBlockModal(pre) {
   langInput.placeholder = "linguagem";
   langInput.spellcheck = false;
   langInput.value = lang;
-  langInput.title = "Linguagem do bloco (syntax highlight + tag salva no fence)";
+  langInput.title = "Linguagem do bloco (ex: sql, dbt, python, js, sh)";
 
   const mkBtn = (text, title) => {
     const b = document.createElement("button");
@@ -459,19 +391,21 @@ function openCodeBlockModal(pre) {
     b.title = title;
     return b;
   };
-  const btnSave = mkBtn("💾 Salvar", "Salvar alterações (Ctrl+Enter)");
-  const btnClose = mkBtn("✕ Fechar", "Fechar sem salvar (Esc)");
+
+  const btnFormat = mkBtn("🧹 Formatar", "Formatar código automaticamente (4 espaços)");
+  const btnCopy   = mkBtn("⎘ Copiar", "Copiar código");
+  const btnSave   = mkBtn("💾 Salvar", "Formatar e Salvar alterações (Ctrl+Enter)");
+  const btnClose  = mkBtn("✕ Fechar", "Fechar sem salvar (Esc)");
   btnClose.style.marginLeft = "auto";
-  toolbar.append(label, langInput, btnSave, btnClose);
+
+  toolbar.append(label, langInput, btnFormat, btnCopy, btnSave, btnClose);
 
   const content = document.createElement("div");
   content.className = "code-edit-content";
 
   const editorWrap = document.createElement("div");
   editorWrap.className = "code-edit-editor";
-
-  const gutter = document.createElement("div");
-  gutter.className = "code-edit-gutter";
+  editorWrap.style.borderRight = "none";
 
   const textarea = document.createElement("textarea");
   textarea.className = "code-edit-textarea";
@@ -479,13 +413,7 @@ function openCodeBlockModal(pre) {
   textarea.value = body;
 
   editorWrap.append(gutter, textarea);
-
-  const previewPre = document.createElement("pre");
-  previewPre.className = "code-edit-preview";
-  const previewCode = document.createElement("code");
-  previewPre.appendChild(previewCode);
-
-  content.append(editorWrap, previewPre);
+  content.appendChild(editorWrap);
   modal.append(toolbar, content);
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
@@ -495,32 +423,67 @@ function openCodeBlockModal(pre) {
     gutter.textContent = Array.from({ length: n }, (_, i) => i + 1).join("\n");
   }
 
-  function highlight() {
-    const l = langInput.value.trim();
-    const language = l && hljs.getLanguage(l) ? l : "plaintext";
-    previewCode.className = `hljs language-${language}`;
-    previewCode.innerHTML = hljs.highlight(textarea.value, { language }).value;
-  }
-
-  function refresh() {
-    updateGutter();
-    highlight();
-  }
-  refresh();
-  textarea.addEventListener("input", refresh);
+  updateGutter();
+  textarea.addEventListener("input", updateGutter);
   textarea.addEventListener("scroll", () => { gutter.scrollTop = textarea.scrollTop; });
-  langInput.addEventListener("input", highlight);
   requestAnimationFrame(() => textarea.focus());
 
-  function save() {
+  async function triggerAutoFormat() {
+    const currentLang = langInput.value.trim().toLowerCase();
+    if (window.formatCode) {
+      const res = await window.formatCode(currentLang, textarea.value);
+      if (res && res.text) {
+        textarea.value = res.text.trim();
+        updateGutter();
+      }
+    }
+  }
+
+  btnFormat.addEventListener("click", async () => {
+    await triggerAutoFormat();
+    toast("Código formatado com 4 espaços.", "success");
+  });
+
+  btnCopy.addEventListener("click", () => {
+    navigator.clipboard.writeText(textarea.value).then(() => {
+      btnCopy.textContent = "✓ Copiado!";
+      setTimeout(() => { btnCopy.textContent = "⎘ Copiar"; }, 1500);
+      toast("Código copiado!", "success");
+    });
+  });
+
+  textarea.addEventListener("keydown", (e) => {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const pos = textarea.selectionStart;
+      const endPos = textarea.selectionEnd;
+      if (e.shiftKey) {
+        const lines = textarea.value.slice(0, pos).split("\n");
+        const lastLine = lines[lines.length - 1];
+        if (lastLine.endsWith("    ")) {
+          textarea.value = textarea.value.slice(0, pos - 4) + textarea.value.slice(pos);
+          textarea.setSelectionRange(pos - 4, pos - 4);
+        }
+      } else {
+        textarea.value = textarea.value.slice(0, pos) + "    " + textarea.value.slice(endPos);
+        textarea.setSelectionRange(pos + 4, pos + 4);
+      }
+      updateGutter();
+    }
+  });
+
+  async function save() {
+    await triggerAutoFormat();
     replaceRange(ta, start, end, "```" + langInput.value.trim() + "\n" + textarea.value + "\n```");
     onEditorInput();
     close();
   }
+
   function close() {
     document.removeEventListener("keydown", onKey);
     overlay.remove();
   }
+
   function onKey(e) {
     if (e.key === "Escape") { e.stopPropagation(); close(); }
     else if (e.ctrlKey && e.key === "Enter") { e.preventDefault(); save(); }
@@ -532,7 +495,6 @@ function openCodeBlockModal(pre) {
   document.addEventListener("keydown", onKey);
 }
 
-// <datalist> compartilhado entre aberturas do modal — cria só uma vez.
 function ensureLangDatalist() {
   if (document.getElementById("code-edit-lang-datalist")) return;
   const datalist = document.createElement("datalist");
@@ -578,6 +540,64 @@ function makeCopyBtn(pre) {
   return btn;
 }
 
+function makeTableCopyBtn(table) {
+  const btn = document.createElement("button");
+  btn.className = "capture-btn";
+  btn.title = "Copiar conteúdo da tabela";
+  btn.textContent = "⎘ Copiar";
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const rows = Array.from(table.querySelectorAll("tr"));
+    const text = rows.map(r => Array.from(r.querySelectorAll("th, td")).map(c => c.innerText.trim()).join("\t")).join("\n");
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = "✓ Copiado!";
+      setTimeout(() => { btn.textContent = "⎘ Copiar"; }, 1500);
+    }).catch(() => toast("Erro ao copiar tabela.", "error"));
+  });
+  return btn;
+}
+
+function makeMermaidCopyBtn(wrap) {
+  const btn = document.createElement("button");
+  btn.className = "capture-btn";
+  btn.title = "Copiar código do diagrama";
+  btn.textContent = "⎘ Copiar";
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    copyMermaidCode(wrap, btn);
+  });
+  return btn;
+}
+
+function copyMermaidCode(wrap, btn) {
+  const block = wrap.closest("[data-line]");
+  const line = block ? parseInt(block.dataset.line, 10) : NaN;
+  const ta = document.getElementById("md-editor");
+  if (!Number.isNaN(line) && ta) {
+    const found = findMermaidBlockAt(ta.value, ta.selectionStart);
+    if (found) {
+      navigator.clipboard.writeText(found.body.trim()).then(() => {
+        if (btn) {
+          btn.textContent = "✓ Copiado!";
+          setTimeout(() => { btn.textContent = "⎘ Copiar"; }, 1500);
+        }
+        toast("Código do diagrama copiado!", "success");
+        return;
+      });
+      return;
+    }
+  }
+  const svgEl = wrap.querySelector("svg");
+  const text = svgEl ? svgEl.outerHTML : wrap.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    if (btn) {
+      btn.textContent = "✓ Copiado!";
+      setTimeout(() => { btn.textContent = "⎘ Copiar"; }, 1500);
+    }
+    toast("Conteúdo do diagrama copiado!", "success");
+  });
+}
+
 function makeEditBtn(onClick) {
   const btn = document.createElement("button");
   btn.className = "mermaid-edit-btn";
@@ -605,7 +625,7 @@ function makeCodeEditBtn(onClick, title = "Editar em um modal maior, com preview
 function makeExpandBtn(onClick) {
   const btn = document.createElement("button");
   btn.className = "mermaid-modal-btn";
-  btn.title = "Visualizar diagrama em tela cheia";
+  btn.title = "Visualizar em tela cheia (Zoom)";
   btn.textContent = "⛶ Zoom";
   btn.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -618,7 +638,6 @@ function openMermaidModal(wrap) {
   const svgEl = wrap.querySelector("svg");
   if (!svgEl) { toast("Diagrama ainda não renderizado.", "info"); return; }
 
-  // getBBox() no grupo raiz captura o conteúdo real, inclusive labels que excedem as dims declaradas do SVG
   const rootG = svgEl.querySelector(":scope > g");
   let cX = 0, cY = 0, cW, cH;
   const pad = 20;
@@ -662,13 +681,16 @@ function openMermaidModal(wrap) {
     return b;
   };
 
-  const btnOut   = mkBtn("−", "Reduzir (scroll para baixo)");
-  const btnIn    = mkBtn("+", "Ampliar (scroll para cima)");
+  const btnOut   = mkBtn("−", "Reduzir");
+  const btnIn    = mkBtn("+", "Ampliar");
   const btnFit   = mkBtn("↺ Ajustar", "Ajustar ao tamanho do painel");
+  const btnPng   = mkBtn("📷 PNG", "Exportar diagrama como PNG");
+  const btnCopy  = mkBtn("⎘ Copiar", "Copiar código do diagrama");
+  const btnEdit  = mkBtn("✏️ Editar", "Editar no construtor visual de diagramas");
   const btnClose = mkBtn("✕ Fechar", "Fechar (Esc)");
   btnClose.style.marginLeft = "auto";
 
-  toolbar.append(label, levelEl, btnOut, btnIn, btnFit, btnClose);
+  toolbar.append(label, levelEl, btnOut, btnIn, btnFit, btnPng, btnCopy, btnEdit, btnClose);
 
   const content = document.createElement("div");
   content.className = "mermaid-zoom-content";
@@ -706,6 +728,9 @@ function openMermaidModal(wrap) {
   btnIn.addEventListener("click",  () => { scale = clampScale(scale * 1.25); applyTransform(); });
   btnOut.addEventListener("click", () => { scale = clampScale(scale / 1.25); applyTransform(); });
   btnFit.addEventListener("click", fitToContent);
+  btnPng.addEventListener("click", () => captureMermaid(wrap, "diagrama.png"));
+  btnCopy.addEventListener("click", () => copyMermaidCode(wrap, btnCopy));
+  btnEdit.addEventListener("click", () => { close(); editMermaidBlock(wrap); });
 
   content.addEventListener("wheel", (e) => {
     e.preventDefault();
@@ -749,12 +774,93 @@ function openMermaidModal(wrap) {
   document.addEventListener("keydown", onKey);
 }
 
-// Mermaid: extrai o SVG e converte para PNG via canvas.
-//
-// Problema: SVGs com <foreignObject> ou estilos com "font-family:inherit" taintam
-// o canvas em Chromium (mesmo vindos de blob URL), tornando toBlob() inoperante.
-// Solução: antes de serializar o clone, resolver "inherit" no <style> e substituir
-// cada <foreignObject> por um <text> SVG nativo com os mesmos rótulos.
+function openTableModal(table) {
+  const tableClone = table.cloneNode(true);
+  const overlay = document.createElement("div");
+  overlay.className = "mermaid-zoom-overlay";
+
+  const modal = document.createElement("div");
+  modal.className = "mermaid-zoom-modal";
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "mermaid-zoom-toolbar";
+
+  const label = document.createElement("span");
+  label.className = "mermaid-zoom-label";
+  label.textContent = "Tabela";
+
+  const levelEl = document.createElement("span");
+  levelEl.className = "mermaid-zoom-level";
+  levelEl.textContent = "100%";
+
+  const mkBtn = (text, title) => {
+    const b = document.createElement("button");
+    b.className = "mermaid-zoom-ctrl";
+    b.textContent = text;
+    b.title = title;
+    return b;
+  };
+
+  const btnOut   = mkBtn("−", "Reduzir");
+  const btnIn    = mkBtn("+", "Ampliar");
+  const btnFit   = mkBtn("↺ Ajustar", "Ajustar tamanho");
+  const btnPng   = mkBtn("📷 PNG", "Exportar tabela como PNG");
+  const btnCopy  = mkBtn("⎘ Copiar", "Copiar conteúdo da tabela");
+  const btnEdit  = mkBtn("✏️ Editar", "Editar no construtor visual de tabelas");
+  const btnClose = mkBtn("✕ Fechar", "Fechar (Esc)");
+  btnClose.style.marginLeft = "auto";
+
+  toolbar.append(label, levelEl, btnOut, btnIn, btnFit, btnPng, btnCopy, btnEdit, btnClose);
+
+  const content = document.createElement("div");
+  content.className = "mermaid-zoom-content";
+  const inner = document.createElement("div");
+  inner.className = "mermaid-zoom-inner";
+  inner.style.background = "var(--surface)";
+  inner.style.padding = "2rem";
+  inner.style.borderRadius = "var(--r-md)";
+  inner.style.boxShadow = "var(--shadow-md)";
+  inner.appendChild(tableClone);
+  content.appendChild(inner);
+
+  modal.append(toolbar, content);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  let scale = 1, panX = 0, panY = 0;
+
+  function applyTransform() {
+    inner.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+    levelEl.textContent = `${Math.round(scale * 100)}%`;
+  }
+  function clampScale(s) { return Math.min(6, Math.max(0.2, s)); }
+  function fitToContent() {
+    scale = 1; panX = 0; panY = 0;
+    applyTransform();
+  }
+
+  btnIn.addEventListener("click",  () => { scale = clampScale(scale * 1.25); applyTransform(); });
+  btnOut.addEventListener("click", () => { scale = clampScale(scale / 1.25); applyTransform(); });
+  btnFit.addEventListener("click", fitToContent);
+  btnPng.addEventListener("click", () => captureWithCanvas(table, "tabela.png"));
+  btnCopy.addEventListener("click", () => {
+    const rows = Array.from(table.querySelectorAll("tr"));
+    const text = rows.map(r => Array.from(r.querySelectorAll("th, td")).map(c => c.innerText.trim()).join("\t")).join("\n");
+    navigator.clipboard.writeText(text).then(() => toast("Tabela copiada!", "success"));
+  });
+  btnEdit.addEventListener("click", () => { close(); editTableBlock(table); });
+
+  function close() {
+    overlay.remove();
+    document.removeEventListener("keydown", onKey);
+  }
+  const onKey = (e) => { if (e.key === "Escape") close(); };
+  btnClose.addEventListener("click", close);
+  document.addEventListener("keydown", onKey);
+}
+
+// ── Captura de elementos em Canvas/SVG ───────────────────────────────────────
+
 async function captureMermaid(wrap, filename) {
   const svgEl = wrap.querySelector("svg");
   if (!svgEl) {
@@ -762,7 +868,6 @@ async function captureMermaid(wrap, filename) {
     return;
   }
 
-  // Bounding box real do conteúdo (inclui labels expandidos por fixMermaidLabels)
   const rootG = svgEl.querySelector(":scope > g");
   let bx = 0, by = 0, bw = 800, bh = 200;
   try {
@@ -771,7 +876,6 @@ async function captureMermaid(wrap, filename) {
     bw = bb.width + 48; bh = bb.height + 48;
   } catch { /* fallback */ }
 
-  // 2× para exportar em alta resolução
   const exportW = Math.ceil(bw) * 2;
   const exportH = Math.ceil(bh) * 2;
 
@@ -782,10 +886,8 @@ async function captureMermaid(wrap, filename) {
   clone.setAttribute("viewBox", `${bx} ${by} ${bw} ${bh}`);
   clone.removeAttribute("style");
 
-  // Remove clip-paths que podem cortar labels fora do viewBox original
   clone.querySelectorAll("[clip-path]").forEach((el) => el.removeAttribute("clip-path"));
 
-  // Resolve "font-family: inherit" → valor literal para tornar o SVG standalone
   const styleEl = clone.querySelector("style");
   if (styleEl) {
     const cs = getComputedStyle(svgEl);
@@ -795,8 +897,6 @@ async function captureMermaid(wrap, filename) {
       .replace(/\bcolor\s*:\s*inherit\b/g, "color: currentColor");
   }
 
-  // Substitui <foreignObject> (HTML) por <text> SVG nativo.
-  // <foreignObject> taint o canvas em Chromium independentemente de outras medidas.
   clone.querySelectorAll("foreignObject").forEach((fo) => {
     const w = parseFloat(fo.getAttribute("width") || 0);
     const h = parseFloat(fo.getAttribute("height") || 0);
@@ -807,7 +907,6 @@ async function captureMermaid(wrap, filename) {
     const div = fo.querySelector("div");
     if (!div) { fo.remove(); return; }
 
-    // Coleta linhas de texto respeitando <br> explícitos
     const span = div.querySelector(".nodeLabel") || div.querySelector("span") || div;
     const lines = [];
     let cur = "";
@@ -860,7 +959,6 @@ async function captureMermaid(wrap, filename) {
   }
 }
 
-// Tabelas: usa html2canvas (CDN) se disponível, senão SVG foreignObject
 async function captureWithCanvas(el, filename) {
   if (typeof html2canvas !== "undefined") {
     try {
@@ -877,7 +975,6 @@ async function captureWithCanvas(el, filename) {
       /* fallback */
     }
   }
-  // Fallback: SVG foreignObject (sem estilos externos)
   await captureViaForeignObject(el, filename);
 }
 
@@ -886,7 +983,6 @@ async function captureViaForeignObject(el, filename) {
   const w = Math.ceil(rect.width) || 800;
   const h = Math.ceil(rect.height) || 400;
 
-  // Inline computed styles para capturar syntax highlight, etc.
   const cloned = el.cloneNode(true);
   cloned.style.margin = "0";
   inlineComputedStyles(el, cloned);
@@ -961,3 +1057,8 @@ function downloadCanvas(canvas, filename) {
     setTimeout(() => URL.revokeObjectURL(url), 100);
   }, "image/png");
 }
+
+Object.assign(window, {
+  renderPreview,
+  renderMarkdown,
+});

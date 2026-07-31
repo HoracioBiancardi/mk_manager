@@ -38,8 +38,8 @@ export async function openSettingsModal() {
   document.getElementById("settings-storage-info").textContent = "–";
   document.getElementById("settings-default-view").value = getDefaultView();
   document.getElementById("settings-font-size").value = getEditorFontSize();
-  document.getElementById("settings-font-size-label").textContent = `${getEditorFontSize()}px`;
-  document.getElementById("settings-use-codemirror").checked = getUseCodeMirror();
+  const cmCheck = document.getElementById("settings-use-codemirror");
+  if (cmCheck) cmCheck.checked = getUseCodeMirror();
   renderActivityBarOrderList();
   
   // Inicializa inputs de aparência do Pip-Boy

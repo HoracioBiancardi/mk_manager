@@ -715,6 +715,70 @@ function updateInsertBtnLabel() {
   if (els?.btnInsert) els.btnInsert.textContent = state.sourceRange ? "Atualizar bloco" : "Inserir no editor";
 }
 
+function applyDiagramTemplate(templateKey) {
+  pushHistory();
+  state.edges.slice().forEach((e) => e.g.remove());
+  state.nodes.slice().forEach((n) => n.el.remove());
+  state.groups.slice().forEach((g) => g.el.remove());
+
+  state.nodes = [];
+  state.edges = [];
+  state.groups = [];
+
+  if (templateKey === "dbt") {
+    state.direction = "LR";
+    const g1 = { id: "g1", title: "Layer Bronze & Silver", x: 30, y: 30, w: 340, h: 180 };
+    const g2 = { id: "g2", title: "Layer Gold (Marts)", x: 400, y: 30, w: 200, h: 180 };
+    state.groups = [g1, g2];
+    makeGroupElement(g1);
+    makeGroupElement(g2);
+
+    const n1 = { id: "n1", label: "raw_orders", shape: "rect", x: 50, y: 80 };
+    const n2 = { id: "n2", label: "stg_orders (dbt)", shape: "round", x: 200, y: 80 };
+    const n3 = { id: "n3", label: "fct_orders", shape: "round", x: 420, y: 80 };
+    const n4 = { id: "n4", label: "BI Dashboard", shape: "circle", x: 640, y: 80 };
+    state.nodes = [n1, n2, n3, n4];
+    state.nodes.forEach(makeNodeElement);
+
+    const e1 = { from: "n1", to: "n2", label: "ref", type: "arrow" };
+    const e2 = { from: "n2", to: "n3", label: "transform", type: "arrow" };
+    const e3 = { from: "n3", to: "n4", label: "export", type: "arrow" };
+    state.edges = [e1, e2, e3];
+    state.edges.forEach(makeEdgeElement);
+  } else if (templateKey === "decision") {
+    state.direction = "TD";
+    const n1 = { id: "n1", label: "Início do Processo", shape: "round", x: 220, y: 40 };
+    const n2 = { id: "n2", label: "Validar Requisitos?", shape: "rhombus", x: 220, y: 150 };
+    const n3 = { id: "n3", label: "Aprovado / Executar", shape: "rect", x: 80, y: 280 };
+    const n4 = { id: "n4", label: "Rejeitado / Notificar", shape: "rect", x: 360, y: 280 };
+    state.nodes = [n1, n2, n3, n4];
+    state.nodes.forEach(makeNodeElement);
+
+    const e1 = { from: "n1", to: "n2", label: "", type: "arrow" };
+    const e2 = { from: "n2", to: "n3", label: "Sim", type: "arrow" };
+    const e3 = { from: "n2", to: "n4", label: "Não", type: "arrow" };
+    state.edges = [e1, e2, e3];
+    state.edges.forEach(makeEdgeElement);
+  } else if (templateKey === "api") {
+    state.direction = "LR";
+    const n1 = { id: "n1", label: "App Frontend / Web", shape: "rect", x: 40, y: 100 };
+    const n2 = { id: "n2", label: "API REST (FastAPI)", shape: "round", x: 240, y: 100 };
+    const n3 = { id: "n3", label: "Banco de Dados SQL", shape: "circle", x: 450, y: 100 };
+    state.nodes = [n1, n2, n3];
+    state.nodes.forEach(makeNodeElement);
+
+    const e1 = { from: "n1", to: "n2", label: "HTTP JSON", type: "both" };
+    const e2 = { from: "n2", to: "n3", label: "SQL Queries", type: "both" };
+    state.edges = [e1, e2];
+    state.edges.forEach(makeEdgeElement);
+  }
+
+  state.nextId = state.nodes.length + 1;
+  state.nextGroupId = state.groups.length + 1;
+  updateDirectionBtnLabel();
+  setTimeout(autoLayoutDiagram, 60);
+}
+
 function buildModal() {
   const overlay = document.createElement("div");
   overlay.className = "mermaid-zoom-overlay db-overlay";
@@ -742,20 +806,36 @@ function buildModal() {
   const btnDir = mkBtn("↕ Vertical", "Alternar direção do fluxo");
   const btnEdgeType = mkBtn(EDGE_TYPE_LABEL.arrow, "Tipo de seta usado nas próximas conexões");
   const btnLayout = mkBtn("⚡ Formatar", "Organizar caixas automaticamente");
+
+  const selTemplate = document.createElement("select");
+  selTemplate.className = "mermaid-zoom-ctrl";
+  selTemplate.innerHTML = `
+    <option value="">📋 Modelos...</option>
+    <option value="dbt">🚀 Pipeline dbt</option>
+    <option value="decision">🔀 Fluxo de Decisão</option>
+    <option value="api">🌐 Arquitetura Web / API</option>
+  `;
+  selTemplate.onchange = (e) => {
+    if (e.target.value) {
+      applyDiagramTemplate(e.target.value);
+      e.target.value = "";
+    }
+  };
+
   const btnUndo = mkBtn("↶ Desfazer", "Desfazer (Ctrl+Z)");
   const btnRedo = mkBtn("↷ Refazer", "Refazer (Ctrl+Shift+Z)");
   const btnClear = mkBtn("🗑 Limpar", "Remover todas as caixas");
   const hint = document.createElement("span");
   hint.className = "mermaid-zoom-label";
   hint.style.color = "var(--text-subtle)";
-  hint.textContent = "Arraste ● para conectar · clique numa seta muda o tipo · duplo-clique edita o rótulo · shift+clique remove · arraste caixas para dentro de um grupo";
+  hint.textContent = "Arraste ● para conectar · clique numa seta muda o tipo · duplo-clique edita o rótulo · shift+clique remove";
   const btnInsert = mkBtn("Inserir no editor", "Gerar Mermaid e inserir no texto");
   btnInsert.style.marginLeft = "auto";
   btnInsert.style.color = "var(--primary)";
   btnInsert.style.borderColor = "var(--primary)";
   const btnClose = mkBtn("✕ Fechar", "Fechar sem inserir (Esc)");
 
-  toolbar.append(title, btnAdd, btnAddGroup, btnDir, btnEdgeType, btnLayout, btnUndo, btnRedo, btnClear, hint, btnInsert, btnClose);
+  toolbar.append(title, btnAdd, btnAddGroup, btnDir, btnEdgeType, btnLayout, selTemplate, btnUndo, btnRedo, btnClear, hint, btnInsert, btnClose);
 
   const canvasWrap = document.createElement("div");
   canvasWrap.className = "db-canvas-wrap";

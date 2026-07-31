@@ -31,25 +31,12 @@ export function setEditorFontSize(px) {
   applyEditorFontSize(px);
 }
 
-const CODEMIRROR_KEY = "mk-use-codemirror";
-
 export function getUseCodeMirror() {
-  const saved = localStorage.getItem(CODEMIRROR_KEY);
-  return saved === "true";
+  return false;
 }
 
 export function setUseCodeMirror(enabled) {
-  localStorage.setItem(CODEMIRROR_KEY, String(enabled));
-  const cmEl = document.querySelector(".CodeMirror");
-  const ta = document.getElementById("md-editor");
-  if (enabled) {
-    if (ta) ta.style.display = "none";
-    if (cmEl) cmEl.style.display = "block";
-    window.initCodeMirror?.();
-  } else {
-    if (cmEl) cmEl.style.display = "none";
-    if (ta) ta.style.display = "block";
-  }
+  // CodeMirror desativado
 }
 
 const SIDEBAR_WIDTH_KEY = "mk-sidebar-width";

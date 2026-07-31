@@ -11,16 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Share+Tech+Mono&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="/static/css/style.css">
-  <!-- CodeMirror 5 -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/markdown/markdown.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/mode/overlay.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/gfm/gfm.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+
   <!-- marked deve ser carregado antes do módulo ES (scripts regulares são síncronos) -->
   <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
@@ -354,13 +345,6 @@
               <button class="tool-btn" onclick="insCodeBlock()">```</button>
               <button class="tool-btn" onclick="ins('\n---\n')">—</button>
               <span class="tool-sep"></span>
-              <button class="tool-btn" onclick="insTable()" title="Inserir tabela">⊞ Tabela</button>
-              <button class="tool-btn" onclick="formatTable()"
-                title="Alinhar colunas da tabela (cursor deve estar dentro da tabela)">⊟ Alinhar</button>
-              <button class="tool-btn" onclick="alignPlainColumns()"
-                title="Alinha colunas separadas por 2+ espaços/Tab nas linhas selecionadas">⊟ Colunas</button>
-              <button class="tool-btn" onclick="normalizeIndent()"
-                title="Remove a indentação desigual das linhas selecionadas, alinhando todas à mesma coluna">⇤ Indentação</button>
               <button class="tool-btn" onclick="openTableBuilder()"
                 title="Construtor visual de tabela: edite células, linhas e colunas numa grade">🧮 Construtor</button>
               <button class="tool-btn" onclick="openDiagramBuilder()"
@@ -370,9 +354,6 @@
                 title="Formata o bloco de código onde está o cursor">🧹 Formatar</button>
               <button class="tool-btn tool-btn-import" onclick="triggerAssetImport()"
                 title="Importar arquivo (imagem, PDF, MD…)">📎 Importar</button>
-              <span class="tool-sep"></span>
-              <button class="tool-btn" onclick="exportCurrentNoteAsPdf()" title="Exportar como PDF / Imprimir">📄 PDF</button>
-              <button class="tool-btn" onclick="exportCurrentNoteAsHtml()" title="Exportar como HTML autônomo">🌐 HTML</button>
             </div>
             <textarea id="md-editor" class="md-textarea"
               placeholder="Comece a escrever em Markdown…&#10;&#10;Use - [ ] para criar tasks interativas"
@@ -637,13 +618,7 @@
               id="settings-font-size-label">14px</span></label>
           <input id="settings-font-size" type="range" min="11" max="24" step="1" oninput="onFontSizeInput(this.value)">
         </div>
-        <div class="form-group">
-          <label style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
-            <input type="checkbox" id="settings-use-codemirror" onchange="toggleUseCodeMirror(this.checked)">
-            <span>Ativar destaque de sintaxe avançado (CodeMirror)</span>
-          </label>
-          <div class="form-hint">Desmarque para manter o editor nativo clássico com as cores originais do tema.</div>
-        </div>
+
 
         <div class="settings-sec-title">🧭 Ordem dos Ícones do Menu Lateral</div>
         <div class="form-group">

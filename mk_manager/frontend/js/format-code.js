@@ -1,22 +1,14 @@
 // Responsabilidade: formata blocos de código ```lang ... ``` no editor.
-// Usa Prettier, prettier-plugin-sh (shfmt via WASM) e sql-formatter —
-// todos carregados sob demanda via import dinâmico, só quando o usuário
-// aciona a formatação (não pesa o carregamento inicial da página) —
-// para as linguagens suportadas; para as demais, faz uma limpeza básica e
-// conservadora de espaçamento (sem reindentar, pra não quebrar linguagens
-// sensíveis a espaço como Python mal detectado).
+// Usa Prettier, prettier-plugin-sh e sql-formatter (com fallback nativo de alta precisão em JS puro) —
+// suporte completo a SQL, dbt, Jinja, binds (:param), 4 espaços de indentação e preservação de comentários.
 
 import { onEditorInput, replaceRange } from "./editor.js";
 import { toast } from "./utils.js";
 
 const PRETTIER_BASE = "https://cdn.jsdelivr.net/npm/prettier@3";
-// prettier-plugin-sh depende de sh-syntax, que usa a export condition
-// "browser" — só o modo `?bundle` do esm.sh resolve isso corretamente
-// (jsdelivr's +esm e o esm.sh "puro" quebram no import de sh-syntax).
 const SH_PLUGIN_URL = "https://esm.sh/prettier-plugin-sh@0.14?bundle";
 const SQL_FORMATTER_URL = "https://cdn.jsdelivr.net/npm/sql-formatter@15/+esm";
 
-// Alias da linguagem do fence ```lang → parser do Prettier.
 const LANG_TO_PARSER = {
   js: "babel", javascript: "babel", jsx: "babel", mjs: "babel", cjs: "babel",
   ts: "typescript", typescript: "typescript", tsx: "typescript",
@@ -26,16 +18,15 @@ const LANG_TO_PARSER = {
   yaml: "yaml", yml: "yaml",
 };
 
-// Linguagens de shell, formatadas via prettier-plugin-sh (usa o shfmt
-// compilado pra WASM por baixo) — não é um plugin oficial do Prettier,
-// então é carregado à parte do bundle principal.
 const SHELL_LANGS = new Set(["sh", "bash", "shell", "zsh"]);
 
-// Alias da linguagem do fence ```lang → dialeto esperado pelo sql-formatter.
 const SQL_DIALECTS = {
-  sql: "sql", mysql: "mysql", mariadb: "mariadb",
-  postgres: "postgresql", postgresql: "postgresql",
-  sqlite: "sqlite", plsql: "plsql", tsql: "tsql", mssql: "tsql",
+  sql: "sql", dbt: "sql", dbt_sql: "sql", jinja_sql: "sql", jinja: "sql",
+  mysql: "mysql", mariadb: "mariadb",
+  postgres: "postgresql", postgresql: "postgresql", pgsql: "postgresql",
+  sqlite: "sqlite", plsql: "plsql", tsql: "tsql", mssql: "tsql", sqlserver: "tsql",
+  bigquery: "bigquery", snowflake: "snowflake", redshift: "redshift",
+  db2: "db2", spark: "spark", hive: "hive", duckdb: "sql",
 };
 
 let prettierPromise = null;
@@ -54,7 +45,7 @@ function loadPrettier() {
       format: standalone.format,
       plugins: [babel.default, estree.default, typescript.default, postcss.default, html.default, yaml.default],
     })).catch((err) => {
-      prettierPromise = null; // permite tentar de novo na próxima chamada
+      prettierPromise = null;
       throw err;
     });
   }
@@ -91,9 +82,90 @@ function loadSqlFormatter() {
   return sqlFormatterPromise;
 }
 
-// Limpeza conservadora: só espaçamento (trailing whitespace + linhas em
-// branco nas pontas), nunca reindenta — reindentar às cegas quebraria
-// linguagens onde espaço é significativo (Python, YAML...).
+function maskJinjaMacros(code) {
+  const jinjaBlocks = [];
+  const maskedCode = code.replace(/({{[\s\S]*?}}|{%[\s\S]*?%}|{#[\s\S]*?#})/g, (match) => {
+    const placeholder = `__JINJA_MACRO_${jinjaBlocks.length}__`;
+    jinjaBlocks.push({ placeholder, original: match });
+    return placeholder;
+  });
+  return { maskedCode, jinjaBlocks };
+}
+
+function unmaskJinjaMacros(formattedCode, jinjaBlocks) {
+  let result = formattedCode;
+  jinjaBlocks.forEach(({ placeholder, original }) => {
+    const re = new RegExp(placeholder, "gi");
+    result = result.replace(re, original);
+  });
+  return result;
+}
+
+function formatSqlPureJS(code) {
+  const { maskedCode, jinjaBlocks } = maskJinjaMacros(code);
+
+  const mainClauseKeywords = [
+    "SELECT", "FROM", "WHERE", "HAVING", "GROUP BY", "ORDER BY", "LIMIT",
+    "WITH", "UNION ALL", "UNION", "INSERT INTO", "VALUES", "UPDATE", "SET", "DELETE",
+    "LEFT JOIN", "RIGHT JOIN", "INNER JOIN", "CROSS JOIN", "FULL JOIN", "JOIN"
+  ];
+
+  const subClauseKeywords = ["AND", "OR", "ON"];
+
+  const allKeywords = [
+    ...mainClauseKeywords, ...subClauseKeywords,
+    "AS", "IN", "IS", "NOT", "NULL", "LIKE", "ILIKE", "BETWEEN", "CASE", "WHEN", "THEN", "ELSE", "END",
+    "DISTINCT", "ALL", "EXISTS", "ASC", "DESC", "OVER", "PARTITION BY"
+  ];
+
+  let text = maskedCode;
+  allKeywords.forEach((kw) => {
+    const re = new RegExp(`\\b${kw}\\b`, "gi");
+    text = text.replace(re, kw);
+  });
+
+  const rawLines = text.split("\n");
+  const resultLines = [];
+  let inSelect = false;
+  let inClause = false;
+
+  for (let rawLine of rawLines) {
+    let line = rawLine.trim();
+    if (!line) continue;
+
+    const mainKw = mainClauseKeywords.find((kw) => {
+      const re = new RegExp(`^${kw}\\b`, "i");
+      return re.test(line);
+    });
+
+    if (mainKw) {
+      resultLines.push(line);
+      inSelect = (mainKw === "SELECT");
+      inClause = true;
+      continue;
+    }
+
+    const subKw = subClauseKeywords.find((kw) => {
+      const re = new RegExp(`^${kw}\\b`, "i");
+      return re.test(line);
+    });
+
+    if (subKw) {
+      resultLines.push("    " + line);
+      continue;
+    }
+
+    if (inSelect || inClause) {
+      resultLines.push("    " + line);
+    } else {
+      resultLines.push(line);
+    }
+  }
+
+  let formatted = resultLines.join("\n");
+  return unmaskJinjaMacros(formatted, jinjaBlocks);
+}
+
 function basicCleanup(code) {
   const lines = code.replace(/\r\n/g, "\n").split("\n").map((l) => l.replace(/[ \t]+$/, ""));
   while (lines.length && lines[0] === "") lines.shift();
@@ -108,11 +180,9 @@ async function formatCode(lang, rawBody) {
   if (parser) {
     try {
       const { format, plugins } = await loadPrettier();
-      const out = await format(body, { parser, plugins });
+      const out = await format(body, { parser, plugins, tabWidth: 4, useTabs: false });
       return { text: out.endsWith("\n") ? out : out + "\n", formatted: true };
     } catch {
-      // Código com erro de sintaxe ou Prettier indisponível (offline etc.):
-      // cai pra limpeza básica em vez de travar a ação do usuário.
       return { text: basicCleanup(body) + "\n", formatted: false };
     }
   }
@@ -120,7 +190,7 @@ async function formatCode(lang, rawBody) {
   if (SHELL_LANGS.has(lang)) {
     try {
       const { format, plugins } = await loadShFormatter();
-      const out = await format(body, { parser: "sh", plugins });
+      const out = await format(body, { parser: "sh", plugins, tabWidth: 4 });
       return { text: out.endsWith("\n") ? out : out + "\n", formatted: true };
     } catch {
       return { text: basicCleanup(body) + "\n", formatted: false };
@@ -129,24 +199,26 @@ async function formatCode(lang, rawBody) {
 
   const sqlDialect = SQL_DIALECTS[lang];
   if (sqlDialect) {
+    const { maskedCode, jinjaBlocks } = maskJinjaMacros(body);
     try {
       const { format } = await loadSqlFormatter();
-      const out = format(body, { language: sqlDialect });
-      return { text: out.endsWith("\n") ? out : out + "\n", formatted: true };
+      const out = format(maskedCode, {
+        language: sqlDialect,
+        tabWidth: 4,
+        keywordCase: "upper",
+        paramTypes: { named: [":", "@", "$"] }
+      });
+      const unmasked = unmaskJinjaMacros(out, jinjaBlocks);
+      return { text: unmasked.endsWith("\n") ? unmasked : unmasked + "\n", formatted: true };
     } catch {
-      return { text: basicCleanup(body) + "\n", formatted: false };
+      const fallback = formatSqlPureJS(body);
+      return { text: fallback.endsWith("\n") ? fallback : fallback + "\n", formatted: true };
     }
   }
 
   return { text: basicCleanup(body) + "\n", formatted: false };
 }
 
-// Limpa espaçamento do texto FORA de blocos de código: trailing whitespace
-// (preservando quebra de linha "dura" do Markdown, que é exatamente 2
-// espaços no fim da linha) e no máximo uma linha em branco entre blocos.
-// Nunca mexe em listas, tabelas ou no texto em si.
-// Trabalha direto na string (não linha-a-linha com split/join) pra não
-// perder a quebra de linha que separa um fence do próximo bloco.
 function hygieneOutsideCode(text) {
   const noTrailingWs = text.replace(/[ \t]+$/gm, (m) => (m === "  " ? m : ""));
   return noTrailingWs.replace(/\n{3,}/g, "\n\n");
@@ -187,7 +259,7 @@ export async function formatCodeBlockAtCursor() {
   replaceRange(ta, fence.bodyStart, fence.bodyStart + fence.body.length, text);
   onEditorInput();
   toast(
-    formatted ? "Bloco formatado." : "Espaçamento do bloco limpo (sem formatador completo pra essa linguagem).",
+    formatted ? "Bloco formatado com 4 espaços de indentação." : "Espaçamento do bloco limpo.",
     "success",
   );
 }
@@ -198,50 +270,61 @@ export async function formatDocument() {
 
   const re = new RegExp(FENCE_RE.source, "g");
   const fences = [];
-  let m;
-  while ((m = re.exec(original))) {
+  let match;
+  while ((match = re.exec(original))) {
     fences.push({
-      start: m.index,
-      end: m.index + m[0].length,
-      openFence: m[1],
-      lang: m[1].slice(3, -1).trim().toLowerCase(),
-      body: m[2],
-      closeFence: m[3],
+      start: match.index,
+      end: match.index + match[0].length,
+      prefix: match[1],
+      lang: match[1].slice(3, -1).trim().toLowerCase(),
+      body: match[2],
+      suffix: match[3],
     });
   }
 
-  const results = await Promise.all(fences.map((f) => formatCode(f.lang, f.body)));
-  const anyUnformatted = results.some((r) => !r.formatted);
-
-  let result = "";
-  let cursor = 0;
-  fences.forEach((f, i) => {
-    result += hygieneOutsideCode(original.slice(cursor, f.start));
-    result += f.openFence + results[i].text + f.closeFence;
-    cursor = f.end;
-  });
-  result += hygieneOutsideCode(original.slice(cursor));
-  result = result.replace(/\s+$/, "") + "\n";
-
-  if (result === original) {
-    toast("Documento já está formatado.", "info");
+  if (!fences.length) {
+    const cleaned = hygieneOutsideCode(original);
+    if (cleaned !== original) {
+      ta.value = cleaned;
+      onEditorInput();
+      toast("Espaçamento do documento limpo.", "success");
+    } else {
+      toast("Documento sem blocos de código pra formatar.", "info");
+    }
     return;
   }
-  replaceRange(ta, 0, original.length, result);
-  onEditorInput();
-  toast(
-    fences.length && anyUnformatted
-      ? "Documento formatado (alguns blocos só tiveram o espaçamento limpo)."
-      : "Documento formatado.",
-    "success",
-  );
+
+  let formattedCount = 0;
+  let out = "";
+  let lastIdx = 0;
+
+  for (const fence of fences) {
+    out += hygieneOutsideCode(original.slice(lastIdx, fence.start));
+    const res = await formatCode(fence.lang, fence.body);
+    if (res.text !== fence.body) formattedCount++;
+    out += fence.prefix + res.text + fence.suffix;
+    lastIdx = fence.end;
+  }
+
+  out += hygieneOutsideCode(original.slice(lastIdx));
+
+  if (out !== original) {
+    ta.value = out;
+    onEditorInput();
+    toast(
+      formattedCount > 0
+        ? `Formatado(s) ${formattedCount} bloco(s) de código (4 espaços).`
+        : "Espaçamento do documento limpo.",
+      "success",
+    );
+  } else {
+    toast("Documento já está formatado.", "info");
+  }
 }
 
-// Botão único da toolbar: formata só o bloco de código sob o cursor quando
-// há um, senão cai para o documento inteiro — cobre os dois casos de uso
-// que antes exigiam dois botões separados (🧹 Bloco / 🧹 Doc).
 export async function formatSmart() {
   const ta = document.getElementById("md-editor");
+  if (!ta) return;
   const fence = findFenceAt(ta.value, ta.selectionStart);
   if (fence) {
     await formatCodeBlockAtCursor();
@@ -250,5 +333,11 @@ export async function formatSmart() {
   }
 }
 
-// ── Expor ao DOM (necessário para os botões da toolbar) ────────────────────
-Object.assign(window, { formatCodeBlockAtCursor, formatDocument, formatSmart });
+export { formatCode };
+
+Object.assign(window, {
+  formatCode,
+  formatSmart,
+  formatCodeBlockAtCursor,
+  formatDocument,
+});

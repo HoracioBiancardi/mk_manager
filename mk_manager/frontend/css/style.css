@@ -1946,51 +1946,53 @@ body.zen-mode .app-layout > .sidebar-resize-handle {
 .capture-wrap > pre   { margin-bottom: 0; }
 .capture-wrap > table { width: 100%; margin: 0; }
 
-.capture-wrap:hover .capture-btn,
-.capture-wrap:hover .code-edit-btn,
-.mermaid-wrap:hover  .capture-btn,
-.mermaid-wrap:hover  .mermaid-modal-btn,
-.mermaid-wrap:hover  .mermaid-edit-btn { opacity: 1; }
-
-.capture-btn {
-  position: absolute; top: .4rem; right: .4rem;
-  background: var(--surface-alt); border: 1px solid var(--border);
-  border-radius: var(--r-sm); padding: .18rem .5rem;
-  cursor: pointer; font-size: .67rem; color: var(--text-muted);
-  opacity: 0; transition: opacity .15s, background .15s, color .15s;
-  z-index: 20; line-height: 1.4; white-space: nowrap; pointer-events: auto;
+/* Container flex para os botões de ação em blocos do preview */
+.block-actions {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  z-index: 20;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: auto;
 }
-.capture-btn:hover { background: var(--primary-dim); color: var(--primary); opacity: 1; }
 
-.mermaid-modal-btn {
-  position: absolute; top: .4rem; right: 5rem;
-  background: var(--surface-alt); border: 1px solid var(--border);
-  border-radius: var(--r-sm); padding: .18rem .5rem;
-  cursor: pointer; font-size: .67rem; color: var(--text-muted);
-  opacity: 0; transition: opacity .15s, background .15s, color .15s;
-  z-index: 20; line-height: 1.4; white-space: nowrap; pointer-events: auto;
+.capture-wrap:hover .block-actions,
+.mermaid-wrap:hover .block-actions {
+  opacity: 1;
 }
-.mermaid-modal-btn:hover { background: var(--primary-dim); color: var(--primary); opacity: 1; }
 
+.block-actions button,
+.capture-btn,
+.code-edit-btn,
+.mermaid-modal-btn,
 .mermaid-edit-btn {
-  position: absolute; top: .4rem; right: 9.6rem;
-  background: var(--surface-alt); border: 1px solid var(--border);
-  border-radius: var(--r-sm); padding: .18rem .5rem;
-  cursor: pointer; font-size: .67rem; color: var(--text-muted);
-  opacity: 0; transition: opacity .15s, background .15s, color .15s;
-  z-index: 20; line-height: 1.4; white-space: nowrap; pointer-events: auto;
+  background: var(--surface-alt);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--r-sm);
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  line-height: 1.4;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
 }
-.mermaid-edit-btn:hover { background: var(--primary-dim); color: var(--primary); opacity: 1; }
 
-.code-edit-btn {
-  position: absolute; top: .4rem; right: 5rem;
-  background: var(--surface-alt); border: 1px solid var(--border);
-  border-radius: var(--r-sm); padding: .18rem .5rem;
-  cursor: pointer; font-size: .67rem; color: var(--text-muted);
-  opacity: 0; transition: opacity .15s, background .15s, color .15s;
-  z-index: 20; line-height: 1.4; white-space: nowrap; pointer-events: auto;
+.block-actions button:hover,
+.capture-btn:hover,
+.code-edit-btn:hover,
+.mermaid-modal-btn:hover,
+.mermaid-edit-btn:hover {
+  background: var(--primary-dim);
+  color: var(--primary);
+  border-color: var(--primary);
+  opacity: 1;
 }
-.code-edit-btn:hover { background: var(--primary-dim); color: var(--primary); opacity: 1; }
 
 .code-edit-lang-input {
   background: var(--bg); border: 1px solid var(--border); color: var(--text);
@@ -2000,37 +2002,27 @@ body.zen-mode .app-layout > .sidebar-resize-handle {
 }
 .code-edit-lang-input:focus { outline: none; border-color: var(--primary); }
 
-/* ── Modal de edição de bloco de código (reaproveita o chrome do zoom Mermaid) ── */
+/* ── Modal de edição de bloco de código ── */
 .code-edit-content {
   flex: 1; display: flex; overflow: hidden; background: var(--bg);
 }
 .code-edit-editor {
-  flex: 1 1 50%; min-width: 0; display: flex;
-  border-right: 1px solid var(--border); overflow: hidden;
+  flex: 1; min-width: 0; display: flex; overflow: hidden;
 }
 .code-edit-gutter {
   flex-shrink: 0; overflow: hidden;
-  padding: .85rem .5rem .85rem 0; text-align: right;
+  padding: .85rem .6rem .85rem .75rem; text-align: right;
   background: var(--surface-alt); color: var(--text-subtle);
-  font-size: .82rem; line-height: 1.6;
+  font-size: .85rem; line-height: 1.6;
   font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
-  white-space: pre; user-select: none;
+  white-space: pre; user-select: none; border-right: 1px solid var(--border);
 }
 .code-edit-textarea {
-  flex: 1 1 auto; min-width: 0;
+  flex: 1; min-width: 0; height: 100%; width: 100%;
   background: var(--bg); color: var(--text); border: none;
-  padding: .85rem; font-size: .82rem; line-height: 1.6;
+  padding: .85rem; margin: 0; font-size: .85rem; line-height: 1.6;
   font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
-  resize: none; outline: none; white-space: pre; overflow: auto;
-}
-.code-edit-preview {
-  flex: 1 1 50%; min-width: 0; margin: 0;
-  padding: .85rem; overflow: auto; background: var(--bg);
-}
-.code-edit-preview code {
-  white-space: pre;
-  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
-  font-size: .82rem; line-height: 1.6;
+  white-space: pre; tab-size: 4; box-sizing: border-box; resize: none; outline: none; overflow: auto;
 }
 
 /* ── Modal de zoom do Mermaid ─────────────────────────────────────── */
@@ -3323,48 +3315,7 @@ body.crt-glitch-active {
   }
 }
 
-/* ── CodeMirror Integration Styling ───────────────────────────── */
-.CodeMirror {
-  height: 100% !important;
-  font-family: inherit !important;
-  font-size: 1rem !important;
-  background: var(--bg) !important;
-  color: var(--text) !important;
-  line-height: 1.6 !important;
-  text-shadow: var(--glow-text);
-}
 
-.CodeMirror-gutters {
-  background: var(--surface) !important;
-  border-right: 1px solid var(--border) !important;
-}
-
-.CodeMirror-linenumber {
-  color: var(--text-subtle) !important;
-  font-family: inherit !important;
-  font-size: .8rem !important;
-}
-
-.CodeMirror-cursor {
-  border-left: 2px solid var(--primary) !important;
-  box-shadow: 0 0 6px var(--primary-glow) !important;
-}
-
-.CodeMirror-selected,
-.CodeMirror-focused .CodeMirror-selected {
-  background: var(--primary-dim) !important;
-}
-
-.cm-header { color: var(--primary) !important; font-weight: bold; text-shadow: var(--glow-text); }
-.cm-strong { color: var(--text) !important; font-weight: bold; }
-.cm-em { color: var(--text) !important; font-style: italic; }
-.cm-link { color: var(--info, var(--primary)) !important; text-decoration: underline; }
-.cm-url { color: var(--text-muted) !important; }
-.cm-quote { color: var(--text-subtle) !important; font-style: italic; }
-.cm-code { color: var(--warn, var(--primary)) !important; }
-.cm-variable-2 { color: var(--success, var(--primary)) !important; }
-.cm-comment { color: var(--text-subtle) !important; }
-.cm-formatting { color: var(--text-muted) !important; }
 
 /* ── Lixeira & Calendário & Exportação CSS ────────────────────── */
 .trash-list-container,
