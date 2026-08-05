@@ -34,7 +34,6 @@ Backend em **FastAPI**, frontend em HTML/JS vanilla, arquivos salvos como `.md` 
 | **Grafo de notas** | Visualização das notas conectadas por `[[wikilinks]]`, filtrável por tipo/tag/pasta; links para títulos inexistentes viram nós "phantom" (fantasma) em vez de serem descartados |
 | **Tags** | Tags de frontmatter + tags inline `#tag` extraídas do corpo do texto (ignorando código e URLs); filtro hierárquico (`area` também casa com `area/sub`); renomear/mesclar uma tag em todos os arquivos de uma vez |
 | **Busca full-text** | Pesquisa em título, tags e conteúdo com ranking de relevância |
-| **Abas de arquivos recentes** | Até 5 últimos arquivos abertos como abas acima do editor, com botão de fechar (`×`, só remove da lista — não apaga o arquivo) e atalhos de teclado para navegar entre elas |
 | **Temas & CRT (Pip-Boy)** | 7 temas de cor (Verde Fósforo, Âmbar Fallout NV, Azul Fallout 4, Branco, Vermelho Enclave, Roxo Vault-Tec, Corporativo/neutro) + efeitos CRT opcionais (scanlines, flicker, estática, curvatura, transição, varredura de radar) e efeitos sonoros mecânicos, tudo persistido no navegador |
 | **Auto-save** | Salvo automaticamente 800ms após parar de digitar |
 | **Split view** | Editor + Preview lado a lado |
@@ -74,13 +73,12 @@ mk_manager/
     │   │   └── style.css
     │   └── js/
     │       ├── app.js            # Bootstrap + listener de teclado global
-    │       ├── config.js         # Atalhos de teclado centralizados (ex.: abas recentes)
     │       ├── state.js          # Estado global da SPA
     │       ├── api.js            # Client HTTP
     │       ├── editor.js         # Textarea + toolbar de formatação
     │       ├── preview.js        # Renderização Markdown ao vivo + vínculo subtarefa/tarefa-mãe
     │       ├── sidebar.js        # Árvore de arquivos/pastas
-    │       ├── files.js          # CRUD de arquivos no frontend + abas de recentes
+    │       ├── files.js          # CRUD de arquivos no frontend
     │       ├── search-filter.js  # Busca e filtros
     │       ├── graph.js          # Visualização do grafo de notas
     │       ├── kanban.js         # Quadro kanban + modal de edição rápida
@@ -550,7 +548,6 @@ O diretório `frontend/` é uma SPA (Single Page Application) sem build step, co
 - **Preview**: renderização ao vivo via [marked.js](https://marked.js.org/)
 - **Split view** / Editor only / Preview only
 - **Checkboxes interativos** no preview — clicar atualiza o arquivo; marcar todas as subtarefas de uma tarefa conclui a mãe automaticamente (também funciona no modal de edição rápida do Kanban)
-- **Abas de arquivos recentes**: até 5 abas acima do editor, com botão `×` para fechar (só remove da lista, não apaga o arquivo) e navegação por atalho de teclado
 - **Kanban**: quadro com colunas de status customizáveis, drag-and-drop entre etapas, modal de edição rápida de checkboxes direto no card, botão de arquivar por card
 - **Lista**: tabela ordenável/filtrável de notas e tasks, com agrupamento por status/pasta/tag/tipo em seções recolhíveis
 - **Arquivo**: tela de itens arquivados, com restaurar ou excluir definitivamente
@@ -577,11 +574,7 @@ O diretório `frontend/` é uma SPA (Single Page Application) sem build step, co
 | `Ctrl+I` | Itálico (no editor) |
 | `Tab` | Indentar (2 espaços) |
 | `Enter` | Continuar lista/tabela automaticamente |
-| `Ctrl+Tab` / `Ctrl+Shift+Tab` | Alternar para a próxima/anterior aba de arquivo recente |
-| `Alt+1` … `Alt+9` | Pular direto para a N-ésima aba de arquivo recente |
 | `Esc` | Fechar modal (delete, settings, quick open, edição rápida do kanban) |
-
-> Os atalhos das abas de arquivos recentes são definidos centralmente em `frontend/js/config.js` (`RECENT_TABS_SHORTCUTS`) — troque a combinação ali para remapear em todo o app. `Ctrl+Tab`/`Ctrl+Shift+Tab` são reservados pela maioria dos navegadores para trocar de aba do próprio navegador (não dá pra interceptar em uma aba comum); `Alt+1`…`Alt+9` são a alternativa que sempre funciona.
 
 ---
 

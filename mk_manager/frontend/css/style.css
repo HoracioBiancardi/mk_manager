@@ -945,6 +945,9 @@ body.zen-mode .app-layout > .sidebar-panel,
 body.zen-mode .app-layout > .sidebar-resize-handle {
   display: none;
 }
+body.zen-mode .editor-info-bar {
+  display: none;
+}
 #btn-zen.active {
   color: var(--primary);
 }
@@ -2997,80 +3000,6 @@ body.crt-glitch-active {
   100% { transform: translate(0, 0) skew(0deg); }
 }
 
-/* ── Abas de Arquivos Recentes ─────────────────────────────────────────── */
-.recent-files-bar {
-  display: flex;
-  gap: 5px;
-  background: var(--surface-alt);
-  border-bottom: 1px solid var(--border);
-  padding: 6px 10px 0 10px;
-  flex-shrink: 0;
-  height: 34px;
-  box-sizing: border-box;
-  align-items: flex-end;
-}
-.recent-file-tab {
-  font-size: .72rem;
-  font-family: 'Share Tech Mono', monospace !important;
-  padding: 0 .3rem 0 .65rem;
-  background: var(--surface-hover);
-  border: 1px solid var(--border);
-  border-bottom: none;
-  border-top-left-radius: var(--r-sm);
-  border-top-right-radius: var(--r-sm);
-  color: var(--text-muted);
-  cursor: pointer;
-  flex: 1 1 0;
-  min-width: 70px;
-  white-space: nowrap;
-  overflow: hidden;
-  transition: all var(--t);
-  position: relative;
-  bottom: -1px;
-  height: 25px;
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  gap: .35rem;
-}
-.recent-file-tab:hover {
-  color: var(--text);
-  background: var(--surface);
-  border-color: var(--border-bright);
-}
-.recent-file-tab.active {
-  background: var(--bg);
-  color: var(--primary);
-  border-color: var(--border-bright);
-  border-bottom: 1px solid var(--bg);
-  font-weight: bold;
-  text-shadow: var(--glow-text);
-  z-index: 2;
-  height: 27px;
-}
-.recent-file-tab-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-  min-width: 0;
-}
-.recent-file-tab-close {
-  flex-shrink: 0;
-  width: 16px; height: 16px;
-  display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 3px;
-  border: none; background: transparent;
-  color: var(--text-subtle);
-  font-size: .9rem; line-height: 1;
-  cursor: pointer;
-  padding: 0;
-}
-.recent-file-tab-close:hover {
-  background: var(--danger-dim);
-  color: var(--danger);
-}
-
 /* ── Progresso de Tasks na Sidebar ───────────────────────────────────────── */
 .tree-progress {
   font-size: 0.65rem;
@@ -3166,6 +3095,121 @@ body.crt-glitch-active {
   font-size: 0.6rem;
   opacity: 0.6;
   text-transform: uppercase;
+}
+
+/* ── Autocomplete de linguagem de bloco de código ``` ─────────────────────── */
+.lang-suggestions {
+  position: absolute;
+  right: 15px;
+  bottom: 15px;
+  width: 200px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border-bright);
+  z-index: 1000;
+  box-shadow: 0 0 12px rgba(0,0,0,0.8);
+  font-family: 'Share Tech Mono', monospace !important;
+}
+.lang-suggestions::before {
+  content: "[LINGUAGEM DO BLOCO]";
+  display: block;
+  font-size: 0.6rem;
+  padding: 3px 8px;
+  background: var(--surface-alt);
+  color: var(--primary);
+  border-bottom: 1px solid var(--border);
+  font-weight: bold;
+}
+.lang-suggestion-item {
+  padding: 5px 8px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--t);
+}
+.lang-suggestion-item:hover, .lang-suggestion-item.selected {
+  background: var(--primary-dim);
+  color: var(--primary);
+  text-shadow: var(--glow-text);
+}
+
+/* ── Autocomplete de #tags inline no corpo do texto ───────────────────────── */
+.inline-tag-suggestions {
+  position: absolute;
+  right: 15px;
+  bottom: 15px;
+  width: 200px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border-bright);
+  z-index: 1000;
+  box-shadow: 0 0 12px rgba(0,0,0,0.8);
+  font-family: 'Share Tech Mono', monospace !important;
+}
+.inline-tag-suggestions::before {
+  content: "[TAGS]";
+  display: block;
+  font-size: 0.6rem;
+  padding: 3px 8px;
+  background: var(--surface-alt);
+  color: var(--primary);
+  border-bottom: 1px solid var(--border);
+  font-weight: bold;
+}
+.inline-tag-suggestion-item {
+  padding: 5px 8px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--t);
+}
+.inline-tag-suggestion-item:hover, .inline-tag-suggestion-item.selected {
+  background: var(--primary-dim);
+  color: var(--primary);
+  text-shadow: var(--glow-text);
+}
+.inline-tag-suggestion-create {
+  font-style: italic;
+  border-top: 1px dashed var(--border);
+}
+
+/* ── Autocomplete de palavras já usadas na nota ────────────────────────────── */
+.word-suggestions {
+  position: absolute;
+  right: 15px;
+  bottom: 15px;
+  width: 220px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border-bright);
+  z-index: 1000;
+  box-shadow: 0 0 12px rgba(0,0,0,0.8);
+  font-family: 'Share Tech Mono', monospace !important;
+}
+.word-suggestions::before {
+  content: "[SUGESTÕES DE PALAVRAS]";
+  display: block;
+  font-size: 0.6rem;
+  padding: 3px 8px;
+  background: var(--surface-alt);
+  color: var(--primary);
+  border-bottom: 1px solid var(--border);
+  font-weight: bold;
+}
+.word-suggestion-item {
+  padding: 5px 8px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--t);
+}
+.word-suggestion-item:hover, .word-suggestion-item.selected {
+  background: var(--primary-dim);
+  color: var(--primary);
+  text-shadow: var(--glow-text);
 }
 
 /* ── Estilos do Construtor de Configurações ───────────────────────────────── */

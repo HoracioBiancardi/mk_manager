@@ -121,56 +121,6 @@ export async function saveFile() {
   }
 }
 
-export function addToRecentFiles(file) {
-  if (!file || !file.id) return;
-  st.recentFiles = st.recentFiles.filter(f => f.id !== file.id);
-  st.recentFiles.unshift({ id: file.id, title: file.title || "Sem título" });
-  if (st.recentFiles.length > 5) st.recentFiles.pop();
-  renderRecentFiles();
-}
-
-export function renderRecentFiles() {
-  const bar = document.getElementById("recent-files-bar");
-  if (!bar) return;
-  if (!st.recentFiles || st.recentFiles.length === 0) {
-    bar.style.display = "none";
-    return;
-  }
-  bar.style.display = "flex";
-  bar.innerHTML = st.recentFiles.map((f) => {
-    const active = f.id === st.activeId ? "active" : "";
-    return `<span class="recent-file-tab ${active}" onclick="openFileFromTab('${f.id}')" title="${esc(f.title)}">
-      <span class="recent-file-tab-label">${esc(f.title)}</span>
-      <button type="button" class="recent-file-tab-close" onclick="closeRecentTab(event,'${f.id}')" title="Fechar aba" aria-label="Fechar aba">×</button>
-    </span>`;
-  }).join("");
-}
-
-window.openFileFromTab = (id) => {
-  openFile(id);
-};
-
-// Remove o arquivo apenas da barra de recentes (não afeta o arquivo em disco).
-// Se a aba fechada era a ativa, abre a vizinha mais próxima (ou esvazia o painel).
-export function closeRecentTab(e, id) {
-  e?.stopPropagation();
-  const idx = st.recentFiles.findIndex((f) => f.id === id);
-  if (idx === -1) return;
-  const wasActive = st.activeId === id;
-  st.recentFiles.splice(idx, 1);
-  if (wasActive) {
-    const next = st.recentFiles[idx] || st.recentFiles[idx - 1];
-    if (next) {
-      openFile(next.id);
-      return;
-    }
-    st.activeId = null;
-    if (st.mainView === "editor") showEmptyPanel();
-  }
-  renderRecentFiles();
-}
-window.closeRecentTab = closeRecentTab;
-
 export async function openFile(id) {
   if (st.mainView !== "editor") setMainView("editor");
   if (st.isDirty && st.activeId) await saveFile();
@@ -204,7 +154,6 @@ export async function openFile(id) {
     renderTags(st.activeTags);
     renderSidebar();
     showEditorPanel();
-    addToRecentFiles(file);
     setView(st.view);
     updateFooter();
     setSaveStatus("saved");
@@ -271,8 +220,6 @@ export async function deleteFile(id) {
       st.activeId = null;
       if (st.mainView === "editor") showEmptyPanel();
     }
-    st.recentFiles = st.recentFiles.filter((f) => f.id !== id);
-    renderRecentFiles();
     renderSidebar();
     updateStorageInfo();
     refreshGraphIfActive();
@@ -293,8 +240,6 @@ export async function archiveFile(id) {
       st.activeId = null;
       if (st.mainView === "editor") showEmptyPanel();
     }
-    st.recentFiles = st.recentFiles.filter((f) => f.id !== id);
-    renderRecentFiles();
     renderSidebar();
     updateStorageInfo();
     renderKanban();
@@ -440,11 +385,6 @@ export async function confirmRenameFile(id, newTitle) {
       document.getElementById("title-input").value = updated.title;
       if (updated.id !== id) st.activeId = updated.id;
     }
-    st.recentFiles = st.recentFiles.map(rf => {
-      if (rf.id === id) return { id: updated.id, title: updated.title };
-      return rf;
-    });
-    renderRecentFiles();
     renderSidebar();
     refreshGraphIfActive();
     refreshListIfActive();

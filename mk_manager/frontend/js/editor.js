@@ -54,7 +54,7 @@ export function onEditorInput() {
   if (st.view !== "edit") renderPreview();
   setSaveStatus("saving");
   scheduleSave();
-  checkWikiLinkAutocomplete();
+  checkAutocompleteTriggers();
 }
 
 // ── Painel ────────────────────────────────────────────────────────────────────
@@ -376,38 +376,37 @@ export function onTitleChange() {
 export function onEditorKeydown(e) {
   const ta = document.getElementById("md-editor");
 
-  // ── Autocomplete [[ Wiki-Links ───────────────────────────────────────────
-  if (_wikiActive) {
-    const dropdown = document.getElementById("wiki-link-suggestions");
-    const items = dropdown ? dropdown.querySelectorAll(".wiki-link-item") : [];
-    
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      _wikiSelectedIdx = (_wikiSelectedIdx + 1) % items.length;
-      showWikiLinkSuggestions();
-      return;
-    }
-    if (e.key === "ArrowUp") {
-      e.preventDefault();
-      _wikiSelectedIdx = (_wikiSelectedIdx - 1 + items.length) % items.length;
-      showWikiLinkSuggestions();
-      return;
-    }
-    if (e.key === "Enter" || e.key === "Tab") {
-      e.preventDefault();
-      const selectedItem = dropdown ? dropdown.querySelector(".wiki-link-item.selected") : null;
-      if (selectedItem) {
-        selectedItem.click();
-      } else {
-        hideWikiLinkSuggestions();
-      }
-      return;
-    }
-    if (e.key === "Escape") {
-      e.preventDefault();
-      hideWikiLinkSuggestions();
-      return;
-    }
+  // ── Autocomplete: navegação por teclado nos dropdowns ────────────────────
+  // Wiki-links [[, linguagem de bloco de código ``` e palavras já usadas na
+  // nota compartilham o mesmo esquema de navegação (setas/Enter/Tab/Esc);
+  // no máximo um dropdown fica ativo por vez (ver checkAutocompleteTriggers).
+  if (
+    (_wikiActive && navigateDropdown(e, "wiki-link-suggestions", ".wiki-link-item", {
+      getIdx: () => _wikiSelectedIdx,
+      setIdx: (v) => (_wikiSelectedIdx = v),
+      rerender: showWikiLinkSuggestions,
+      hide: hideWikiLinkSuggestions,
+    })) ||
+    (_langActive && navigateDropdown(e, "lang-suggestions", ".lang-suggestion-item", {
+      getIdx: () => _langSelectedIdx,
+      setIdx: (v) => (_langSelectedIdx = v),
+      rerender: showLangSuggestions,
+      hide: hideLangSuggestions,
+    })) ||
+    (_tagActive && navigateDropdown(e, "inline-tag-suggestions", ".inline-tag-suggestion-item", {
+      getIdx: () => _tagSelectedIdx,
+      setIdx: (v) => (_tagSelectedIdx = v),
+      rerender: () => showTagSuggestions(_tagSuggestions),
+      hide: hideTagSuggestions,
+    })) ||
+    (_wordActive && navigateDropdown(e, "word-suggestions", ".word-suggestion-item", {
+      getIdx: () => _wordSelectedIdx,
+      setIdx: (v) => (_wordSelectedIdx = v),
+      rerender: () => showWordSuggestions(_wordSuggestions),
+      hide: hideWordSuggestions,
+    }))
+  ) {
+    return;
   }
 
   // ── Tab / Shift+Tab ──────────────────────────────────────────────────────
@@ -954,6 +953,9 @@ Object.assign(window, {
   selectRetroTag,
   filterRetroTagSuggestions,
   insertWikiLink,
+  insertCodeLang,
+  insertInlineTag,
+  insertWordCompletion,
 });
 
 /* ── Custom select dropdown functions (Pip-Boy themed status selector) ── */
@@ -1016,6 +1018,67 @@ document.addEventListener("click", (e) => {
   }
 });
 
+// ── Autocomplete: navegação por teclado compartilhada ─────────────────────────
+// Usada pelos três dropdowns (wiki-links, linguagem de código, palavras).
+// Retorna true se a tecla foi tratada (dropdown deve permanecer no controle),
+// false se deve cair no comportamento normal do editor (ex.: digitação livre).
+function navigateDropdown(e, dropdownId, itemClass, { getIdx, setIdx, rerender, hide }) {
+  const dropdown = document.getElementById(dropdownId);
+  const items = dropdown ? dropdown.querySelectorAll(itemClass) : [];
+
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    setIdx((getIdx() + 1) % items.length);
+    rerender();
+    return true;
+  }
+  if (e.key === "ArrowUp") {
+    e.preventDefault();
+    setIdx((getIdx() - 1 + items.length) % items.length);
+    rerender();
+    return true;
+  }
+  if (e.key === "Enter" || e.key === "Tab") {
+    e.preventDefault();
+    const selectedItem = dropdown ? dropdown.querySelector(itemClass + ".selected") : null;
+    if (selectedItem) {
+      selectedItem.click();
+    } else {
+      hide();
+    }
+    return true;
+  }
+  if (e.key === "Escape") {
+    e.preventDefault();
+    hide();
+    return true;
+  }
+  return false;
+}
+
+// Roda os quatro detectores de trigger em ordem de prioridade — só um
+// dropdown fica ativo por vez, então cada trigger que casar esconde os
+// outros. #tag vem antes de word porque "#algo" também bateria com o
+// detector de palavras (que não enxerga o "#"), e o de tag é mais específico.
+function checkAutocompleteTriggers() {
+  if (checkWikiLinkAutocomplete()) {
+    hideLangSuggestions();
+    hideTagSuggestions();
+    hideWordSuggestions();
+    return;
+  }
+  if (checkCodeLangAutocomplete()) {
+    hideTagSuggestions();
+    hideWordSuggestions();
+    return;
+  }
+  if (checkTagAutocomplete()) {
+    hideWordSuggestions();
+    return;
+  }
+  checkWordAutocomplete();
+}
+
 // ── Lógica de Autocomplete de Wiki-Links ──────────────────────────────────────
 let _wikiActive = false;
 let _wikiStartIndex = -1;
@@ -1024,11 +1087,11 @@ let _wikiSelectedIdx = 0;
 
 export function checkWikiLinkAutocomplete() {
   const ta = document.getElementById("md-editor");
-  if (!ta) return;
+  if (!ta) return false;
   const pos = ta.selectionStart;
   const textBefore = ta.value.slice(0, pos);
   const lastDoubleOpen = textBefore.lastIndexOf("[[");
-  
+
   if (lastDoubleOpen !== -1) {
     const textAfterOpen = textBefore.slice(lastDoubleOpen + 2);
     if (!textAfterOpen.includes("]]") && !textAfterOpen.includes("\n")) {
@@ -1036,11 +1099,12 @@ export function checkWikiLinkAutocomplete() {
       _wikiStartIndex = lastDoubleOpen;
       _wikiQuery = textAfterOpen.trim().toLowerCase();
       showWikiLinkSuggestions();
-      return;
+      return true;
     }
   }
-  
+
   hideWikiLinkSuggestions();
+  return false;
 }
 
 export function showWikiLinkSuggestions() {
@@ -1084,16 +1148,303 @@ export function hideWikiLinkSuggestions() {
 export function insertWikiLink(title) {
   const ta = document.getElementById("md-editor");
   if (!ta || _wikiStartIndex === -1) return;
-  
+
+  // Captura em local antes de mexer no texto: replaceRange (via
+  // execCommand) dispara "input" de forma síncrona, que reentra em
+  // checkAutocompleteTriggers e pode resetar _wikiStartIndex antes deste
+  // cálculo rodar — usar a variável de módulo direto aqui corromperia a
+  // posição final do cursor.
+  const startIndex = _wikiStartIndex;
   const pos = ta.selectionStart;
   const insertText = `[[${title}]]`;
-  
-  replaceRange(ta, _wikiStartIndex, pos, insertText);
-  const newCursorPos = _wikiStartIndex + insertText.length;
+
+  replaceRange(ta, startIndex, pos, insertText);
+  const newCursorPos = startIndex + insertText.length;
   ta.setSelectionRange(newCursorPos, newCursorPos);
   ta.focus();
   
   hideWikiLinkSuggestions();
+  onEditorInput();
+}
+
+// ── Lógica de Autocomplete de linguagem em bloco de código ``` ────────────────
+const CODE_LANGUAGES = [
+  "javascript", "typescript", "python", "bash", "shell", "json", "yaml",
+  "html", "css", "sql", "markdown", "jsx", "tsx", "go", "rust", "java",
+  "c", "cpp", "csharp", "php", "ruby", "plaintext", "diff", "dockerfile",
+  "toml", "xml", "ini", "powershell", "http", "graphql", "mermaid",
+  "kotlin", "swift", "lua",
+];
+
+let _langActive = false;
+let _langStartIndex = -1;
+let _langQuery = "";
+let _langSelectedIdx = 0;
+
+// Dispara quando a linha atual (do início dela até o cursor) é exatamente
+// ```<prefixo-opcional-da-linguagem>, ou seja, o usuário acabou de abrir um
+// bloco de código e ainda não pulou pra linha de conteúdo.
+export function checkCodeLangAutocomplete() {
+  const ta = document.getElementById("md-editor");
+  if (!ta) return false;
+  const pos = ta.selectionStart;
+  const lineStart = ta.value.lastIndexOf("\n", pos - 1) + 1;
+  const line = ta.value.slice(lineStart, pos);
+  const m = line.match(/^```([a-zA-Z0-9_+-]*)$/);
+
+  if (m) {
+    _langActive = true;
+    _langStartIndex = lineStart;
+    _langQuery = m[1].toLowerCase();
+    _langSelectedIdx = 0;
+    showLangSuggestions();
+    return true;
+  }
+
+  hideLangSuggestions();
+  return false;
+}
+
+function showLangSuggestions() {
+  const suggestions = CODE_LANGUAGES.filter((l) => l.startsWith(_langQuery));
+  const dropdown = document.getElementById("lang-suggestions");
+  if (!dropdown) return;
+
+  if (suggestions.length === 0) {
+    dropdown.style.display = "none";
+    return;
+  }
+
+  _langSelectedIdx = Math.max(0, Math.min(_langSelectedIdx, suggestions.length - 1));
+  dropdown.style.display = "block";
+
+  dropdown.innerHTML = suggestions.map((lang, idx) => {
+    const isSelected = idx === _langSelectedIdx ? "selected" : "";
+    return `<div class="lang-suggestion-item ${isSelected}" onclick="insertCodeLang('${lang}')">${esc(lang)}</div>`;
+  }).join("");
+}
+
+function hideLangSuggestions() {
+  _langActive = false;
+  _langStartIndex = -1;
+  _langQuery = "";
+  _langSelectedIdx = 0;
+  const dropdown = document.getElementById("lang-suggestions");
+  if (dropdown) dropdown.style.display = "none";
+}
+
+export function insertCodeLang(lang) {
+  const ta = document.getElementById("md-editor");
+  if (!ta || _langStartIndex === -1) return;
+
+  // Ver comentário equivalente em insertWikiLink: captura local porque o
+  // fence de fechamento "```" recém-inserido reativa o próprio detector de
+  // linguagem de forma síncrona (reentrante), sobrescrevendo _langStartIndex
+  // antes deste cálculo.
+  const startIndex = _langStartIndex;
+  const pos = ta.selectionStart;
+  const insertText = "```" + lang + "\n\n```";
+
+  replaceRange(ta, startIndex, pos, insertText);
+  const newCursorPos = startIndex + 3 + lang.length + 1;
+  ta.setSelectionRange(newCursorPos, newCursorPos);
+  ta.focus();
+
+  hideLangSuggestions();
+  onEditorInput();
+}
+
+// ── Lógica de Autocomplete de #tags inline no corpo do texto ──────────────────
+// Mesma regra do backend (_TAG_RE em file_service.py): só vira tag se uma
+// letra vier logo depois do "#", sem espaço — por isso "# Título" (cabeçalho,
+// sempre com espaço) nunca bate aqui, e "##algo" também não (o "#" anterior
+// bloqueia via lookbehind), igual ao regex Python original.
+const INLINE_TAG_TRIGGER_RE = /(?<![\w#/])#([A-Za-z][\w/-]*)$/;
+
+let _tagActive = false;
+let _tagStartIndex = -1;
+let _tagQuery = "";
+let _tagSelectedIdx = 0;
+let _tagSuggestions = [];
+
+export function checkTagAutocomplete() {
+  const ta = document.getElementById("md-editor");
+  if (!ta) return false;
+  const pos = ta.selectionStart;
+  const textBefore = ta.value.slice(0, pos);
+  const m = textBefore.match(INLINE_TAG_TRIGGER_RE);
+
+  if (!m) {
+    hideTagSuggestions();
+    return false;
+  }
+
+  const startIndex = pos - m[0].length;
+  const rawTag = m[1];
+  const query = rawTag.toLowerCase();
+
+  const known = [...new Set(st.files.flatMap((f) => f.tags || []))];
+  const existing = known
+    .filter((t) => t.toLowerCase() !== query && t.toLowerCase().startsWith(query))
+    .sort();
+  const isKnown = known.some((t) => t.toLowerCase() === query);
+
+  // Tags inline nunca viram tag de frontmatter automaticamente (ver
+  // file_service.py — decisão deliberada pra não "promover" tag silenciosamente
+  // ao salvar). O item "+ Criar" aqui é só reforço visual: confirma que o "#tag"
+  // digitado será reconhecido como tag inline ao salvar, mesmo sem bater com
+  // nenhuma tag já conhecida — a inserção de texto é idêntica à de uma sugestão
+  // normal, só muda o rótulo no dropdown.
+  const items = existing.map((t) => ({ value: t, isCreate: false }));
+  if (!isKnown) items.push({ value: rawTag, isCreate: true });
+
+  if (items.length === 0) {
+    hideTagSuggestions();
+    return false;
+  }
+
+  _tagActive = true;
+  _tagStartIndex = startIndex;
+  _tagQuery = query;
+  _tagSelectedIdx = 0;
+  showTagSuggestions(items);
+  return true;
+}
+
+function showTagSuggestions(items) {
+  _tagSuggestions = items;
+  const dropdown = document.getElementById("inline-tag-suggestions");
+  if (!dropdown) return;
+
+  _tagSelectedIdx = Math.max(0, Math.min(_tagSelectedIdx, items.length - 1));
+  dropdown.style.display = "block";
+
+  dropdown.innerHTML = items.map((item, idx) => {
+    const isSelected = idx === _tagSelectedIdx ? "selected" : "";
+    const cls = "inline-tag-suggestion-item" + (item.isCreate ? " inline-tag-suggestion-create" : "") + (isSelected ? " selected" : "");
+    const label = item.isCreate ? `+ Criar #${esc(item.value)}` : `#${esc(item.value)}`;
+    return `<div class="${cls}" onclick="insertInlineTag('${esc(item.value)}')">${label}</div>`;
+  }).join("");
+}
+
+function hideTagSuggestions() {
+  _tagActive = false;
+  _tagStartIndex = -1;
+  _tagQuery = "";
+  _tagSelectedIdx = 0;
+  _tagSuggestions = [];
+  const dropdown = document.getElementById("inline-tag-suggestions");
+  if (dropdown) dropdown.style.display = "none";
+}
+
+export function insertInlineTag(tag) {
+  const ta = document.getElementById("md-editor");
+  if (!ta || _tagStartIndex === -1) return;
+
+  // Ver comentário equivalente em insertWikiLink sobre a reentrância
+  // síncrona do "input" disparado por replaceRange.
+  const startIndex = _tagStartIndex;
+  const pos = ta.selectionStart;
+  const insertText = "#" + tag + " ";
+
+  replaceRange(ta, startIndex, pos, insertText);
+  const newCursorPos = startIndex + insertText.length;
+  ta.setSelectionRange(newCursorPos, newCursorPos);
+  ta.focus();
+
+  hideTagSuggestions();
+  onEditorInput();
+}
+
+// ── Lógica de Autocomplete de palavras já usadas na nota ──────────────────────
+const WORD_RE = /[\p{L}\p{N}_-]{3,}/gu;
+const MIN_WORD_LEN = 3;
+const MAX_WORD_SUGGESTIONS = 8;
+
+let _wordActive = false;
+let _wordStartIndex = -1;
+let _wordQuery = "";
+let _wordSelectedIdx = 0;
+let _wordSuggestions = [];
+
+// Sugere palavras (>= MIN_WORD_LEN letras) já presentes no texto da nota atual
+// que comecem com o que está sendo digitado — não busca em outras notas
+// porque st.files só carrega metadados, não o corpo de cada arquivo.
+export function checkWordAutocomplete() {
+  const ta = document.getElementById("md-editor");
+  if (!ta) return false;
+  const pos = ta.selectionStart;
+  const textBefore = ta.value.slice(0, pos);
+  const m = textBefore.match(/[\p{L}\p{N}_-]+$/u);
+
+  if (!m || m[0].length < MIN_WORD_LEN) {
+    hideWordSuggestions();
+    return false;
+  }
+
+  const word = m[0];
+  const wordStart = pos - word.length;
+  const wordLower = word.toLowerCase();
+
+  const seen = new Map();
+  for (const w of ta.value.match(WORD_RE) || []) {
+    const lw = w.toLowerCase();
+    if (lw === wordLower || !lw.startsWith(wordLower) || seen.has(lw)) continue;
+    seen.set(lw, w);
+  }
+  const suggestions = [...seen.values()].slice(0, MAX_WORD_SUGGESTIONS);
+
+  if (suggestions.length === 0) {
+    hideWordSuggestions();
+    return false;
+  }
+
+  _wordActive = true;
+  _wordStartIndex = wordStart;
+  _wordQuery = wordLower;
+  _wordSelectedIdx = 0;
+  showWordSuggestions(suggestions);
+  return true;
+}
+
+function showWordSuggestions(suggestions) {
+  _wordSuggestions = suggestions;
+  const dropdown = document.getElementById("word-suggestions");
+  if (!dropdown) return;
+
+  _wordSelectedIdx = Math.max(0, Math.min(_wordSelectedIdx, suggestions.length - 1));
+  dropdown.style.display = "block";
+
+  dropdown.innerHTML = suggestions.map((w, idx) => {
+    const isSelected = idx === _wordSelectedIdx ? "selected" : "";
+    return `<div class="word-suggestion-item ${isSelected}" onclick="insertWordCompletion('${esc(w)}')">${esc(w)}</div>`;
+  }).join("");
+}
+
+function hideWordSuggestions() {
+  _wordActive = false;
+  _wordStartIndex = -1;
+  _wordQuery = "";
+  _wordSelectedIdx = 0;
+  _wordSuggestions = [];
+  const dropdown = document.getElementById("word-suggestions");
+  if (dropdown) dropdown.style.display = "none";
+}
+
+export function insertWordCompletion(word) {
+  const ta = document.getElementById("md-editor");
+  if (!ta || _wordStartIndex === -1) return;
+
+  // Ver comentário equivalente em insertWikiLink sobre a reentrância
+  // síncrona do "input" disparado por replaceRange.
+  const startIndex = _wordStartIndex;
+  const pos = ta.selectionStart;
+  replaceRange(ta, startIndex, pos, word + " ");
+  const newCursorPos = startIndex + word.length + 1;
+  ta.setSelectionRange(newCursorPos, newCursorPos);
+  ta.focus();
+
+  hideWordSuggestions();
   onEditorInput();
 }
 
@@ -1108,15 +1459,20 @@ document.addEventListener("DOMContentLoaded", () => {
         backdrop.scrollLeft = ta.scrollLeft;
       });
     }
-    ta.addEventListener("click", checkWikiLinkAutocomplete);
+    ta.addEventListener("click", checkAutocompleteTriggers);
     ta.addEventListener("keyup", (e) => {
       if (e.key !== "ArrowUp" && e.key !== "ArrowDown" && e.key !== "Enter" && e.key !== "Escape") {
-        checkWikiLinkAutocomplete();
+        checkAutocompleteTriggers();
       }
     });
     ta.addEventListener("blur", () => {
       // Pequeno atraso para dar tempo de registrar o clique nos itens do dropdown
-      setTimeout(hideWikiLinkSuggestions, 200);
+      setTimeout(() => {
+        hideWikiLinkSuggestions();
+        hideLangSuggestions();
+        hideTagSuggestions();
+        hideWordSuggestions();
+      }, 200);
     });
   }
 });

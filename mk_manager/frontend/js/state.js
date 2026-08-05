@@ -34,5 +34,4 @@ export const st = {
   creatingFolderIn: null,
   kanbanColumns: null,
   addingKanbanCol: false,
-  recentFiles: [],
 };

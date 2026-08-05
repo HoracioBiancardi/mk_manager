@@ -74,13 +74,6 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
     setZenMode(!st.zenMode);
   }
-  if (e.altKey && e.key >= "1" && e.key <= "9") {
-    const idx = parseInt(e.key, 10) - 1;
-    if (st.recentFiles && st.recentFiles[idx]) {
-      e.preventDefault();
-      openFile(st.recentFiles[idx].id);
-    }
-  }
   if (e.key === "Escape") {
     if (st.zenMode) setZenMode(false);
     closeDeleteModal();
