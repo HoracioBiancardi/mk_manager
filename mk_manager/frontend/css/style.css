@@ -2152,6 +2152,14 @@ body.zen-mode .editor-info-bar {
    que o painel, rola horizontalmente em vez de espremer os nós. */
 .mermaid-wrap svg { max-width: none; height: auto; overflow: visible; }
 .mermaid-wrap svg foreignObject { overflow: visible; }
+.mermaid-wrap svg foreignObject div,
+.mermaid-zoom-modal svg foreignObject div {
+  width: max-content !important;
+  min-width: 100px !important;
+  white-space: nowrap !important;
+  text-align: center !important;
+  box-sizing: border-box !important;
+}
 .mermaid-wrap .mermaid { display: flex; justify-content: center; width: 100%; min-width: min-content; }
 
 /* ── Editor footer ───────────────────────────────────────────────── */
