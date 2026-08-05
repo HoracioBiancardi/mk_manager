@@ -31,14 +31,6 @@ export function setEditorFontSize(px) {
   applyEditorFontSize(px);
 }
 
-export function getUseCodeMirror() {
-  return false;
-}
-
-export function setUseCodeMirror(enabled) {
-  // CodeMirror desativado
-}
-
 const SIDEBAR_WIDTH_KEY = "mk-sidebar-width";
 export const SIDEBAR_WIDTH_DEFAULT = 240;
 const SIDEBAR_WIDTH_MIN = 160;
@@ -67,139 +59,24 @@ export function applyPrefsOnBoot() {
   applyEditorFontSize();
   applySidebarWidth();
   applyActivityBarOrder();
-
-  // Aplica as preferências do Pip-Boy CRT
-  setCrtScanlines(getCrtScanlines());
-  setCrtFlicker(getCrtFlicker());
-  setCrtStatic(getCrtStatic());
-  setCrtCurved(getCrtCurved());
-  setCrtTransition(getCrtTransition());
-  setCrtRadar(getCrtRadar());
-  setCrtOpacity(getCrtOpacity());
-  setSfxEnabled(getSfxEnabled());
   setCrtTheme(getCrtTheme());
 }
 
-const SCANLINES_KEY = "mk-crt-scanlines";
-const FLICKER_KEY = "mk-crt-flicker";
 const THEME_KEY = "mk-crt-theme";
-
-export function getCrtScanlines() {
-  const saved = localStorage.getItem(SCANLINES_KEY);
-  return saved === null ? true : saved === "true";
-}
-
-export function setCrtScanlines(enabled) {
-  localStorage.setItem(SCANLINES_KEY, String(enabled));
-  document.body.classList.toggle("crt-enabled", enabled);
-  const el = document.getElementById("settings-scanlines");
-  if (el) el.checked = enabled;
-}
-
-export function getCrtFlicker() {
-  const saved = localStorage.getItem(FLICKER_KEY);
-  return saved === null ? true : saved === "true";
-}
-
-export function setCrtFlicker(enabled) {
-  localStorage.setItem(FLICKER_KEY, String(enabled));
-  document.body.classList.toggle("flicker-enabled", enabled);
-  const el = document.getElementById("settings-flicker");
-  if (el) el.checked = enabled;
-}
+const VALID_THEMES = new Set(["green-neutral", "corporate", "tokyo-night", "nord", "dracula", "monokai-warm"]);
 
 export function getCrtTheme() {
   const saved = localStorage.getItem(THEME_KEY);
-  return saved || "green";
+  return VALID_THEMES.has(saved) ? saved : "green-neutral";
 }
 
 export function setCrtTheme(theme) {
-  localStorage.setItem(THEME_KEY, theme);
-  document.body.classList.remove("theme-green", "theme-amber", "theme-blue", "theme-white", "theme-red", "theme-purple", "theme-corporate", "theme-green-neutral");
-  document.body.classList.add("theme-" + theme);
+  const validTheme = VALID_THEMES.has(theme) ? theme : "green-neutral";
+  localStorage.setItem(THEME_KEY, validTheme);
+  VALID_THEMES.forEach((t) => document.body.classList.remove("theme-" + t));
+  document.body.classList.add("theme-" + validTheme);
   const el = document.getElementById("settings-theme");
-  if (el) el.value = theme;
-}
-
-const STATIC_KEY = "mk-crt-static";
-const CURVED_KEY = "mk-crt-curved";
-
-export function getCrtStatic() {
-  const saved = localStorage.getItem(STATIC_KEY);
-  return saved === null ? false : saved === "true";
-}
-
-export function setCrtStatic(enabled) {
-  localStorage.setItem(STATIC_KEY, String(enabled));
-  document.body.classList.toggle("static-enabled", enabled);
-  const el = document.getElementById("settings-static");
-  if (el) el.checked = enabled;
-}
-
-export function getCrtCurved() {
-  const saved = localStorage.getItem(CURVED_KEY);
-  return saved === null ? true : saved === "true";
-}
-
-export function setCrtCurved(enabled) {
-  localStorage.setItem(CURVED_KEY, String(enabled));
-  document.body.classList.toggle("curved-enabled", enabled);
-  const el = document.getElementById("settings-curved");
-  if (el) el.checked = enabled;
-}
-
-const TRANSITION_KEY = "mk-crt-transition";
-
-export function getCrtTransition() {
-  const saved = localStorage.getItem(TRANSITION_KEY);
-  return saved === null ? true : saved === "true";
-}
-
-export function setCrtTransition(enabled) {
-  localStorage.setItem(TRANSITION_KEY, String(enabled));
-  const el = document.getElementById("settings-transition");
-  if (el) el.checked = enabled;
-}
-
-const SFX_KEY = "mk-sfx-enabled";
-const OPACITY_KEY = "mk-crt-opacity";
-const RADAR_KEY = "mk-crt-radar";
-
-export function getSfxEnabled() {
-  const saved = localStorage.getItem(SFX_KEY);
-  return saved === null ? false : saved === "true"; // desativado por padrão
-}
-
-export function setSfxEnabled(enabled) {
-  localStorage.setItem(SFX_KEY, String(enabled));
-  const el = document.getElementById("settings-sfx");
-  if (el) el.checked = enabled;
-}
-
-export function getCrtOpacity() {
-  const saved = localStorage.getItem(OPACITY_KEY);
-  return saved === null ? 0.06 : parseFloat(saved);
-}
-
-export function setCrtOpacity(value) {
-  localStorage.setItem(OPACITY_KEY, String(value));
-  document.documentElement.style.setProperty("--crt-opacity", value);
-  const el = document.getElementById("settings-crt-opacity");
-  if (el) el.value = value;
-  const label = document.getElementById("settings-crt-opacity-label");
-  if (label) label.textContent = `${Math.round(value * 100)}%`;
-}
-
-export function getCrtRadar() {
-  const saved = localStorage.getItem(RADAR_KEY);
-  return saved === null ? true : saved === "true";
-}
-
-export function setCrtRadar(enabled) {
-  localStorage.setItem(RADAR_KEY, String(enabled));
-  document.body.classList.toggle("radar-sweep-enabled", enabled);
-  const el = document.getElementById("settings-radar-sweep");
-  if (el) el.checked = enabled;
+  if (el) el.value = validTheme;
 }
 
 const ACTIVITY_BAR_ORDER_KEY = "mk-activity-bar-order";

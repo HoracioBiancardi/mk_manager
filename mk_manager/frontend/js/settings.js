@@ -3,7 +3,7 @@
 import { esc, toast } from "./utils.js";
 import { apiFetch } from "./api.js";
 import { loadFiles } from "./files.js";
-import { applyEditorFontSize, getDefaultView, getEditorFontSize, setDefaultView, setEditorFontSize, getCrtScanlines, setCrtScanlines, getCrtFlicker, setCrtFlicker, getCrtTheme, setCrtTheme, getCrtStatic, setCrtStatic, getCrtCurved, setCrtCurved, getCrtTransition, setCrtTransition, getSfxEnabled, setSfxEnabled, getCrtOpacity, setCrtOpacity, getCrtRadar, setCrtRadar, getUseCodeMirror, setUseCodeMirror, getActivityBarOrder, moveActivityBarItem, resetActivityBarOrder, ACTIVITY_BAR_LABELS } from "./prefs.js";
+import { applyEditorFontSize, getDefaultView, getEditorFontSize, setDefaultView, setEditorFontSize, getCrtTheme, setCrtTheme, getActivityBarOrder, moveActivityBarItem, resetActivityBarOrder, ACTIVITY_BAR_LABELS } from "./prefs.js";
 
 let _assetsDirLoaded = "";
 let _assetsDirWasDefault = true;
@@ -38,20 +38,8 @@ export async function openSettingsModal() {
   document.getElementById("settings-storage-info").textContent = "–";
   document.getElementById("settings-default-view").value = getDefaultView();
   document.getElementById("settings-font-size").value = getEditorFontSize();
-  const cmCheck = document.getElementById("settings-use-codemirror");
-  if (cmCheck) cmCheck.checked = getUseCodeMirror();
   renderActivityBarOrderList();
   
-  // Inicializa inputs de aparência do Pip-Boy
-  document.getElementById("settings-scanlines").checked = getCrtScanlines();
-  document.getElementById("settings-flicker").checked = getCrtFlicker();
-  document.getElementById("settings-static").checked = getCrtStatic();
-  document.getElementById("settings-curved").checked = getCrtCurved();
-  document.getElementById("settings-transition").checked = getCrtTransition();
-  document.getElementById("settings-radar-sweep").checked = getCrtRadar();
-  document.getElementById("settings-sfx").checked = getSfxEnabled();
-  document.getElementById("settings-crt-opacity").value = getCrtOpacity();
-  document.getElementById("settings-crt-opacity-label").textContent = `${Math.round(getCrtOpacity() * 100)}%`;
   document.getElementById("settings-theme").value = getCrtTheme();
 
   try {
@@ -230,16 +218,7 @@ Object.assign(window, {
   folderBrowserGoUp,
   folderBrowserSelect,
   saveSettings,
-  toggleScanlines: setCrtScanlines,
-  toggleFlicker: setCrtFlicker,
-  toggleStatic: setCrtStatic,
-  toggleCurved: setCrtCurved,
-  toggleTransition: setCrtTransition,
-  toggleRadar: setCrtRadar,
-  toggleSfx: setSfxEnabled,
-  changeCrtOpacity: setCrtOpacity,
   changeTheme: setCrtTheme,
-  toggleUseCodeMirror: setUseCodeMirror,
   moveActivityIcon: (id, direction) => {
     moveActivityBarItem(id, direction);
     renderActivityBarOrderList();

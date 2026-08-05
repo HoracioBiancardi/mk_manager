@@ -11,8 +11,6 @@ import { renderList } from "./list.js";
 import { renderArchivePane } from "./archive.js";
 import { renderTrashView } from "./trash.js";
 import { renderCalendarView } from "./calendar.js";
-import { getCrtTransition } from "./prefs.js";
-import { playTransitionSfx } from "./sfx.js";
 
 const PANES = {
   kanban: "kanban-pane",
@@ -83,23 +81,7 @@ export function setMainView(view) {
     updateActivityBarActive();
   };
 
-  const useTransition = getCrtTransition();
-  if (useTransition) {
-    // Inicia animação de transição CRT (desliga a tela rápido)
-    document.body.classList.add("crt-transition-active");
-    playTransitionSfx();
-
-    // Altera a visualização no meio da transição (quando a tela apagar, em 180ms)
-    setTimeout(performChange, 180);
-
-    // Remove a classe de transição quando a animação de religar terminar (400ms)
-    setTimeout(() => {
-      document.body.classList.remove("crt-transition-active");
-    }, 400);
-  } else {
-    // Troca de tela instantânea sem animações
-    performChange();
-  }
+  performChange();
 }
 
 // ── Barra de atividades ─────────────────────────────────────────────────────

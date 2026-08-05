@@ -59,14 +59,7 @@
   </script>
 </head>
 
-<body class="crt-enabled flicker-enabled theme-green">
-  <div class="crt-overlay"></div>
-  <div class="crt-vignette"></div>
-  <div class="crt-static"></div>
-  <div class="crt-turn-on-overlay"></div>
-  <div class="crt-transition-overlay"></div>
-
-  <canvas id="bg-canvas"></canvas>
+<body class="theme-green-neutral">
   <div class="aurora">
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
@@ -628,59 +621,18 @@
           <button class="btn btn-ghost btn-sm" onclick="resetActivityIconOrder()">↺ Restaurar Ordem Padrão</button>
         </div>
 
-        <div class="settings-sec-title">📺 Aparência Pip-Boy (CRT)</div>
+        <div class="settings-sec-title">🎨 Tema e Cores</div>
         <div class="form-group">
-          <div class="settings-grid-2">
-            <label style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
-              <input type="checkbox" id="settings-scanlines" onchange="toggleScanlines(this.checked)">
-              <span>Scanlines CRT</span>
-            </label>
-            <label style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
-              <input type="checkbox" id="settings-flicker" onchange="toggleFlicker(this.checked)">
-              <span>Flicker (Brilho)</span>
-            </label>
-            <label style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
-              <input type="checkbox" id="settings-static" onchange="toggleStatic(this.checked)">
-              <span>Estática (Ruído)</span>
-            </label>
-            <label style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
-              <input type="checkbox" id="settings-curved" onchange="toggleCurved(this.checked)">
-              <span>Curvatura CRT</span>
-            </label>
-            <label style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
-              <input type="checkbox" id="settings-transition" onchange="toggleTransition(this.checked)">
-              <span>Transição CRT</span>
-            </label>
-            <label style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
-              <input type="checkbox" id="settings-radar-sweep" onchange="toggleRadar(this.checked)">
-              <span>Varredura Radar</span>
-            </label>
-            <label style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem;">
-              <input type="checkbox" id="settings-sfx" onchange="toggleSfx(this.checked)">
-              <span>Efeitos SFX</span>
-            </label>
-          </div>
-
-          <div style="display: flex; flex-direction: column; gap: 0.2rem; margin-top: 1rem;">
-            <label class="form-label" style="font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 0;">
-              Brilho das Scanlines CRT: <span id="settings-crt-opacity-label">6%</span>
-            </label>
-            <input id="settings-crt-opacity" type="range" min="0" max="0.2" step="0.01" style="width: 100%; cursor: pointer;"
-              oninput="changeCrtOpacity(parseFloat(this.value))">
-          </div>
-
-          <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.8rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
             <label for="settings-theme" style="font-size: 0.8125rem; color: var(--text-muted); white-space: nowrap;">Tema de Cor:</label>
             <select id="settings-theme" class="form-input" style="flex: 1; padding: 0.25rem 0.5rem;"
               onchange="changeTheme(this.value)">
-              <option value="green">Verde Fósforo (Classic Pip-Boy)</option>
               <option value="green-neutral">Verde Escuro (Neutro)</option>
-              <option value="amber">Âmbar Radiação (Fallout NV)</option>
-              <option value="blue">Azul HUD (Fallout 4)</option>
-              <option value="white">Branco Monocromático</option>
-              <option value="red">Vermelho Alerta (Enclave)</option>
-              <option value="purple">Roxo Vault-Tec</option>
               <option value="corporate">Corporativo (Neutro)</option>
+              <option value="tokyo-night">Tokyo Night (Azul &amp; Neon)</option>
+              <option value="nord">Nord Ice (Ártico Frio)</option>
+              <option value="dracula">Dracula Cyber (Roxo &amp; Neon)</option>
+              <option value="monokai-warm">Monokai Warm (Âmbar Quente)</option>
             </select>
           </div>
         </div>

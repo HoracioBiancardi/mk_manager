@@ -3,7 +3,6 @@
 import { st } from "./state.js";
 import { esc, toast } from "./utils.js";
 import { renderPreview } from "./preview.js";
-import { getUseCodeMirror } from "./prefs.js";
 
 let _scheduleSave = null;
 export function setSaveCallback(fn) {
@@ -23,17 +22,9 @@ function makeTableSep(cols) {
   return "|" + " --- |".repeat(Math.max(1, cols));
 }
 
-export function getCodeMirrorInstance() {
-  return null;
-}
-
 export function setEditorContent(text) {
   const ta = document.getElementById("md-editor");
   if (ta) ta.value = text || "";
-}
-
-export function initCodeMirror() {
-  // CodeMirror desativado — editor nativo ativo
 }
 
 // Substitui [start, end) por text preservando o undo stack nativo do browser
@@ -64,8 +55,6 @@ export function showEditorPanel() {
   document.getElementById("editor-area").style.display = "flex";
   const ta = document.getElementById("md-editor");
   if (ta) ta.style.display = "block";
-  const cmEl = document.querySelector(".CodeMirror");
-  if (cmEl) cmEl.style.display = "none";
 }
 
 export function showEmptyPanel() {

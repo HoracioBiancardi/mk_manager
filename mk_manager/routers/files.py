@@ -303,6 +303,31 @@ def archive_completed(
 
 
 @router.get(
+    "/trashed",
+    response_model=list[FileMetaResponse],
+    summary="List trashed files",
+    description="Return metadata for every soft-deleted file in the trash.",
+)
+def list_trashed_files(
+    service: FileService = Depends(get_file_service),
+) -> list[FileMetaResponse]:
+    """Return metadata for all trashed files."""
+    return [_to_meta(r) for r in service.list_trash_files()]
+
+
+@router.delete(
+    "/trash/purge",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Purge all files from trash",
+)
+def purge_all_trash(
+    service: FileService = Depends(get_file_service),
+) -> None:
+    """Permanently delete all files in the trash folder."""
+    service.purge_trash()
+
+
+@router.get(
     "/{file_id}",
     response_model=FileDetailResponse,
     summary="Get a file by ID",
@@ -443,19 +468,6 @@ def unarchive_file(
         )
 
 
-@router.get(
-    "/trashed",
-    response_model=list[FileMetaResponse],
-    summary="List trashed files",
-    description="Return metadata for every soft-deleted file in the trash.",
-)
-def list_trashed_files(
-    service: FileService = Depends(get_file_service),
-) -> list[FileMetaResponse]:
-    """Return metadata for all trashed files."""
-    return [_to_meta(r) for r in service.list_trash_files()]
-
-
 @router.post(
     "/{file_id}/untrash",
     response_model=FileMetaResponse,
@@ -473,18 +485,6 @@ def untrash_file(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"File '{file_id}' not found in trash.",
         )
-
-
-@router.delete(
-    "/trash/purge",
-    status_code=status.HTTP_204_NO_CONTENT,
-    summary="Purge all files from trash",
-)
-def purge_all_trash(
-    service: FileService = Depends(get_file_service),
-) -> None:
-    """Permanently delete all files in the trash folder."""
-    service.purge_trash()
 
 
 @router.delete(

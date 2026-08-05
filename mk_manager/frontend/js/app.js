@@ -35,7 +35,6 @@ import { closeDeleteModal, openDeleteModal } from "./delete-modal.js";
 import { closeSettingsModal } from "./settings.js";
 import { openQuickOpen, closeQuickOpen } from "./quickopen.js";
 import { applyPrefsOnBoot } from "./prefs.js";
-import { playBootSfx, playClickSfx } from "./sfx.js";
 import "./views.js";
 import "./export.js";
 import "./search-filter.js";
@@ -101,20 +100,7 @@ document.addEventListener("keydown", (e) => {
   const ok = await checkConn();
   if (ok) {
     await loadFiles();
-    playBootSfx();
   } else {
     toast("API offline. Inicie o servidor: uv run mk-manager", "error");
   }
 })();
-
-// Efeitos sonoros mecânicos globais de digitação e clique
-document.addEventListener("click", () => {
-  playClickSfx();
-});
-
-document.addEventListener("keydown", (e) => {
-  // Apenas toca som em teclas de caracteres simples (comprimento 1)
-  if (e.key && e.key.length === 1) {
-    playClickSfx();
-  }
-});
