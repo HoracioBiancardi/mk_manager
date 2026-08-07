@@ -79,7 +79,16 @@ export function initSidebarResizer() {
 const NOTE_ICON = `<svg class="tree-icon" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 2v6h6" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 13h8M8 17h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
 const TASK_ICON = `<svg class="tree-icon" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 11l3 3L22 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const FOLDER_ICON = `<svg class="tree-icon" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
+const IMAGE_ICON = `<svg class="tree-icon" width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.8"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/><path d="M21 15l-5-5L5 21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const FILE_OTHER_ICON = `<svg class="tree-icon" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9l-5-7z" stroke="currentColor" stroke-width="1.8"/><path d="M13 2v7h7" stroke="currentColor" stroke-width="1.8"/></svg>`;
 const CARET_SVG = `<svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M2 1l4 3-4 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+function getFileIcon(f) {
+  if (f.type === 'task') return TASK_ICON;
+  if (f.type === 'note') return NOTE_ICON;
+  const isImage = /\.(png|jpe?g|gif|webp|svg|bmp|ico|avif)$/i.test(f.filename || f.title || '');
+  return isImage ? IMAGE_ICON : FILE_OTHER_ICON;
+}
 
 // ── Utility ──────────────────────────────────────────────────────────────────
 
@@ -260,17 +269,18 @@ function treeFolderHtml(path, name, depth, isOpen, fileCount, hasContent) {
 function treeFileHtml(f, depth) {
   const indent = (0.5 + depth * 0.875).toFixed(2);
   const active = f.id === st.activeId ? ' active' : '';
-  const fileIcon = f.type === 'task' ? TASK_ICON : NOTE_ICON;
+  const fileIcon = getFileIcon(f);
+  const isOther = f.type === 'other';
 
   if (st.renamingId === f.id) {
-    return `<div class="tree-item${active}" style="padding-left:${indent}rem" data-id="${f.id}"
-      draggable="true" ondragstart="onFileDragStart(event,'${f.id}')">
+    return `<div class="tree-item${active}" style="padding-left:${indent}rem" data-id="${esc(f.id)}"
+      draggable="true" ondragstart="onFileDragStart(event,'${esc(f.id)}')">
       <span class="tree-caret-gap"></span>
       ${fileIcon}
       <input class="rename-input" id="rename-input" style="flex:1"
         value="${esc(f.title || '')}"
-        onkeydown="onRenameKey(event,'${f.id}')"
-        onblur="onRenameBlur('${f.id}',this.value)"
+        onkeydown="onRenameKey(event,'${esc(f.id)}')"
+        onblur="onRenameBlur('${esc(f.id)}',this.value)"
         onclick="event.stopPropagation()">
     </div>`;
   }
@@ -278,19 +288,22 @@ function treeFileHtml(f, depth) {
   const progress = f.type === 'task' && f.task_total > 0
     ? `<span class="tree-progress" title="Progresso da task: ${f.task_done} concluídas de ${f.task_total}">[${f.task_done}/${f.task_total}]</span>`
     : '';
+  const ext = (f.title || f.filename).includes('.') ? (f.title || f.filename).split('.').pop().toUpperCase() : '';
+  const otherBadge = isOther && ext ? `<span class="tree-progress" style="opacity:0.6">[${esc(ext)}]</span>` : '';
 
-  return `<div class="tree-item${active}" style="padding-left:${indent}rem" data-id="${f.id}"
-    onclick="openFile('${f.id}')"
-    oncontextmenu="onFileContextMenu(event,'${f.id}')"
-    draggable="true" ondragstart="onFileDragStart(event,'${f.id}')"
-    onmouseenter="showFileTooltip(event,'${f.id}')" onmouseleave="hideFileTooltip()">
+  return `<div class="tree-item${active}" style="padding-left:${indent}rem" data-id="${esc(f.id)}"
+    onclick="openFile('${esc(f.id)}')"
+    oncontextmenu="onFileContextMenu(event,'${esc(f.id)}')"
+    draggable="true" ondragstart="onFileDragStart(event,'${esc(f.id)}')"
+    onmouseenter="showFileTooltip(event,'${esc(f.id)}')" onmouseleave="hideFileTooltip()">
     <span class="tree-caret-gap"></span>
     ${fileIcon}
     <span class="tree-name">${esc(f.title || 'Sem título')}</span>
     ${progress}
+    ${otherBadge}
     <div class="tree-item-actions" onclick="event.stopPropagation()">
-      <button class="icon-btn" onclick="startRenameFile('${f.id}')" title="Renomear">✏</button>
-      <button class="icon-btn del" onclick="openDeleteModal('${f.id}','${esc(f.title || 'Sem título')}','${esc(f.filename)}')" title="Excluir">✕</button>
+      <button class="icon-btn" onclick="startRenameFile('${esc(f.id)}')" title="Renomear">✏</button>
+      <button class="icon-btn del" onclick="openDeleteModal('${esc(f.id)}','${esc(f.title || 'Sem título')}','${esc(f.filename)}')" title="Excluir">✕</button>
     </div>
   </div>`;
 }

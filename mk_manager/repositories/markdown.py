@@ -140,7 +140,7 @@ class MarkdownFileRepository(AbstractFileRepository):
             cached = self._cache.get(path)
             if cached is not None and cached[0] == mtime_ns:
                 return cached[1]
-        record = self._parse(path)
+        record = self._parse(path) if path.suffix == ".md" else self._parse_non_md(path)
         with self._lock:
             self._cache[path] = (mtime_ns, record)
             self._id_to_path[record.id] = path
@@ -210,7 +210,18 @@ class MarkdownFileRepository(AbstractFileRepository):
         if cached_path is not None and cached_path.is_file():
             return cached_path
 
+        direct = self._dir / file_id
+        if direct.is_file():
+            with self._lock:
+                self._id_to_path[file_id] = direct
+            return direct
+
         matches = list(self._dir.rglob(f"{file_id}.md"))
+        if not matches:
+            matches = [
+                p for p in self._dir.rglob("*")
+                if p.is_file() and (p.name == file_id or str(p.relative_to(self._dir)).replace("\\", "/") == file_id)
+            ]
         if not matches:
             with self._lock:
                 self._id_to_path.pop(file_id, None)
@@ -281,6 +292,34 @@ class MarkdownFileRepository(AbstractFileRepository):
             due_date=_coerce_str(meta.get("due_date") or meta.get("due") or ""),
         )
 
+    def _parse_non_md(self, path: Path) -> FileRecord:
+        """Parse a non-markdown file into a FileRecord with type='other'."""
+        rel_path = path.relative_to(self._dir)
+        filename = str(rel_path).replace("\\", "/")
+        rel_parent = path.parent.relative_to(self._dir)
+        folder = str(rel_parent).replace("\\", "/") if str(rel_parent) != "." else ""
+
+        now = datetime.now(timezone.utc).isoformat()
+        try:
+            st = path.stat()
+            mtime = datetime.fromtimestamp(st.st_mtime, timezone.utc).isoformat()
+            ctime = datetime.fromtimestamp(st.st_ctime, timezone.utc).isoformat()
+        except OSError:
+            mtime = now
+            ctime = now
+
+        return FileRecord(
+            id=filename,
+            title=path.name,
+            type="other",
+            tags=[],
+            content="",
+            filename=filename,
+            created=ctime,
+            modified=mtime,
+            folder=folder,
+        )
+
     def _write(self, path: Path, record: FileRecord) -> None:
         """Serialize *record* as YAML frontmatter + Markdown body and save it.
 
@@ -325,20 +364,18 @@ class MarkdownFileRepository(AbstractFileRepository):
         Returns:
             Ordered list of ``FileRecord`` objects, newest-modified first.
         """
-        archive_dir = self._dir / self.ARCHIVE_FOLDER
-        trash_dir = self._dir / self.TRASH_FOLDER
         paths: list[Path] = []
-        for child in self._dir.iterdir():
-            if child == archive_dir:
-                if include_archived:
-                    paths.extend(child.rglob("*.md"))
+        for child in self._dir.rglob("*"):
+            if not child.is_file():
                 continue
-            if child == trash_dir:
+            rel_parts = child.relative_to(self._dir).parts
+            if any(part.startswith(".") for part in rel_parts):
                 continue
-            if child.is_dir():
-                paths.extend(child.rglob("*.md"))
-            elif child.suffix == ".md":
-                paths.append(child)
+            if rel_parts[0] == self.TRASH_FOLDER:
+                continue
+            if not include_archived and rel_parts[0] == self.ARCHIVE_FOLDER:
+                continue
+            paths.append(child)
         paths.sort(key=lambda p: p.stat().st_mtime, reverse=True)
 
         records: list[FileRecord] = []
@@ -494,6 +531,27 @@ class MarkdownFileRepository(AbstractFileRepository):
         new_folder = folder.strip("/") if folder is not None else existing.folder
         new_folder = new_folder or ""
 
+        if existing.type == "other":
+            dest_dir = self._dir / new_folder if new_folder else self._dir
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            new_path = dest_dir / new_title
+
+            if new_path != old_path:
+                old_path.rename(new_path)
+                self._forget(old_path, file_id)
+
+            new_rel_filename = str(new_path.relative_to(self._dir)).replace("\\", "/")
+            updated = dataclasses.replace(
+                existing,
+                id=new_rel_filename,
+                title=new_title,
+                folder=new_folder,
+                filename=new_rel_filename,
+                modified=modified,
+            )
+            self._remember(new_path, updated)
+            return updated
+
         # Re-slug the ID whenever the title's slug doesn't match the current file ID
         desired = _slugify(new_title) if new_title else ""
         if desired and desired != file_id:
@@ -559,6 +617,25 @@ class MarkdownFileRepository(AbstractFileRepository):
         """Shared move logic for `archive`/`unarchive`/`trash`/`untrash`."""
         old_path = self._require_path(file_id)
         existing = self._parse_cached(old_path)
+        if existing.type == "other":
+            new_path = (self._dir / new_folder / old_path.name) if new_folder else (self._dir / old_path.name)
+            new_path.parent.mkdir(parents=True, exist_ok=True)
+            if new_path != old_path:
+                old_path.rename(new_path)
+                self._forget(old_path, file_id)
+            rel_filename = str(new_path.relative_to(self._dir)).replace("\\", "/")
+            updated = dataclasses.replace(
+                existing,
+                id=rel_filename,
+                folder=new_folder,
+                archived_from=archived_from if archived_from is not None else existing.archived_from,
+                trashed_from=trashed_from if trashed_from is not None else existing.trashed_from,
+                filename=rel_filename,
+                modified=datetime.now(timezone.utc).isoformat(),
+            )
+            self._remember(new_path, updated)
+            return updated
+
         new_path = self._build_path(existing.id, new_folder)
         rel_filename = str(new_path.relative_to(self._dir)).replace("\\", "/")
         updated = dataclasses.replace(

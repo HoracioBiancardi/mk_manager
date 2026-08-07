@@ -122,11 +122,18 @@ def create_app() -> FastAPI:
             HTTPException: 404 if *asset_path* escapes the assets directory
                 (path traversal) or doesn't resolve to an existing file.
         """
-        assets_dir = get_settings().resolved_assets_dir().resolve()
-        target = (assets_dir / asset_path).resolve()
-        if not target.is_relative_to(assets_dir) or not target.is_file():
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Asset not found")
-        return FileResponse(target)
+        settings = get_settings()
+        notes_dir = settings.notes_dir.resolve()
+        target = (notes_dir / asset_path).resolve()
+        if target.is_relative_to(notes_dir) and target.is_file():
+            return FileResponse(target)
+
+        assets_dir = settings.resolved_assets_dir().resolve()
+        target_legacy = (assets_dir / asset_path).resolve()
+        if target_legacy.is_relative_to(assets_dir) and target_legacy.is_file():
+            return FileResponse(target_legacy)
+
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Asset not found")
 
     return app
 

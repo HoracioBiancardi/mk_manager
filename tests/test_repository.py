@@ -100,6 +100,30 @@ class TestMarkdownFileRepository(unittest.TestCase):
         self.repo.purge_trash("del-1")
         self.assertEqual(len(self.repo.list_trash()), 0)
 
+    def test_repository_non_markdown_files(self):
+        img_dir = self.notes_dir / "projetos"
+        img_dir.mkdir(parents=True, exist_ok=True)
+        img_path = img_dir / "diagrama.png"
+        img_path.write_bytes(b"fake png content")
+
+        all_files = self.repo.list_all()
+        self.assertTrue(any(f.type == "other" and f.title == "diagrama.png" for f in all_files))
+
+        non_md_record = next(f for f in all_files if f.type == "other")
+        self.assertEqual(non_md_record.folder, "projetos")
+        self.assertEqual(non_md_record.filename, "projetos/diagrama.png")
+
+        updated = self.repo.update(non_md_record.id, title=None, tags=None, content=None, modified="2026-08-07T12:00:00", folder="estudos")
+        self.assertEqual(updated.folder, "estudos")
+        self.assertEqual(updated.id, "estudos/diagrama.png")
+        self.assertTrue((self.notes_dir / "estudos" / "diagrama.png").exists())
+        self.assertFalse(img_path.exists())
+
+        # Check get_by_id after move
+        retrieved = self.repo.get_by_id("estudos/diagrama.png")
+        self.assertEqual(retrieved.title, "diagrama.png")
+        self.assertEqual(retrieved.folder, "estudos")
+
 
 if __name__ == "__main__":
     unittest.main()

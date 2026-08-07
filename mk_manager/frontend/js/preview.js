@@ -36,10 +36,19 @@ marked.use({
   ],
   renderer: {
     link(href, title, text) {
-      const isExternal = /^https?:\/\//i.test(href || "");
+      const hrefStr = href || "";
+      const isExternal = /^https?:\/\//i.test(hrefStr);
+      const isAsset = hrefStr.startsWith("/assets/") || hrefStr.startsWith("assets/");
+      const isImageHref = isAsset && /\.(png|jpe?g|gif|webp|svg|bmp|ico|avif)$/i.test(hrefStr);
       const titleAttr = title ? ` title="${esc(title)}"` : "";
+
+      if (isAsset && !isImageHref) {
+        const label = text.includes("📄") ? text : `📄 ${text}`;
+        return `<a href="${esc(hrefStr)}" class="asset-link"${titleAttr} target="_blank" rel="noopener noreferrer">${label}</a>`;
+      }
+
       const target = isExternal ? ' target="_blank" rel="noopener noreferrer"' : "";
-      return `<a href="${esc(href || "")}"${titleAttr}${target}>${text}</a>`;
+      return `<a href="${esc(hrefStr)}"${titleAttr}${target}>${text}</a>`;
     },
   },
 });

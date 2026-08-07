@@ -8,6 +8,7 @@ and returns a typed response schema.  No business logic lives here.
 from __future__ import annotations
 
 from typing import Annotated
+from urllib.parse import unquote
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
@@ -328,7 +329,7 @@ def purge_all_trash(
 
 
 @router.get(
-    "/{file_id}",
+    "/{file_id:path}",
     response_model=FileDetailResponse,
     summary="Get a file by ID",
 )
@@ -339,7 +340,7 @@ def get_file(
     """Retrieve a single file including its full markdown content.
 
     Args:
-        file_id: Unique file identifier (filename stem).
+        file_id: Unique file identifier (filename stem or relative path).
         service: Injected ``FileService`` instance.
 
     Returns:
@@ -349,7 +350,7 @@ def get_file(
         HTTPException: 404 if no file with *file_id* exists.
     """
     try:
-        return _to_detail(service.get_file(file_id))
+        return _to_detail(service.get_file(unquote(file_id)))
     except FileNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -358,7 +359,7 @@ def get_file(
 
 
 @router.put(
-    "/{file_id}",
+    "/{file_id:path}",
     response_model=FileDetailResponse,
     summary="Update a file (partial)",
 )
@@ -384,7 +385,7 @@ def update_file(
         HTTPException: 404 if no file with *file_id* exists.
     """
     try:
-        return _to_detail(service.update_file(file_id, body))
+        return _to_detail(service.update_file(unquote(file_id), body))
     except FileNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -393,7 +394,7 @@ def update_file(
 
 
 @router.delete(
-    "/{file_id}",
+    "/{file_id:path}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete a file",
 )
@@ -411,7 +412,7 @@ def delete_file(
         HTTPException: 404 if no file with *file_id* exists.
     """
     try:
-        service.delete_file(file_id)
+        service.delete_file(unquote(file_id))
     except FileNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -420,7 +421,7 @@ def delete_file(
 
 
 @router.post(
-    "/{file_id}/archive",
+    "/{file_id:path}/archive",
     response_model=FileMetaResponse,
     summary="Archive a file",
 )
@@ -441,7 +442,7 @@ def archive_file(
         HTTPException: 404 if no file with *file_id* exists.
     """
     try:
-        return _to_meta(service.archive_file(file_id))
+        return _to_meta(service.archive_file(unquote(file_id)))
     except FileNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -450,7 +451,7 @@ def archive_file(
 
 
 @router.post(
-    "/{file_id}/unarchive",
+    "/{file_id:path}/unarchive",
     response_model=FileMetaResponse,
     summary="Restore an archived file",
 )
@@ -460,7 +461,7 @@ def unarchive_file(
 ) -> FileMetaResponse:
     """Restore a previously archived file to its original folder."""
     try:
-        return _to_meta(service.unarchive_file(file_id))
+        return _to_meta(service.unarchive_file(unquote(file_id)))
     except FileNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -469,7 +470,7 @@ def unarchive_file(
 
 
 @router.post(
-    "/{file_id}/untrash",
+    "/{file_id:path}/untrash",
     response_model=FileMetaResponse,
     summary="Restore a trashed file",
 )
@@ -479,7 +480,7 @@ def untrash_file(
 ) -> FileMetaResponse:
     """Restore a soft-deleted file to its original folder."""
     try:
-        return _to_meta(service.untrash_file(file_id))
+        return _to_meta(service.untrash_file(unquote(file_id)))
     except FileNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -488,7 +489,7 @@ def untrash_file(
 
 
 @router.delete(
-    "/{file_id}/purge",
+    "/{file_id:path}/purge",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Permanently purge a file from trash",
 )
@@ -497,4 +498,4 @@ def purge_file(
     service: FileService = Depends(get_file_service),
 ) -> None:
     """Permanently delete a single file from the trash folder."""
-    service.purge_trash(file_id)
+    service.purge_trash(unquote(file_id))

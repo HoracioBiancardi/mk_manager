@@ -20,6 +20,7 @@ import { setMainView } from "./views.js";
 import { refreshGraphIfActive } from "./graph.js";
 import { refreshListIfActive } from "./list.js";
 import { refreshArchiveIfActive } from "./archive.js";
+import { getDefaultView } from "./prefs.js";
 
 // ── Storage info ───────────────────────────────────────────────────────────────
 async function updateStorageInfo() {
@@ -147,6 +148,38 @@ export async function openFile(id) {
     if (dueDateEl) dueDateEl.value = file.due_date || "";
 
     const badge = document.getElementById("type-badge");
+    if (file.type === "other") {
+      st.activeId = id;
+      st.activeTags = [];
+      st.activeFolder = file.folder || "";
+      st.activeStatus = "";
+      st.isDirty = false;
+
+      document.getElementById("title-input").value = file.title;
+      const folderInput = document.getElementById("folder-input");
+      if (folderInput) folderInput.value = file.folder || "";
+
+      const ext = (file.title || file.filename).split(".").pop().toUpperCase();
+      badge.textContent = ext || "Arquivo";
+      badge.className = `type-badge other`;
+      updateStatusVis("other");
+
+      const isImage = /\.(png|jpe?g|gif|webp|svg|bmp|ico|avif)$/i.test(file.filename || file.title);
+      const assetUrl = `/assets/${file.filename}`;
+      const nonMdContent = isImage
+        ? `![${file.title}](${assetUrl})`
+        : `[📄 ${file.title}](${assetUrl})`;
+
+      setEditorContent(nonMdContent);
+      renderTags([]);
+      renderSidebar();
+      showEditorPanel();
+      setView("preview");
+      updateFooter();
+      setSaveStatus("saved");
+      return;
+    }
+
     badge.textContent = file.type === "task" ? "Task" : "Note";
     badge.className = `type-badge ${file.type}`;
     updateStatusVis(file.type);
@@ -154,7 +187,9 @@ export async function openFile(id) {
     renderTags(st.activeTags);
     renderSidebar();
     showEditorPanel();
-    setView(st.view);
+    const defaultView = getDefaultView();
+    st.view = defaultView;
+    setView(defaultView);
     updateFooter();
     setSaveStatus("saved");
   } catch (e) {

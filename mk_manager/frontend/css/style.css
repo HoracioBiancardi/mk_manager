@@ -122,117 +122,7 @@ body.theme-green-neutral {
   --info:            #00d2ff;
 }
 
-/* ── Theme: Tokyo Night ─────────────────────────────────────────────────── */
-body.theme-tokyo-night {
-  --bg:              #1a1b26;
-  --surface:         #24283b;
-  --surface-alt:     #2f354f;
-  --surface-hover:   #3b4261;
 
-  --border:          #414868;
-  --border-muted:    #292e42;
-  --border-bright:   #565f89;
-
-  --primary:         #7aa2f7;
-  --primary-hover:   #89b4fa;
-  --primary-dim:     rgba(122, 162, 247, 0.15);
-  --primary-glow:    rgba(122, 162, 247, 0.25);
-  --glow-ring:       0 0 0 3px rgba(122, 162, 247, 0.2);
-
-  --text:            #c0caf5;
-  --text-muted:      #a9b1d6;
-  --text-subtle:     #787c99;
-
-  --success:         #9ece6a;
-  --warn:            #e0af68;
-  --danger:          #f7768e;
-  --danger-dim:      rgba(247, 118, 142, 0.12);
-  --info:            #7dcfff;
-}
-
-/* ── Theme: Nord Ice ────────────────────────────────────────────────────── */
-body.theme-nord {
-  --bg:              #2e3440;
-  --surface:         #3b4252;
-  --surface-alt:     #434c5e;
-  --surface-hover:   #4c566a;
-
-  --border:          #4c566a;
-  --border-muted:    #3b4252;
-  --border-bright:   #616e88;
-
-  --primary:         #88c0d0;
-  --primary-hover:   #8fbcbb;
-  --primary-dim:     rgba(136, 192, 208, 0.15);
-  --primary-glow:    rgba(136, 192, 208, 0.25);
-  --glow-ring:       0 0 0 3px rgba(136, 192, 208, 0.2);
-
-  --text:            #eceff4;
-  --text-muted:      #d8dee9;
-  --text-subtle:     #949db1;
-
-  --success:         #a3be8c;
-  --warn:            #ebcb8b;
-  --danger:          #bf616a;
-  --danger-dim:      rgba(191, 97, 106, 0.12);
-  --info:            #81a1c1;
-}
-
-/* ── Theme: Dracula Cyber ───────────────────────────────────────────────── */
-body.theme-dracula {
-  --bg:              #1e1f29;
-  --surface:         #282a36;
-  --surface-alt:     #343746;
-  --surface-hover:   #44475a;
-
-  --border:          #44475a;
-  --border-muted:    #2d3042;
-  --border-bright:   #6272a4;
-
-  --primary:         #bd93f9;
-  --primary-hover:   #d6acff;
-  --primary-dim:     rgba(189, 147, 249, 0.15);
-  --primary-glow:    rgba(189, 147, 249, 0.25);
-  --glow-ring:       0 0 0 3px rgba(189, 147, 249, 0.2);
-
-  --text:            #f8f8f2;
-  --text-muted:      #bdc3d6;
-  --text-subtle:     #6272a4;
-
-  --success:         #50fa7b;
-  --warn:            #f1fa8c;
-  --danger:          #ff5555;
-  --danger-dim:      rgba(255, 85, 85, 0.12);
-  --info:            #8be9fd;
-}
-
-/* ── Theme: Monokai Warm ────────────────────────────────────────────────── */
-body.theme-monokai-warm {
-  --bg:              #221f22;
-  --surface:         #2d2a2e;
-  --surface-alt:     #3a363b;
-  --surface-hover:   #4a454b;
-
-  --border:          #4a454b;
-  --border-muted:    #343035;
-  --border-bright:   #645d65;
-
-  --primary:         #ffd866;
-  --primary-hover:   #ffe28a;
-  --primary-dim:     rgba(255, 216, 102, 0.15);
-  --primary-glow:    rgba(255, 216, 102, 0.25);
-  --glow-ring:       0 0 0 3px rgba(255, 216, 102, 0.2);
-
-  --text:            #fcfcfa;
-  --text-muted:      #c1c0c0;
-  --text-subtle:     #868586;
-
-  --success:         #a9dc76;
-  --warn:            #fc9867;
-  --danger:          #ff6188;
-  --danger-dim:      rgba(255, 97, 136, 0.12);
-  --info:            #78dce8;
-}
 
 body.theme-green-neutral {
   font-family: 'Share Tech Mono', ui-monospace, 'SFMono-Regular', monospace;
@@ -3239,6 +3129,31 @@ mark {
     font-family: serif !important;
   }
 }
+
+a.asset-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--primary);
+  text-decoration: none;
+  font-size: 0.9em;
+  font-weight: 500;
+  transition: var(--t);
+  margin: 0.2rem 0;
+}
+
+a.asset-link:hover {
+  background: var(--surface-hover);
+  border-color: var(--primary);
+  color: var(--primary-hover);
+  text-decoration: none;
+  box-shadow: 0 0 8px var(--primary-glow);
+}
+
 
 
 

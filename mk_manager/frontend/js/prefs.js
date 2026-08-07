@@ -63,15 +63,15 @@ export function applyPrefsOnBoot() {
 }
 
 const THEME_KEY = "mk-crt-theme";
-const VALID_THEMES = new Set(["green-neutral", "corporate", "tokyo-night", "nord", "dracula", "monokai-warm"]);
+const VALID_THEMES = new Set(["corporate", "green-neutral"]);
 
 export function getCrtTheme() {
   const saved = localStorage.getItem(THEME_KEY);
-  return VALID_THEMES.has(saved) ? saved : "green-neutral";
+  return VALID_THEMES.has(saved) ? saved : "corporate";
 }
 
 export function setCrtTheme(theme) {
-  const validTheme = VALID_THEMES.has(theme) ? theme : "green-neutral";
+  const validTheme = VALID_THEMES.has(theme) ? theme : "corporate";
   localStorage.setItem(THEME_KEY, validTheme);
   VALID_THEMES.forEach((t) => document.body.classList.remove("theme-" + t));
   document.body.classList.add("theme-" + validTheme);

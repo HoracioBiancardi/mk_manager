@@ -38,7 +38,7 @@ class FileRecord:
 
     id: str
     title: str
-    type: Literal["note", "task"]
+    type: Literal["note", "task", "other"]
     tags: list[str]
     content: str
     filename: str
