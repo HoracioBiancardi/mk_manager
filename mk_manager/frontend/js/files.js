@@ -41,7 +41,8 @@ export async function loadFiles() {
       apiFetch("/files/folders"),
     ]);
     st.files = await filesRes.json();
-    st.knownFolders = new Set((await foldersRes.json()).folders);
+    const rawFolders = (await foldersRes.json()).folders || [];
+    st.knownFolders = new Set(rawFolders.filter(f => f !== 'assets' && !f.startsWith('assets/')));
     st.searchResults = null;
     renderSidebar();
     updateStorageInfo();

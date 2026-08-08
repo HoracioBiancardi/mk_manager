@@ -120,7 +120,7 @@ export function folderPathsFromFiles(files) {
   for (const p of st.knownFolders) {
     if (!anyTypeFolders.has(p)) paths.add(p);
   }
-  return [...paths].sort();
+  return [...paths].filter(p => p !== 'assets' && !p.startsWith('assets/')).sort();
 }
 
 export function getDisplayFiles() {
@@ -147,7 +147,8 @@ export function renderTree() {
     return;
   }
 
-  const files = st.filter === 'all' ? st.files : st.files.filter(f => f.type === st.filter);
+  const files = (st.filter === 'all' ? st.files : st.files.filter(f => f.type === st.filter))
+    .filter(f => (f.folder || '') !== 'assets' && !(f.folder || '').startsWith('assets/'));
 
   const allFolderPaths = folderPathsFromFiles(files);
   const rootFiles = files
