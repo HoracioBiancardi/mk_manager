@@ -1,6 +1,5 @@
 // Responsabilidade: alternância entre as "telas cheias" do painel principal
-// (editor, kanban, tags, busca) e a barra de atividades que as controla.
-// Generaliza o que antes era só o modo Kanban (enterKanbanMode/exitKanbanMode).
+// (editor, kanban, tags, busca, assets) e a barra de atividades que as controla.
 
 import { st } from "./state.js";
 import { setView, showEditorPanel, showEmptyPanel } from "./editor.js";
@@ -11,6 +10,7 @@ import { renderList } from "./list.js";
 import { renderArchivePane } from "./archive.js";
 import { renderTrashView } from "./trash.js";
 import { renderCalendarView } from "./calendar.js";
+import { loadProjectAssets } from "./assets-panel.js";
 
 const PANES = {
   kanban: "kanban-pane",
@@ -21,6 +21,7 @@ const PANES = {
   archive: "archive-pane",
   trash: "trash-pane",
   calendar: "calendar-pane",
+  assets: "assets-pane",
 };
 
 function hideAllPanes() {
@@ -75,6 +76,8 @@ export function setMainView(view) {
         renderTrashView();
       } else if (view === "calendar") {
         renderCalendarView();
+      } else if (view === "assets") {
+        loadProjectAssets();
       }
     }
 

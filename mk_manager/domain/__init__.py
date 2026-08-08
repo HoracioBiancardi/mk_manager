@@ -1,1 +1,1 @@
-"""Domain layer: core business entities, independent of infrastructure."""
+"""Domain entities module"""

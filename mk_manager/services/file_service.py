@@ -1,15 +1,3 @@
-"""Business logic for file management, search, and statistics.
-
-The ``FileService`` is the single point of contact between the HTTP layer and
-the storage layer.  It knows *what* to do (business rules) but is agnostic of
-*how* files are stored (delegated to ``AbstractFileRepository``).
-
-This satisfies:
-- **S**: One reason to change — only if business rules change.
-- **O**: Extended by supplying a different repository, not by modifying this class.
-- **D**: Depends on ``AbstractFileRepository``, not on any concrete class.
-"""
-
 from __future__ import annotations
 
 import re
@@ -27,87 +15,33 @@ from mk_manager.models.schemas import (
 )
 from mk_manager.repositories.base import AbstractFileRepository
 
-
 def _utc_now() -> str:
-    """Return the current UTC timestamp in ISO 8601 format.
-
-    Returns:
-        ISO 8601 timestamp string, e.g. ``"2024-01-15T10:30:00+00:00"``.
-    """
     return datetime.now(timezone.utc).isoformat()
 
-
 def _slugify(text: str) -> str:
-    """Convert arbitrary text into a URL/filename-safe slug.
-
-    Strips accents, lowercases, and collapses any run of non-alphanumeric
-    characters into a single hyphen.
-
-    Args:
-        text: Arbitrary input text (e.g. a file title).
-
-    Returns:
-        A lowercase, hyphen-separated slug with no leading/trailing hyphens.
-    """
     text = unicodedata.normalize("NFD", text)
     text = "".join(c for c in text if unicodedata.category(c) != "Mn")
     text = text.lower().strip()
     text = re.sub(r"[^a-z0-9]+", "-", text)
     return text.strip("-")
 
-
 def _id_for_title(title: str) -> str:
-    """Return a slug of *title*, or a timestamp-based fallback for empty titles.
-
-    Args:
-        title: File title to derive an id from.
-
-    Returns:
-        A slug suitable for use as a file id, never empty.
-    """
     slug = _slugify(title)
     if slug:
         return slug
     now = datetime.now(timezone.utc)
     return f"nota-{now.strftime('%Y%m%d-%H%M%S')}"
 
-
 _FENCE_RE = re.compile(r"```.*?```", re.DOTALL)
 _INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
 _URL_RE = re.compile(r"https?://\S+")
-# Requires a letter immediately after "#" (no space), so markdown headings
-# ("# Title") never match — headings always have a space after the hashes,
-# tags never do. Also excludes "#" preceded by a word char, another "#", or
-# "/" so it doesn't fire mid-word or inside an already-matched path segment.
 _TAG_RE = re.compile(r"(?<![\w#/])#([A-Za-z][\w/-]*)")
-# [[Target]], [[Target|Alias]], [[Target#heading]] (heading fragment ignored —
-# there's no in-note heading anchor navigation, only note-to-note links).
 _WIKILINK_RE = re.compile(r"\[\[([^\[\]|#]+)(?:#[^\[\]|]*)?(?:\|([^\[\]]+))?\]\]")
 
-
 def _strip_code_and_urls(content: str) -> str:
-    """Blank out fenced code, inline code, and URLs before scanning prose.
-
-    Shared by tag and wikilink extraction so neither picks up matches from
-    inside a code sample or a URL fragment (e.g. ``http://x.com/#section``).
-    """
     return _URL_RE.sub(" ", _INLINE_CODE_RE.sub(" ", _FENCE_RE.sub(" ", content)))
 
-
 def extract_inline_tags(content: str) -> list[str]:
-    """Extract ``#tag`` references from markdown body content.
-
-    Mirrors Obsidian's inline-tag convention: a tag is a "#" immediately
-    followed by a letter, found anywhere in the prose. Matches inside fenced
-    code blocks, inline code spans, and URLs are ignored so code comments,
-    hex-like tokens, and URL fragments don't get treated as tags.
-
-    Args:
-        content: Raw markdown body (frontmatter already stripped).
-
-    Returns:
-        Unique tag strings (without the "#"), in first-seen order.
-    """
     stripped = _strip_code_and_urls(content)
     seen: list[str] = []
     for m in _TAG_RE.finditer(stripped):
@@ -116,20 +50,7 @@ def extract_inline_tags(content: str) -> list[str]:
             seen.append(tag)
     return seen
 
-
 def extract_wikilink_targets(content: str) -> list[str]:
-    """Extract ``[[Note Title]]`` link targets from markdown body content.
-
-    Supports ``[[Target]]``, ``[[Target|Alias]]`` (alias ignored — only the
-    target matters for graph/resolution purposes), and ``[[Target#heading]]``
-    (heading fragment dropped, links resolve at note granularity).
-
-    Args:
-        content: Raw markdown body (frontmatter already stripped).
-
-    Returns:
-        Unique, trimmed target strings, in first-seen order.
-    """
     stripped = _strip_code_and_urls(content)
     seen: list[str] = []
     for m in _WIKILINK_RE.finditer(stripped):
@@ -137,7 +58,6 @@ def extract_wikilink_targets(content: str) -> list[str]:
         if target and target not in seen:
             seen.append(target)
     return seen
-
 
 def _build_snippet(content: str, query: str, radius: int = 120) -> str:
     stripped = content.strip()
@@ -164,74 +84,22 @@ def _build_snippet(content: str, query: str, radius: int = 120) -> str:
         chunk += "…"
     return chunk
 
-
 class FileService:
-    """Orchestrates file CRUD, search, and statistics operations.
-
-    Depends exclusively on ``AbstractFileRepository`` so the storage backend
-    can be replaced without any changes here (Dependency Inversion Principle).
-
-    Args:
-        repository: A concrete implementation of ``AbstractFileRepository``.
-
-    Example:
-        >>> from pathlib import Path
-        >>> from mk_manager.repositories.markdown import MarkdownFileRepository
-        >>> repo = MarkdownFileRepository(Path("./notes"))
-        >>> service = FileService(repo)
-        >>> file = service.create_file(FileCreateRequest(title="Sprint planning"))
-    """
-
     def __init__(self, repository: AbstractFileRepository) -> None:
-        """Inject the storage repository dependency.
-
-        Args:
-            repository: Storage backend implementing ``AbstractFileRepository``.
-        """
         self._repo = repository
-
-    # ── Queries ────────────────────────────────────────────────────────────
 
     def list_files(
         self, type_filter: str | None = None, include_archived: bool = False
     ) -> list[FileRecord]:
-        """Return all files, optionally restricted to a single type.
-
-        Args:
-            type_filter: ``"note"`` or ``"task"`` to filter results,
-                or ``None`` to return every file.
-            include_archived: Whether to include archived files alongside
-                active ones. Defaults to ``False`` — archived files are
-                meant to stay out of the way until explicitly restored.
-
-        Returns:
-            List of ``FileRecord`` objects ordered newest-modified first.
-        """
         records = self._repo.list_all(include_archived=include_archived)
         if type_filter:
             records = [r for r in records if r.type == type_filter]
         return records
 
     def list_archived_files(self) -> list[FileRecord]:
-        """Return only archived files, newest-modified first.
-
-        Returns:
-            List of archived ``FileRecord`` objects.
-        """
         return self._repo.list_archived()
 
     def get_file(self, file_id: str) -> FileRecord:
-        """Retrieve a single file by its unique identifier.
-
-        Args:
-            file_id: The file's unique identifier.
-
-        Returns:
-            The corresponding ``FileRecord`` with full content.
-
-        Raises:
-            FileNotFoundError: If no file with *file_id* exists.
-        """
         return self._repo.get_by_id(file_id)
 
     def search_files(
@@ -241,32 +109,10 @@ class FileService:
         tag_filter: list[str] | None = None,
         include_archived: bool = False,
     ) -> list[SearchResult]:
-        """Full-text search across title, tags, and content.
-
-        Scoring heuristic (higher = more relevant):
-
-        - Title match: **+20 pts**
-        - Tag match: **+10 pts**
-        - Content match: **+1 pt**
-
-        Results are sorted by score descending, then by ``modified`` descending.
-        An empty *query* returns all files (with snippets of the first 240 chars).
-
-        Args:
-            query: Search term.  Case-insensitive.  Empty string returns all files.
-            type_filter: Optional type restriction (``"note"`` or ``"task"``).
-            include_archived: Whether archived files are eligible to match.
-                Defaults to ``False``.
-
-        Returns:
-            Ordered list of ``SearchResult`` dataclasses.
-        """
         records = self._repo.list_all(include_archived=include_archived)
         if type_filter:
             records = [r for r in records if r.type == type_filter]
         if tag_filter:
-            # Hierarchical match: a filter on "area" also covers "area/sub"
-            # (mirrors the tag tree in the sidebar, where "area" is the parent).
             records = [
                 r for r in records
                 if all(
@@ -304,11 +150,6 @@ class FileService:
         return results
 
     def get_stats(self) -> StatsResponse:
-        """Compute aggregated storage statistics.
-
-        Returns:
-            ``StatsResponse`` with file counts by type and total byte usage.
-        """
         counts = self._repo.count_by_type()
         return StatsResponse(
             total=sum(counts.values()),
@@ -318,19 +159,6 @@ class FileService:
         )
 
     def build_graph(self) -> GraphResponse:
-        """Build the notes graph from ``[[wikilink]]`` references in every file.
-
-        Link targets are resolved by title (case-insensitive, matching how
-        the user actually writes ``[[Note Title]]``). A target that doesn't
-        match any file becomes a "phantom" node — mirrors Obsidian showing
-        unresolved links as dangling nodes rather than silently dropping them.
-        Bidirectional links between the same two notes collapse into a
-        single edge (the graph is undirected).
-
-        Returns:
-            ``GraphResponse`` with every file as a node plus any phantom
-            nodes, and one edge per unique resolved link.
-        """
         records = self._repo.list_all()
         id_by_title: dict[str, str] = {}
         for r in records:
@@ -357,7 +185,7 @@ class FileService:
                             GraphNode(id=target_id, title=target_title, type="phantom", tags=[], folder="")
                         )
                 if target_id == r.id:
-                    continue  # self-link
+                    continue
                 edge_key = tuple(sorted((r.id, target_id)))
                 if edge_key in seen_edges:
                     continue
@@ -366,20 +194,7 @@ class FileService:
 
         return GraphResponse(nodes=nodes, edges=edges)
 
-    # ── Commands ───────────────────────────────────────────────────────────
-
     def create_file(self, request: FileCreateRequest) -> FileRecord:
-        """Create a new file from a validated creation request.
-
-        Generates a unique ID and both timestamps automatically; callers
-        need only supply the user-provided fields.
-
-        Args:
-            request: Validated ``FileCreateRequest`` data.
-
-        Returns:
-            The newly persisted ``FileRecord``.
-        """
         now = _utc_now()
         status_changed_at = request.status_changed_at
         if request.status and not status_changed_at:
@@ -400,7 +215,6 @@ class FileService:
         )
 
     def update_file(self, file_id: str, request: FileUpdateRequest) -> FileRecord:
-        """Apply a partial update to an existing file."""
         existing = self._repo.get_by_id(file_id)
 
         status_changed_at = (
@@ -422,18 +236,6 @@ class FileService:
         )
 
     def rename_tag(self, old_tag: str, new_tag: str) -> int:
-        """Rename *old_tag* to *new_tag* across every file that has it.
-
-        If a file already has *new_tag*, the old entry is simply dropped
-        (merge semantics) instead of creating a duplicate.
-
-        Args:
-            old_tag: Existing tag value to replace.
-            new_tag: Replacement tag value.
-
-        Returns:
-            Number of files whose tag list was changed.
-        """
         updated_count = 0
         for record in self._repo.list_all():
             if old_tag not in record.tags:
@@ -454,27 +256,13 @@ class FileService:
         return updated_count
 
     def rename_folder(self, old_folder: str, new_folder: str) -> int:
-        """Move every file under *old_folder* (including subfolders) to *new_folder*.
-
-        Preserves relative nesting: a file in ``old_folder/sub`` ends up in
-        ``new_folder/sub``. Used both for an explicit folder rename/move and,
-        via `delete_folder`, for "deleting" a folder by relocating its
-        contents to the parent folder instead of destroying data.
-
-        Args:
-            old_folder: Folder path to move from (with or without nesting).
-            new_folder: Destination folder path (``""`` for the root).
-
-        Returns:
-            Number of files moved.
-        """
         old_folder = old_folder.strip("/")
         new_folder = new_folder.strip("/")
         updated_count = 0
         for record in self._repo.list_all():
             if record.folder != old_folder and not record.folder.startswith(old_folder + "/"):
                 continue
-            suffix = record.folder[len(old_folder):]  # "" or "/nested/path"
+            suffix = record.folder[len(old_folder):]
             target_folder = (new_folder + suffix).strip("/")
             self._repo.update(
                 record.id,
@@ -486,149 +274,42 @@ class FileService:
                 status=None,
             )
             updated_count += 1
-        # Cada arquivo movido acima já limpa sua própria pasta-mãe se ela ficar
-        # vazia — isto cobre o que sobra: subpastas vazias aninhadas que nenhum
-        # arquivo apontava, então a pasta de origem não fica órfã no disco.
         self._repo.move_folder(old_folder, new_folder)
         return updated_count
 
     def delete_folder(self, folder: str) -> int:
-        """"Delete" a folder by moving its contents up to the parent folder.
-
-        There is no separate trash/undo yet, so this intentionally never
-        destroys file content — only the (now-empty) folder itself
-        disappears from the tree.
-
-        Args:
-            folder: Folder path to remove.
-
-        Returns:
-            Number of files relocated to the parent folder.
-        """
         folder = folder.strip("/")
         parent = folder.rsplit("/", 1)[0] if "/" in folder else ""
         return self.rename_folder(folder, parent)
 
     def create_folder(self, folder: str) -> None:
-        """Create an empty folder so it persists even before any file uses it.
-
-        Args:
-            folder: Folder path to create (with or without nesting).
-
-        Raises:
-            ValueError: If *folder* is empty, malformed, or a reserved name.
-        """
         self._repo.create_folder(folder)
 
     def list_folders(self) -> list[str]:
-        """Return every known folder path, including currently-empty ones.
-
-        Returns:
-            Sorted list of folder paths.
-        """
         return self._repo.list_folders()
 
     def delete_file(self, file_id: str) -> FileRecord:
-        """Soft-delete a file by moving it to the trash folder.
-
-        Args:
-            file_id: Identifier of the file to delete.
-
-        Returns:
-            The updated ``FileRecord``.
-
-        Raises:
-            FileNotFoundError: If no file with *file_id* exists.
-        """
         return self._repo.trash(file_id)
 
     def trash_file(self, file_id: str) -> FileRecord:
-        """Soft-delete a file by moving it to the trash folder.
-
-        Args:
-            file_id: Identifier of the file to move to trash.
-
-        Returns:
-            The updated ``FileRecord``.
-
-        Raises:
-            FileNotFoundError: If no file with *file_id* exists.
-        """
         return self._repo.trash(file_id)
 
     def untrash_file(self, file_id: str) -> FileRecord:
-        """Restore a previously trashed file to its original folder.
-
-        Args:
-            file_id: Identifier of the file to restore.
-
-        Returns:
-            The updated ``FileRecord``.
-
-        Raises:
-            FileNotFoundError: If no file with *file_id* exists.
-        """
         return self._repo.untrash(file_id)
 
     def list_trash_files(self) -> list[FileRecord]:
-        """Return all soft-deleted files currently in the trash.
-
-        Returns:
-            List of trashed ``FileRecord`` objects.
-        """
         return self._repo.list_trash()
 
     def purge_trash(self, file_id: str | None = None) -> None:
-        """Permanently delete a file from trash, or purge all trashed files.
-
-        Args:
-            file_id: Identifier of the file to purge, or ``None`` to purge all.
-        """
         self._repo.purge_trash(file_id)
 
     def archive_file(self, file_id: str) -> FileRecord:
-        """Move a file into the archive, out of default listings.
-
-        Args:
-            file_id: Identifier of the file to archive.
-
-        Returns:
-            The updated ``FileRecord``.
-
-        Raises:
-            FileNotFoundError: If no file with *file_id* exists.
-        """
         return self._repo.archive(file_id)
 
     def unarchive_file(self, file_id: str) -> FileRecord:
-        """Restore a previously archived file to its original folder.
-
-        Args:
-            file_id: Identifier of the file to restore.
-
-        Returns:
-            The updated ``FileRecord``.
-
-        Raises:
-            FileNotFoundError: If no file with *file_id* exists.
-        """
         return self._repo.unarchive(file_id)
 
     def archive_completed_before(self, days: int) -> int:
-        """Archive every "done" task whose status change is older than *days*.
-
-        Only tasks that actually have a ``status == "done"`` and a stamped
-        ``status_changed_at`` are considered — tasks marked done without ever
-        going through the kanban transition (no stamped date) are left
-        alone rather than guessed at.
-
-        Args:
-            days: Age threshold in days; tasks concluded on or before this
-                many days ago are archived.
-
-        Returns:
-            Number of tasks archived.
-        """
         cutoff = datetime.now() - timedelta(days=days)
         archived_count = 0
         for record in self._repo.list_all():

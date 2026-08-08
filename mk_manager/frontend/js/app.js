@@ -14,6 +14,7 @@ import { initSidebarActions, initSidebarResizer } from "./sidebar.js";
 import { setSaveCallback, initResizer, initScrollSync, setZenMode } from "./editor.js";
 import { initPreviewSourceSync } from "./preview.js";
 import { initAssetDropZone } from "./assets.js";
+import { loadProjectAssets } from "./assets-panel.js";
 import {
   initKanban,
   loadKanbanColumns,

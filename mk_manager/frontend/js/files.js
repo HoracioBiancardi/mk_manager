@@ -165,7 +165,7 @@ export async function openFile(id) {
       updateStatusVis("other");
 
       const isImage = /\.(png|jpe?g|gif|webp|svg|bmp|ico|avif)$/i.test(file.filename || file.title);
-      const assetUrl = `/assets/${file.filename}`;
+      const assetUrl = `/api/assets/${file.filename}`;
       const nonMdContent = isImage
         ? `![${file.title}](${assetUrl})`
         : `[📄 ${file.title}](${assetUrl})`;

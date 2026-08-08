@@ -1,17 +1,7 @@
-"""HTTP routes for file CRUD operations.
-
-Each handler is deliberately thin: it validates input via Pydantic (automatic),
-delegates all logic to ``FileService``, maps ``FileNotFoundError`` to HTTP 404,
-and returns a typed response schema.  No business logic lives here.
-"""
-
 from __future__ import annotations
-
 from typing import Annotated
 from urllib.parse import unquote
-
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-
 from mk_manager.dependencies import get_file_service
 from mk_manager.domain.entities import FileRecord
 from mk_manager.models.schemas import (
@@ -29,25 +19,7 @@ from mk_manager.services.file_service import FileService, extract_inline_tags
 
 router = APIRouter(prefix="/api/files", tags=["files"])
 
-
-# ── Mapping helpers ────────────────────────────────────────────────────────
-
-
 def _to_meta(record: FileRecord) -> FileMetaResponse:
-    """Convert a ``FileRecord`` to a metadata-only response (no content).
-
-    ``tags`` here is the *browsing* view: frontmatter tags plus any inline
-    ``#tag`` references found in the body, merged for the sidebar/tags panel.
-    This is deliberately NOT reused for the edit view (see ``_to_detail``) —
-    round-tripping the merged set through a save would silently promote
-    inline tags into frontmatter.
-
-    Args:
-        record: Domain entity to convert.
-
-    Returns:
-        ``FileMetaResponse`` populated from the record's fields.
-    """
     inline_tags = [t for t in extract_inline_tags(record.content) if t not in record.tags]
     return FileMetaResponse(
         id=record.id,
@@ -69,20 +41,7 @@ def _to_meta(record: FileRecord) -> FileMetaResponse:
         due_date=record.due_date,
     )
 
-
 def _to_detail(record: FileRecord) -> FileDetailResponse:
-    """Convert a ``FileRecord`` to a full detail response including content.
-
-    ``tags`` here is the raw frontmatter list only (no inline tags merged
-    in) — this feeds the editable tag-chip UI, and a save round-trips
-    whatever it holds straight back into frontmatter.
-
-    Args:
-        record: Domain entity to convert.
-
-    Returns:
-        ``FileDetailResponse`` with all metadata fields plus ``content``.
-    """
     return FileDetailResponse(
         id=record.id,
         title=record.title,
@@ -104,398 +63,136 @@ def _to_detail(record: FileRecord) -> FileDetailResponse:
         content=record.content,
     )
 
-
-# ── Route handlers ─────────────────────────────────────────────────────────
-
-
-@router.get(
-    "/",
-    response_model=list[FileMetaResponse],
-    summary="List all files",
-    description="Return metadata for every stored file, ordered newest-modified first.",
-)
+@router.get("/", response_model=list[FileMetaResponse])
 def list_files(
-    type: Annotated[
-        str | None,
-        Query(description="Filter by type: 'note' or 'task'"),
-    ] = None,
-    include_archived: Annotated[
-        bool,
-        Query(description="Include archived files alongside active ones"),
-    ] = False,
+    type: Annotated[str | None, Query()] = None,
+    include_archived: Annotated[bool, Query()] = False,
     service: FileService = Depends(get_file_service),
 ) -> list[FileMetaResponse]:
-    """Return metadata for all files, optionally filtered by type.
-
-    Args:
-        type: Optional type filter. Accepted values: ``"note"``, ``"task"``.
-        include_archived: Whether archived files are included. Defaults to
-            ``False`` — archived files stay out of the default listing.
-        service: Injected ``FileService`` instance.
-
-    Returns:
-        List of ``FileMetaResponse`` objects (content body excluded).
-    """
     return [_to_meta(r) for r in service.list_files(type_filter=type, include_archived=include_archived)]
 
-
-@router.post(
-    "/",
-    response_model=FileDetailResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Create a new file",
-)
+@router.post("/", response_model=FileDetailResponse, status_code=status.HTTP_201_CREATED)
 def create_file(
     body: FileCreateRequest,
     service: FileService = Depends(get_file_service),
 ) -> FileDetailResponse:
-    """Create and persist a new markdown file.
-
-    Args:
-        body: Validated file creation data.
-        service: Injected ``FileService`` instance.
-
-    Returns:
-        Full detail of the newly created file.
-    """
     return _to_detail(service.create_file(body))
 
-
-@router.get(
-    "/folders",
-    response_model=FolderListResponse,
-    summary="List every known folder, including currently-empty ones",
-)
-def list_folders(
-    service: FileService = Depends(get_file_service),
-) -> FolderListResponse:
-    """Return every folder path that exists under the notes directory.
-
-    Unlike deriving folders from file metadata alone, this also reports
-    folders that were explicitly created but don't have any files in them
-    yet — so they persist across reloads instead of living only in the
-    frontend's in-memory state.
-
-    Args:
-        service: Injected ``FileService`` instance.
-
-    Returns:
-        Sorted list of folder paths.
-    """
+@router.get("/folders", response_model=FolderListResponse)
+def list_folders(service: FileService = Depends(get_file_service)) -> FolderListResponse:
     return FolderListResponse(folders=service.list_folders())
 
-
-@router.post(
-    "/folder",
-    response_model=FolderChangeResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Create an empty folder",
-)
+@router.post("/folder", response_model=FolderChangeResponse, status_code=status.HTTP_201_CREATED)
 def create_folder(
     body: FolderCreateRequest,
     service: FileService = Depends(get_file_service),
 ) -> FolderChangeResponse:
-    """Create an empty folder so it persists even before any file uses it.
-
-    Args:
-        body: Folder path to create.
-        service: Injected ``FileService`` instance.
-
-    Returns:
-        ``updated_count=0`` — nothing else changes, just the new folder.
-
-    Raises:
-        HTTPException: 400 if the path is empty, malformed, or reserved.
-    """
     try:
         service.create_folder(body.path)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
     return FolderChangeResponse(updated_count=0)
 
-
-@router.put(
-    "/folder",
-    response_model=FolderChangeResponse,
-    summary="Rename/move a folder (and everything nested under it)",
-)
+@router.put("/folder", response_model=FolderChangeResponse)
 def rename_folder(
     body: FolderRenameRequest,
     service: FileService = Depends(get_file_service),
 ) -> FolderChangeResponse:
-    """Move every file under ``old_path`` to ``new_path``, preserving nesting.
-
-    Args:
-        body: Source and destination folder paths.
-        service: Injected ``FileService`` instance.
-
-    Returns:
-        Count of files relocated.
-    """
     count = service.rename_folder(body.old_path, body.new_path)
     return FolderChangeResponse(updated_count=count)
 
-
-@router.delete(
-    "/folder",
-    response_model=FolderChangeResponse,
-    summary="Delete a folder by moving its contents to the parent folder",
-)
+@router.delete("/folder", response_model=FolderChangeResponse)
 def delete_folder(
-    path: Annotated[str, Query(description="Folder path to remove")],
+    path: Annotated[str, Query()],
     service: FileService = Depends(get_file_service),
 ) -> FolderChangeResponse:
-    """Relocate every file under ``path`` to its parent folder, then drop it.
-
-    Never destroys file content — there's no undo yet, so "deleting" a
-    folder only ever moves its contents up one level.
-
-    Args:
-        path: Folder path to remove.
-        service: Injected ``FileService`` instance.
-
-    Returns:
-        Count of files relocated.
-    """
     count = service.delete_folder(path)
     return FolderChangeResponse(updated_count=count)
 
-
-@router.get(
-    "/archived",
-    response_model=list[FileMetaResponse],
-    summary="List archived files",
-    description="Return metadata for every archived file, newest-modified first.",
-)
-def list_archived_files(
-    service: FileService = Depends(get_file_service),
-) -> list[FileMetaResponse]:
-    """Return metadata for all archived files.
-
-    Args:
-        service: Injected ``FileService`` instance.
-
-    Returns:
-        List of ``FileMetaResponse`` objects for archived files.
-    """
+@router.get("/archived", response_model=list[FileMetaResponse])
+def list_archived_files(service: FileService = Depends(get_file_service)) -> list[FileMetaResponse]:
     return [_to_meta(r) for r in service.list_archived_files()]
 
-
-@router.post(
-    "/archive-completed",
-    response_model=ArchiveBatchResponse,
-    summary="Archive every 'done' task concluded more than N days ago",
-)
+@router.post("/archive-completed", response_model=ArchiveBatchResponse)
 def archive_completed(
-    days: Annotated[int, Query(ge=0, description="Age threshold in days")] = 30,
+    days: Annotated[int, Query(ge=0)] = 30,
     service: FileService = Depends(get_file_service),
 ) -> ArchiveBatchResponse:
-    """Batch-archive tasks that have been done for a while.
-
-    Args:
-        days: Only tasks concluded this many days ago (or more) are archived.
-        service: Injected ``FileService`` instance.
-
-    Returns:
-        Count of tasks archived.
-    """
     count = service.archive_completed_before(days)
     return ArchiveBatchResponse(archived_count=count)
 
-
-@router.get(
-    "/trashed",
-    response_model=list[FileMetaResponse],
-    summary="List trashed files",
-    description="Return metadata for every soft-deleted file in the trash.",
-)
-def list_trashed_files(
-    service: FileService = Depends(get_file_service),
-) -> list[FileMetaResponse]:
-    """Return metadata for all trashed files."""
+@router.get("/trashed", response_model=list[FileMetaResponse])
+def list_trashed_files(service: FileService = Depends(get_file_service)) -> list[FileMetaResponse]:
     return [_to_meta(r) for r in service.list_trash_files()]
 
-
-@router.delete(
-    "/trash/purge",
-    status_code=status.HTTP_204_NO_CONTENT,
-    summary="Purge all files from trash",
-)
-def purge_all_trash(
-    service: FileService = Depends(get_file_service),
-) -> None:
-    """Permanently delete all files in the trash folder."""
+@router.delete("/trash/purge", status_code=status.HTTP_204_NO_CONTENT)
+def purge_all_trash(service: FileService = Depends(get_file_service)) -> None:
     service.purge_trash()
 
-
-@router.get(
-    "/{file_id:path}",
-    response_model=FileDetailResponse,
-    summary="Get a file by ID",
-)
+@router.get("/{file_id:path}", response_model=FileDetailResponse)
 def get_file(
     file_id: str,
     service: FileService = Depends(get_file_service),
 ) -> FileDetailResponse:
-    """Retrieve a single file including its full markdown content.
-
-    Args:
-        file_id: Unique file identifier (filename stem or relative path).
-        service: Injected ``FileService`` instance.
-
-    Returns:
-        Full file detail.
-
-    Raises:
-        HTTPException: 404 if no file with *file_id* exists.
-    """
     try:
         return _to_detail(service.get_file(unquote(file_id)))
     except FileNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"File '{file_id}' not found.",
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"File '{file_id}' not found.")
 
-
-@router.put(
-    "/{file_id:path}",
-    response_model=FileDetailResponse,
-    summary="Update a file (partial)",
-)
+@router.put("/{file_id:path}", response_model=FileDetailResponse)
 def update_file(
     file_id: str,
     body: FileUpdateRequest,
     service: FileService = Depends(get_file_service),
 ) -> FileDetailResponse:
-    """Partially update an existing file.
-
-    Only fields explicitly provided in *body* are written; ``null`` fields
-    are left at their current values.
-
-    Args:
-        file_id: Unique file identifier.
-        body: Fields to update. ``null`` fields are preserved.
-        service: Injected ``FileService`` instance.
-
-    Returns:
-        Updated full file detail.
-
-    Raises:
-        HTTPException: 404 if no file with *file_id* exists.
-    """
     try:
         return _to_detail(service.update_file(unquote(file_id), body))
     except FileNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"File '{file_id}' not found.",
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"File '{file_id}' not found.")
 
-
-@router.delete(
-    "/{file_id:path}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    summary="Delete a file",
-)
+@router.delete("/{file_id:path}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_file(
     file_id: str,
     service: FileService = Depends(get_file_service),
 ) -> None:
-    """Permanently delete a markdown file from disk.
-
-    Args:
-        file_id: Unique file identifier.
-        service: Injected ``FileService`` instance.
-
-    Raises:
-        HTTPException: 404 if no file with *file_id* exists.
-    """
     try:
         service.delete_file(unquote(file_id))
     except FileNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"File '{file_id}' not found.",
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"File '{file_id}' not found.")
 
-
-@router.post(
-    "/{file_id:path}/archive",
-    response_model=FileMetaResponse,
-    summary="Archive a file",
-)
+@router.post("/{file_id:path}/archive", response_model=FileMetaResponse)
 def archive_file(
     file_id: str,
     service: FileService = Depends(get_file_service),
 ) -> FileMetaResponse:
-    """Move a file into the archive, out of default listings.
-
-    Args:
-        file_id: Unique file identifier.
-        service: Injected ``FileService`` instance.
-
-    Returns:
-        Updated file metadata.
-
-    Raises:
-        HTTPException: 404 if no file with *file_id* exists.
-    """
     try:
         return _to_meta(service.archive_file(unquote(file_id)))
     except FileNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"File '{file_id}' not found.",
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"File '{file_id}' not found.")
 
-
-@router.post(
-    "/{file_id:path}/unarchive",
-    response_model=FileMetaResponse,
-    summary="Restore an archived file",
-)
+@router.post("/{file_id:path}/unarchive", response_model=FileMetaResponse)
 def unarchive_file(
     file_id: str,
     service: FileService = Depends(get_file_service),
 ) -> FileMetaResponse:
-    """Restore a previously archived file to its original folder."""
     try:
         return _to_meta(service.unarchive_file(unquote(file_id)))
     except FileNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"File '{file_id}' not found.",
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"File '{file_id}' not found.")
 
-
-@router.post(
-    "/{file_id:path}/untrash",
-    response_model=FileMetaResponse,
-    summary="Restore a trashed file",
-)
+@router.post("/{file_id:path}/untrash", response_model=FileMetaResponse)
 def untrash_file(
     file_id: str,
     service: FileService = Depends(get_file_service),
 ) -> FileMetaResponse:
-    """Restore a soft-deleted file to its original folder."""
     try:
         return _to_meta(service.untrash_file(unquote(file_id)))
     except FileNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"File '{file_id}' not found in trash.",
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"File '{file_id}' not found in trash.")
 
-
-@router.delete(
-    "/{file_id:path}/purge",
-    status_code=status.HTTP_204_NO_CONTENT,
-    summary="Permanently purge a file from trash",
-)
+@router.delete("/{file_id:path}/purge", status_code=status.HTTP_204_NO_CONTENT)
 def purge_file(
     file_id: str,
     service: FileService = Depends(get_file_service),
 ) -> None:
-    """Permanently delete a single file from the trash folder."""
     service.purge_trash(unquote(file_id))

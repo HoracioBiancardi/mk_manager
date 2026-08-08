@@ -1,19 +1,19 @@
 [project]
-name = "mk-manager"
-version = "0.1.0"
-description = "Markdown file manager with notes and tasks support"
-readme = "README.md"
-requires-python = ">=3.11"
+name = "mk-manager-v2"
+version = "2.0.0"
+description = "MK Manager V2 — Markdown Notes & Tasks Manager (SwordPower Web App)"
+requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.115.0",
-    "uvicorn[standard]>=0.32.0",
+    "uvicorn[standard]>=0.30.0",
+    "pydantic-settings>=2.0.0",
     "pyyaml>=6.0",
-    "pydantic-settings>=2.6.0",
+    "aiofiles>=25.1.0",
     "python-multipart>=0.0.9",
 ]
 
 [project.scripts]
-mk= "mk_manager.main:start"
+mk-manager = "mk_manager.main:start"
 
 [build-system]
 requires = ["hatchling"]
@@ -24,8 +24,5 @@ packages = ["mk_manager"]
 
 [dependency-groups]
 dev = [
-    "pytest>=8.0",
-    "httpx>=0.28.0",
-    "pytest-asyncio>=0.24.0",
-    "playwright>=1.61.0",
+    "pytest>=8.0.0",
 ]

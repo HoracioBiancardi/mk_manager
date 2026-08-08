@@ -1,79 +1,25 @@
-"""HTTP route for full-text search across all files."""
-
 from __future__ import annotations
-
 from typing import Annotated
-
 from fastapi import APIRouter, Depends, Query
-
 from mk_manager.dependencies import get_file_service
-from mk_manager.domain.entities import SearchResult
-from mk_manager.models.schemas import FileMetaResponse, SearchResultResponse
+from mk_manager.models.schemas import SearchResultResponse
+from mk_manager.routers.files import _to_meta
 from mk_manager.services.file_service import FileService
 
 router = APIRouter(prefix="/api/search", tags=["search"])
 
-
-def _to_search_response(result: SearchResult) -> SearchResultResponse:
-    """Map a domain ``SearchResult`` to its API response schema.
-
-    Args:
-        result: Domain search result containing the record and snippet.
-
-    Returns:
-        ``SearchResultResponse`` ready for JSON serialisation.
-    """
-    record = result.record
-    return SearchResultResponse(
-        id=record.id,
-        title=record.title,
-        type=record.type,
-        tags=record.tags,
-        filename=record.filename,
-        created=record.created,
-        modified=record.modified,
-        word_count=record.word_count,
-        task_total=record.task_total,
-        task_done=record.task_done,
-        task_items=record.task_items,
-        folder=record.folder,
-        status=record.status,
-        snippet=result.snippet,
-    )
-
-
-@router.get(
-    "/",
-    response_model=list[SearchResultResponse],
-    summary="Search files",
-    description=(
-        "Full-text search across title, tags, and content. "
-        "An empty query returns all files ordered by modification date."
-    ),
-)
+@router.get("/", response_model=list[SearchResultResponse])
 def search_files(
-    q: Annotated[str, Query(description="Search term (case-insensitive)")] = "",
-    type: Annotated[
-        str | None,
-        Query(description="Restrict results to 'note' or 'task'"),
-    ] = None,
-    tag: Annotated[
-        list[str] | None,
-        Query(description="Filter by exact tag value(s); repeat for AND match"),
-    ] = None,
+    q: Annotated[str, Query(description="Search term")] = "",
+    type: Annotated[str | None, Query(description="Filter by type")] = None,
+    tag: Annotated[list[str] | None, Query(description="Filter by tag")] = None,
+    include_archived: Annotated[bool, Query()] = False,
     service: FileService = Depends(get_file_service),
 ) -> list[SearchResultResponse]:
-    """Run a full-text search across title, tags, and content.
-
-    Args:
-        q: Search term (case-insensitive); empty string matches everything.
-        type: Optional file-type filter, ``"note"`` or ``"task"``.
-        tag: Optional tag filter(s); repeated params are AND-matched, and
-            matching is hierarchical (``area`` also matches ``area/sub``).
-        service: Injected file service.
-
-    Returns:
-        Matching files ranked by relevance, each with a highlighted snippet.
-    """
-    results = service.search_files(query=q, type_filter=type, tag_filter=tag)
-    return [_to_search_response(r) for r in results]
+    results = service.search_files(
+        query=q, type_filter=type, tag_filter=tag, include_archived=include_archived
+    )
+    return [
+        SearchResultResponse(**_to_meta(r.record).model_dump(), snippet=r.snippet)
+        for r in results
+    ]
