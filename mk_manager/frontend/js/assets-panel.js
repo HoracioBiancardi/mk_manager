@@ -5,6 +5,7 @@ import { esc, toast } from "./utils.js";
 import { apiUpload } from "./api.js";
 import { insRaw } from "./editor.js";
 import { setMainView } from "./views.js";
+import { loadFiles } from "./files.js";
 
 let _projectAssets = [];
 let _assetSearchQuery = "";
@@ -95,12 +96,32 @@ export function copyAssetSnippet(snippet) {
 }
 
 export async function deleteProjectAsset(assetName) {
-  if (!confirm(`Deseja excluir o asset "${assetName}" do projeto?`)) return;
   try {
+    const usageRes = await fetch(`/api/assets/${encodeURIComponent(assetName)}/usage`);
+    let usageInfo = { affected_files: [] };
+    if (usageRes.ok) usageInfo = await usageRes.json();
+
+    const affected = usageInfo.affected_files || [];
+    let promptMsg = `Deseja excluir o asset "${assetName}" do projeto?`;
+    if (affected.length > 0) {
+      const names = affected.map(a => a.title).join("\n• ");
+      promptMsg = `⚠️ ATENÇÃO: Este asset está sendo utilizado em ${affected.length} nota(s)/task(s):\n\n• ${names}\n\nAo excluir, o arquivo será apagado do disco e as linhas/referências a ele serão removidas dessas notas. Confirmar exclusão?`;
+    }
+
+    if (!confirm(promptMsg)) return;
+
     const res = await fetch(`/api/assets/${encodeURIComponent(assetName)}`, { method: "DELETE" });
     if (!res.ok) throw new Error("Erro ao excluir asset.");
-    toast("Asset excluído com sucesso.", "success");
+    const data = await res.json().catch(() => ({ affected_files: [] }));
+    
+    if (data.affected_files && data.affected_files.length) {
+      toast(`Asset excluído e referências removidas de ${data.affected_files.length} nota(s)!`, "success");
+    } else {
+      toast("Asset excluído com sucesso.", "success");
+    }
+
     await loadProjectAssets();
+    await loadFiles();
   } catch (e) {
     toast("Erro ao excluir: " + e.message, "error");
   }
