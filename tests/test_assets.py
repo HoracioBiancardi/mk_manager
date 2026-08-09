@@ -36,8 +36,8 @@ class TestAssetEndpoints(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(res["folder"], "projetos/backend")
         self.assertEqual(res["url"], "/assets/projetos/backend/screenshot.png")
 
-        # Verify physical file existence
-        saved_file = self.notes_dir / "projetos" / "backend" / "screenshot.png"
+        # Verify physical file existence inside resolved_assets_dir (notes_dir / assets / ...)
+        saved_file = self.notes_dir / "assets" / "projetos" / "backend" / "screenshot.png"
         self.assertTrue(saved_file.exists())
         self.assertEqual(saved_file.read_bytes(), file_bytes)
 
@@ -49,7 +49,7 @@ class TestAssetEndpoints(unittest.IsolatedAsyncioTestCase):
             res = await upload_asset(upload_file, folder="")
 
         self.assertEqual(res["url"], "/assets/doc.pdf")
-        saved_file = self.notes_dir / "doc.pdf"
+        saved_file = self.notes_dir / "assets" / "doc.pdf"
         self.assertTrue(saved_file.exists())
 
 

@@ -3154,6 +3154,95 @@ a.asset-link:hover {
   box-shadow: 0 0 8px var(--primary-glow);
 }
 
+/* Theme Cyber Dark (Neon Violet) */
+body.theme-cyber-dark {
+  --bg:              #080914;
+  --surface:         #0f1123;
+  --surface-alt:     #171936;
+  --surface-hover:   #21244d;
+
+  --border:          #282c5e;
+  --border-muted:    #171936;
+  --border-bright:   #404694;
+
+  --primary:         #8b5cf6;
+  --primary-hover:   #a78bfa;
+  --primary-dim:     rgba(139, 92, 246, 0.15);
+  --primary-glow:    rgba(139, 92, 246, 0.25);
+  --glow-ring:       0 0 0 3px rgba(139, 92, 246, 0.25);
+
+  --text:            #f3f4f6;
+  --text-muted:      #9ca3af;
+  --text-subtle:     #6b7280;
+
+  --success:         #06b6d4;
+  --warn:            #f59e0b;
+  --danger:          #ec4899;
+  --danger-dim:      rgba(236, 72, 153, 0.12);
+  --info:            #3b82f6;
+}
+
+/* Removendo setas nativas feias de input[type=number] para adequação total ao tema */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+/* ── Painel de Login Padronizado ──────────────────────────────────── */
+.login-overlay {
+  display: flex; position: fixed; inset: 0;
+  background: rgba(2, 6, 20, 0.85); backdrop-filter: blur(8px);
+  align-items: center; justify-content: center;
+  z-index: 50; padding: 1rem;
+}
+.login-modal {
+  width: 100%; max-width: 440px; padding: 2rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-top: 2px solid var(--primary); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  animation: modalPop .22s var(--ease-spring) both;
+}
+.login-brand {
+  display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;
+}
+.login-icon {
+  width: 46px; height: 46px; border-radius: 12px; flex-shrink: 0;
+  background: var(--primary-dim); border: 1px solid rgba(91, 141, 239, 0.3);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--primary); box-shadow: 0 0 16px var(--primary-glow);
+  animation: brandGlow 3s ease-in-out infinite;
+}
+.login-title {
+  font-size: 1.25rem; font-weight: 800; letter-spacing: .02em; color: var(--text);
+}
+.login-sub {
+  font-size: .75rem; color: var(--text-subtle); letter-spacing: .04em; text-transform: uppercase; margin-top: .15rem;
+}
+.pw-wrap {
+  position: relative; display: flex; align-items: center; width: 100%;
+}
+.pw-wrap .form-input {
+  padding-right: 4.5rem;
+}
+.pw-toggle {
+  position: absolute; right: .5rem; top: 50%; transform: translateY(-50%);
+  background: var(--surface-hover); border: 1px solid var(--border-muted);
+  border-radius: var(--r-sm); color: var(--text-muted); font-size: .65rem;
+  font-weight: 700; padding: .25rem .5rem; cursor: pointer;
+  transition: all var(--t); letter-spacing: .05em;
+}
+.pw-toggle:hover {
+  color: var(--text); border-color: var(--border-bright); background: var(--surface-alt);
+}
+.form-hint {
+  font-size: .72rem; color: var(--text-subtle); margin-top: .4rem; line-height: 1.4;
+}
+
+
 
 
 

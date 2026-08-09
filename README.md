@@ -1,24 +1,36 @@
-# MK Manager V2 (SwordPower)
+# MK Manager — Sistema de Notas & Kanban em Markdown
 
-Gerenciador moderno de notas e tarefas Markdown (`.md`) construído sobre a arquitetura padronizada **SwordPower Web Starter**.
+Gerenciador de notas e tarefas baseado em arquivos Markdown (.md) com frontmatter YAML, visualização Kanban, grafo de conexões, busca em texto completo e design modernizado baseado no **SwordPower Starter Kit Universal**.
 
-## ✨ Destaques V2
+---
 
-- **UI Desenvolvedor Moderna**: Tema Corporativo (`corporate` - Padrão) e Verde Escuro Neutro (`green-neutral`), visual glassmorphism, badge SVG SwordPower e fundo animado Aurora.
-- **Armazenamento Seguro em Memória (RAM)**: Autenticação cliente/servidor desacoplada com Auto-Lock por inatividade.
-- **Recursos Markdown**:
-  - Editor Split View com sincronização de rolagem, preview com Marked.js, Highlight.js e diagramas Mermaid.js.
-  - Links de anexos estilizados (`a.asset-link`).
-  - Kanban de tarefas por status (`backlog`, `todo`, `in_progress`, `done`, `archived`).
-  - Visualização de Grafo de Wikilinks (`[[link]]`).
-  - Busca com relevância de pontuação (título +20, tag +10, conteúdo +1).
-  - Suporte a arquivo morto (`_archive/`) e lixeira (`_trash/`).
+## ⚡ Principais Recursos
+
+- **Persistência em Disco & SQLite WAL**: Leitura direta de notas `.md` com frontmatter + banco SQLite acelerado.
+- **Serviços Backend Padronizados**: `crypto_vault_service`, `db_service`, `task_runner_service`, `log_buffer_service` e `notification_service`.
+- **Visão Kanban & Tags**: Transição de status de tarefas, tags hierárquicas (`#área/sub`) e wikilinks (`[[WikiLink]]`).
+- **Gerenciador de Assets & Anexos**: Upload inteligente de imagens/PDFs.
+- **Activity Bar & Sidebar Redimensionável**: Painéis laterais com ajuste por drag-and-drop.
+- **Suporte a 3 Temas**: Corporativo (`corporate`), Verde Neutro (`green-neutral`) e Cyber Dark (`cyber-dark`).
+
+---
 
 ## 🚀 Como Executar
 
 ```bash
-cd /home/swordpower/Documentos/REPO/PESSOAL/mk_managerV2
+# Entrar no diretório do projeto
+cd /home/swordpower/Documentos/REPO/PESSOAL/mk_manager
+
+# Iniciar o servidor web (FastAPI + Uvicorn)
 python3 -m uvicorn mk_manager.main:app --reload --port 8888
 ```
 
-Acesse em **`http://127.0.0.1:8888`**.
+Acesse a interface em: **`http://127.0.0.1:8888`**
+
+---
+
+## 🧪 Suíte de Testes Automatizados
+
+```bash
+PYTHONPATH=. /home/swordpower/snap/antigravity/5/.local/bin/pytest -v
+```

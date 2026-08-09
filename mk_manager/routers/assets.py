@@ -1,8 +1,8 @@
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Union
 from urllib.parse import unquote, quote
-from fastapi import APIRouter, HTTPException, Request, Depends, status
+from fastapi import APIRouter, HTTPException, Request, Depends, status, File, UploadFile
 from fastapi.responses import FileResponse
 from mk_manager.config import get_settings
 from mk_manager.dependencies import get_file_service
@@ -10,13 +10,6 @@ from mk_manager.services.file_service import FileService
 from mk_manager.models.schemas import FileUpdateRequest
 
 router = APIRouter(tags=["assets"])
-
-try:
-    from fastapi import File, UploadFile
-    import python_multipart
-    HAS_MULTIPART = True
-except ImportError:
-    HAS_MULTIPART = False
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".ico", ".avif"}
 
@@ -114,6 +107,37 @@ def cleanup_asset_references(real_name: str, service: FileService) -> list[str]:
 
     return affected_titles
 
+async def upload_asset(file_or_req: Any, folder: str = "") -> dict[str, str]:
+    """Helper interno e exportado para testes."""
+    settings = get_settings()
+    base_assets = settings.resolved_assets_dir()
+    assets_dir = base_assets / folder if folder else base_assets
+    assets_dir.mkdir(parents=True, exist_ok=True)
+
+    if isinstance(file_or_req, UploadFile):
+        original_filename = file_or_req.filename or "file"
+        content = await file_or_req.read()
+    elif isinstance(file_or_req, Request):
+        original_filename = unquote(file_or_req.headers.get("x-filename", "file"))
+        content = await file_or_req.body()
+    else:
+        original_filename = getattr(file_or_req, "filename", "file")
+        content = await file_or_req.read() if hasattr(file_or_req, "read") else b""
+
+    saved_name = get_available_filename(assets_dir, original_filename, content)
+    dest = assets_dir / saved_name
+    dest.write_bytes(content)
+
+    rel_path = f"{folder}/{saved_name}" if folder else saved_name
+    url_path = quote(rel_path)
+
+    return {
+        "url": f"/assets/{url_path}",
+        "filename": original_filename,
+        "name": saved_name,
+        "folder": folder
+    }
+
 @router.get("/api/assets/")
 def list_assets() -> list[dict[str, str | int | bool]]:
     settings = get_settings()
@@ -136,42 +160,9 @@ def list_assets() -> list[dict[str, str | int | bool]]:
             })
     return items
 
-if HAS_MULTIPART:
-    @router.post("/api/assets/")
-    async def upload_asset_multipart(file: UploadFile = File(...)) -> dict[str, str]:
-        settings = get_settings()
-        assets_dir = settings.resolved_assets_dir()
-        assets_dir.mkdir(parents=True, exist_ok=True)
-
-        original_filename = file.filename or "file"
-        content = await file.read()
-        saved_name = get_available_filename(assets_dir, original_filename, content)
-        dest = assets_dir / saved_name
-        dest.write_bytes(content)
-
-        return {
-            "url": f"/api/assets/{quote(saved_name)}",
-            "filename": original_filename,
-            "name": saved_name
-        }
-else:
-    @router.post("/api/assets/")
-    async def upload_asset_raw(request: Request) -> dict[str, str]:
-        settings = get_settings()
-        assets_dir = settings.resolved_assets_dir()
-        assets_dir.mkdir(parents=True, exist_ok=True)
-
-        original_filename = unquote(request.headers.get("x-filename", "file"))
-        content = await request.body()
-        saved_name = get_available_filename(assets_dir, original_filename, content)
-        dest = assets_dir / saved_name
-        dest.write_bytes(content)
-
-        return {
-            "url": f"/api/assets/{quote(saved_name)}",
-            "filename": original_filename,
-            "name": saved_name
-        }
+@router.post("/api/assets/")
+async def upload_asset_endpoint(file: UploadFile = File(...), folder: str = "") -> dict[str, str]:
+    return await upload_asset(file, folder)
 
 @router.get("/api/assets/{asset_name:path}/usage")
 def check_asset_usage(
@@ -206,10 +197,8 @@ def delete_asset(
     real_name = unquote(asset_name)
     file_path = assets_dir / real_name
 
-    # 1. Limpa referências em notas e tasks
     affected = cleanup_asset_references(real_name, service)
 
-    # 2. Apaga o arquivo físico na pasta assets
     if file_path.is_file():
         file_path.unlink()
 

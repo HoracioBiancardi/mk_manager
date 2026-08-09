@@ -20,14 +20,23 @@ try:
 
 except ImportError:
     class Settings:
-        notes_dir: Path = Path("./notes")
-        assets_dir: Path | None = None
-        host: str = "127.0.0.1"
-        port: int = 8888
-        debug: bool = False
+        def __init__(
+            self,
+            notes_dir: Path = Path("./notes"),
+            assets_dir: Path | None = None,
+            host: str = "127.0.0.1",
+            port: int = 8888,
+            debug: bool = False,
+        ):
+            self.notes_dir = Path(notes_dir)
+            self.assets_dir = Path(assets_dir) if assets_dir else None
+            self.host = host
+            self.port = port
+            self.debug = debug
 
         def resolved_assets_dir(self) -> Path:
             return self.assets_dir if self.assets_dir else self.notes_dir / "assets"
+
 
 settings = Settings()
 
