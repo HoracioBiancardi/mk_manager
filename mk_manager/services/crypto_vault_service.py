@@ -78,3 +78,58 @@ class CryptoVaultService:
             chars = string.ascii_letters + string.digits
 
         return "".join(secrets.choice(chars) for _ in range(max(4, length)))
+
+    @staticmethod
+    def evaluate_password_strength(password: str) -> dict:
+        """Avalia a força e segurança de uma senha (score 0-100, nível e recomendações)."""
+        if not password:
+            return {"score": 0, "strength": "Muito Fraca", "feedback": ["Digite uma senha"]}
+
+        score = 0
+        feedback = []
+
+        if len(password) >= 16:
+            score += 35
+        elif len(password) >= 12:
+            score += 25
+        elif len(password) >= 8:
+            score += 15
+        else:
+            feedback.append("Aumente o comprimento para pelo menos 12 caracteres")
+
+        import string
+        has_upper = any(c in string.ascii_uppercase for c in password)
+        has_lower = any(c in string.ascii_lowercase for c in password)
+        has_digit = any(c in string.digits for c in password)
+        has_symbol = any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in password)
+
+        types_count = sum([has_upper, has_lower, has_digit, has_symbol])
+        score += types_count * 15
+
+        if not has_upper:
+            feedback.append("Adicione letras maiúsculas (A-Z)")
+        if not has_lower:
+            feedback.append("Adicione letras minúsculas (a-z)")
+        if not has_digit:
+            feedback.append("Adicione números (0-9)")
+        if not has_symbol:
+            feedback.append("Adicione símbolos especiais (!@#$)")
+
+        score = min(100, score)
+
+        if score >= 85:
+            strength = "Excelente"
+        elif score >= 65:
+            strength = "Forte"
+        elif score >= 45:
+            strength = "Média"
+        elif score >= 25:
+            strength = "Fraca"
+        else:
+            strength = "Muito Fraca"
+
+        return {
+            "score": score,
+            "strength": strength,
+            "feedback": feedback if feedback else ["Senha altamente segura!"]
+        }

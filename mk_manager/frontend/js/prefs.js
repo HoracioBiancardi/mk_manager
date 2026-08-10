@@ -44,7 +44,7 @@ export function getSidebarWidth() {
 }
 
 export function applySidebarWidth(px = getSidebarWidth()) {
-  document.documentElement.style.setProperty("--sidebar-w", px + "px");
+  document.documentElement.style.setProperty("--sidebar-panel-w", px + "px");
 }
 
 export function setSidebarWidth(px) {

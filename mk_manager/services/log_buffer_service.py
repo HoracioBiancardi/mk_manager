@@ -1,6 +1,17 @@
+import logging
 import time
 from collections import deque
 from typing import List, Dict, Any, Optional
+
+class LogBufferHandler(logging.Handler):
+    """Handler que encaminha registros do logging padrão para o LogBufferService."""
+
+    def __init__(self, service: "LogBufferService", level: int = logging.INFO):
+        super().__init__(level)
+        self._service = service
+
+    def emit(self, record: logging.LogRecord):
+        self._service.log(record.levelname, record.getMessage(), source=record.name)
 
 class LogBufferService:
     """Buffer circular de logs em memória para monitoramento em tempo real (estilo console CLI/Web)."""
@@ -13,7 +24,7 @@ class LogBufferService:
         entry = {
             "timestamp": time.time(),
             "time_str": time.strftime("%H:%M:%S"),
-            "level": level.upper(),
+            "level": level.upper(),  # INFO, WARNING, ERROR, DEBUG, SUCCESS
             "message": message,
             "source": source,
             "meta": meta or {}
@@ -45,5 +56,9 @@ class LogBufferService:
 
     def clear(self):
         self._buffer.clear()
+
+    def get_handler(self, level: int = logging.INFO) -> LogBufferHandler:
+        """Cria um logging.Handler que encaminha logs do módulo `logging` padrão para este buffer."""
+        return LogBufferHandler(self, level)
 
 log_buffer_service = LogBufferService()

@@ -592,7 +592,7 @@ kbd {
 
 /* ── Sidebar panel ───────────────────────────────────────────────── */
 .sidebar-panel {
-  width: var(--sidebar-w, 240px); flex-shrink: 0;
+  width: var(--sidebar-panel-w, 240px); flex-shrink: 0;
   display: flex; flex-direction: column;
   background: var(--surface); border-right: 1px solid var(--border);
   overflow: hidden;

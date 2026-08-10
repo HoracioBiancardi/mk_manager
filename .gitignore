@@ -1,9 +1,12 @@
 notes/
 assets/
 .env
+.test_libs/
+.testenv/
 __pycache__/
 *.pyc
 .venv/
 dist/
 build/
 *.egg-info/
+

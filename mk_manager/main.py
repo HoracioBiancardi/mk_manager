@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -5,7 +6,8 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from mk_manager.config import get_settings
-from mk_manager.routers import files, search, stats, tags, graph, assets, settings as settings_router
+from mk_manager.routers import files, search, stats, tags, graph, assets, settings as settings_router, system, vault, tasks
+from mk_manager.services.log_buffer_service import log_buffer_service
 
 def create_app() -> FastAPI:
     s = get_settings()
@@ -30,6 +32,9 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Captura logging padrão (logging.getLogger(__name__)) no buffer de logs da UI
+    logging.getLogger().addHandler(log_buffer_service.get_handler())
+
     app.include_router(files.router)
     app.include_router(search.router)
     app.include_router(stats.router)
@@ -37,6 +42,9 @@ def create_app() -> FastAPI:
     app.include_router(graph.router)
     app.include_router(assets.router)
     app.include_router(settings_router.router)
+    app.include_router(system.router)
+    app.include_router(vault.router)
+    app.include_router(tasks.router)
 
     @app.get("/health")
     def health():
