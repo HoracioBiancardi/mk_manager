@@ -7,7 +7,7 @@ Gerenciador de notas e tarefas baseado em arquivos Markdown (.md) com frontmatte
 ## ⚡ Principais Recursos
 
 - **Persistência em Disco & SQLite WAL**: Leitura direta de notas `.md` com frontmatter + banco SQLite acelerado.
-- **Serviços Backend Padronizados**: `crypto_vault_service`, `db_service`, `task_runner_service`, `log_buffer_service` e `notification_service`.
+- **Serviços Backend Padronizados**: `crypto_vault_service`, `db_service`, `task_runner_service`, `log_buffer_service` e `notification_service`, com rotas de paridade `/api/system`, `/api/vault` e `/api/tasks` (só backend, sem UI própria).
 - **Visão Kanban & Tags**: Transição de status de tarefas, tags hierárquicas (`#área/sub`) e wikilinks (`[[WikiLink]]`).
 - **Gerenciador de Assets & Anexos**: Upload inteligente de imagens/PDFs.
 - **Activity Bar & Sidebar Redimensionável**: Painéis laterais com ajuste por drag-and-drop.

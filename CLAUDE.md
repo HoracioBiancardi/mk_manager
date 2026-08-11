@@ -12,10 +12,10 @@ O **MK Manager** é o gerenciador de notas e tarefas em Markdown padronizado sob
 cd /home/swordpower/Documentos/REPO/PESSOAL/mk_manager
 
 # Executar o Servidor de Desenvolvimento via uv run (Recomendado)
-uv run uvicorn mk_manager.main:app --reload --port 8001
+uv run uvicorn mk_manager.main:app --reload --port 8888
 
 # Alternativa direta com python
-python3 -m uvicorn mk_manager.main:app --reload --port 8001
+python3 -m uvicorn mk_manager.main:app --reload --port 8888
 
 # Executar a Suíte Completa de Testes Automatizados (Pytest)
 uv run pytest -v
@@ -27,12 +27,17 @@ uv run pytest -v
 
 ## 📐 Arquitetura e Serviços Padronizados
 
-- **`crypto_vault_service.py`**: Cifragem Fernet (AES-128) + PBKDF2 (600k iterações) e Gerador de Senhas.
+- **`crypto_vault_service.py`**: Cifragem Fernet (AES-128) + PBKDF2 (600k iterações), Gerador de Senhas e Avaliador de Força (`evaluate_password_strength`).
 - **`db_service.py`**: Persistência SQLite WAL mode para configurações do app e armazenamentos auxiliares.
 - **`task_runner_service.py`**: Execução assíncrona de tarefas em segundo plano com acompanhamento de progresso e logs.
-- **`log_buffer_service.py`**: Console circular de logs em memória (estilo CLI/Web).
+- **`log_buffer_service.py`**: Console circular de logs em memória (estilo CLI/Web), com `LogBufferHandler` anexado ao logger raiz para captura automática de `logging.getLogger(__name__)` de qualquer módulo.
 - **`notification_service.py`**: Notificador de Webhooks (Teams, Discord, Slack).
 - **`file_service.py`**: Gestão completa dos arquivos `.md` (Kanban, tags `#tag`, wikilinks `[[WikiLink]]`, snippets com `<mark>`).
+
+### Rotas de sistema (paridade com o app_template, só backend — sem UI própria)
+- `GET /api/system/health`, `/metrics`, `/logs`, `POST /logs/clear` — expõe `log_buffer_service`.
+- `POST /api/vault/encrypt`, `/decrypt`, `/generate-password` — expõe `crypto_vault_service`.
+- `POST /api/tasks/start-demo`, `GET /list`, `GET /{task_id}`, `POST /{task_id}/cancel` — expõe `task_runner_service`.
 
 ---
 
