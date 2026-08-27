@@ -76,7 +76,10 @@ def create_file(
     body: FileCreateRequest,
     service: FileService = Depends(get_file_service),
 ) -> FileDetailResponse:
-    return _to_detail(service.create_file(body))
+    try:
+        return _to_detail(service.create_file(body))
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 @router.get("/folders", response_model=FolderListResponse)
 def list_folders(service: FileService = Depends(get_file_service)) -> FolderListResponse:
@@ -149,6 +152,8 @@ def update_file(
         return _to_detail(service.update_file(unquote(file_id), body))
     except FileNotFoundError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"File '{file_id}' not found.")
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 @router.delete("/{file_id:path}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_file(

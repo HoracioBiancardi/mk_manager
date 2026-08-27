@@ -16,6 +16,10 @@ from mk_manager.repositories.base import AbstractFileRepository
 
 _FRONTMATTER_RE: re.Pattern[str] = re.compile(r"^---\n(.*?)\n---\n?", re.DOTALL)
 
+
+class PathTraversalError(ValueError):
+    """Raised when a user-supplied path would escape the notes root directory."""
+
 def _slugify(text: str) -> str:
     text = unicodedata.normalize("NFD", text)
     text = "".join(c for c in text if unicodedata.category(c) != "Mn")
@@ -111,28 +115,66 @@ class MarkdownFileRepository(AbstractFileRepository):
             candidate = f"{desired}_{counter}"
             counter += 1
 
+    def _sanitize_folder(self, folder: str) -> str:
+        """Strip and validate a user-supplied folder path, rejecting traversal segments."""
+        folder = (folder or "").strip("/")
+        if not folder:
+            return ""
+        if Path(folder).is_absolute():
+            raise PathTraversalError(f"Invalid folder path: '{folder}'")
+        parts = Path(folder).parts
+        if ".." in parts:
+            raise PathTraversalError(f"Invalid folder path: '{folder}'")
+        return folder
+
+    def _is_contained(self, path: Path) -> bool:
+        """Return True if `path`, once resolved, is the notes root or lives under it."""
+        root = self._dir.resolve()
+        resolved = path.resolve()
+        return resolved == root or root in resolved.parents
+
+    def _ensure_within_root(self, path: Path) -> Path:
+        if not self._is_contained(path):
+            raise PathTraversalError(f"Path '{path}' escapes the notes directory.")
+        return path
+
     def _build_path(self, file_id: str, folder: str = "") -> Path:
-        folder = folder.strip("/")
+        folder = self._sanitize_folder(folder)
         if folder:
-            return self._dir / folder / f"{file_id}.md"
-        return self._dir / f"{file_id}.md"
+            path = self._dir / folder / f"{file_id}.md"
+        else:
+            path = self._dir / f"{file_id}.md"
+        self._ensure_within_root(path)
+        return path
 
     def _require_path(self, file_id: str) -> Path:
         cached_path = self._id_to_path.get(file_id)
-        if cached_path is not None and cached_path.is_file():
+        if cached_path is not None and self._is_contained(cached_path) and cached_path.is_file():
             return cached_path
 
         direct = self._dir / file_id
-        if direct.is_file():
+        if self._is_contained(direct) and direct.is_file():
             with self._lock:
                 self._id_to_path[file_id] = direct
             return direct
 
-        matches = list(self._dir.rglob(f"{file_id}.md"))
+        if Path(file_id).is_absolute():
+            # Absolute file ids can't resolve to anything inside the sandbox, and
+            # pathlib's glob rejects rooted patterns outright.
+            with self._lock:
+                self._id_to_path.pop(file_id, None)
+            raise FileNotFoundError(f"File not found: '{file_id}'")
+
+        # A literal ".." path segment in a glob pattern is honoured as a real
+        # parent-directory reference (glob does not validate literal, non-wildcard
+        # segments against actual directory entries), so matches must still be
+        # verified to be contained within the notes root before being trusted.
+        matches = [p for p in self._dir.rglob(f"{file_id}.md") if self._is_contained(p)]
         if not matches:
             matches = [
                 p for p in self._dir.rglob("*")
-                if p.is_file() and (p.name == file_id or str(p.relative_to(self._dir)).replace("\\", "/") == file_id)
+                if p.is_file() and self._is_contained(p)
+                and (p.name == file_id or str(p.relative_to(self._dir)).replace("\\", "/") == file_id)
             ]
         if not matches:
             with self._lock:
@@ -290,7 +332,7 @@ class MarkdownFileRepository(AbstractFileRepository):
         status_changed_at: str = "",
         due_date: str = "",
     ) -> FileRecord:
-        folder = folder.strip("/")
+        folder = self._sanitize_folder(folder)
         actual_id = self._unique_id(file_id)
         rel_filename = f"{folder}/{actual_id}.md" if folder else f"{actual_id}.md"
         record = FileRecord(
@@ -329,13 +371,14 @@ class MarkdownFileRepository(AbstractFileRepository):
         existing = self._parse_cached(old_path)
 
         new_title = title if title is not None else existing.title
-        new_folder = folder.strip("/") if folder is not None else existing.folder
+        new_folder = self._sanitize_folder(folder) if folder is not None else existing.folder
         new_folder = new_folder or ""
 
         if existing.type == "other":
             dest_dir = self._dir / new_folder if new_folder else self._dir
             dest_dir.mkdir(parents=True, exist_ok=True)
             new_path = dest_dir / new_title
+            self._ensure_within_root(new_path)
 
             if new_path != old_path:
                 old_path.rename(new_path)
