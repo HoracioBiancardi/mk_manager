@@ -8,10 +8,34 @@ from mk_manager.config import get_settings
 from mk_manager.dependencies import get_file_service
 from mk_manager.services.file_service import FileService
 from mk_manager.models.schemas import FileUpdateRequest
+from mk_manager.utils.security import PathTraversalError, ensure_within_root, sanitize_relative_path
 
 router = APIRouter(tags=["assets"])
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".ico", ".avif"}
+MAX_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024  # 50MB
+
+
+def _resolve_safe_asset_path(assets_dir: Path, asset_name: str) -> Path:
+    """Sanitize a user-supplied asset path and confirm it stays inside `assets_dir`.
+
+    Raises HTTPException(400) on any traversal/absolute-path attempt.
+    """
+    try:
+        safe_name = sanitize_relative_path(asset_name, label="asset name")
+    except PathTraversalError:
+        raise HTTPException(status_code=400, detail="Invalid asset path")
+
+    if not safe_name:
+        raise HTTPException(status_code=400, detail="Invalid asset path")
+
+    file_path = assets_dir / safe_name
+    try:
+        ensure_within_root(assets_dir, file_path, label="Asset path")
+    except PathTraversalError:
+        raise HTTPException(status_code=400, detail="Invalid asset path")
+
+    return file_path
 
 def get_available_filename(assets_dir: Path, original_name: str, content: bytes) -> str:
     raw_name = Path(original_name).name
@@ -111,11 +135,25 @@ async def upload_asset(file_or_req: Any, folder: str = "") -> dict[str, str]:
     """Helper interno e exportado para testes."""
     settings = get_settings()
     base_assets = settings.resolved_assets_dir()
-    assets_dir = base_assets / folder if folder else base_assets
+
+    try:
+        safe_folder = sanitize_relative_path(folder, label="folder")
+    except PathTraversalError:
+        raise HTTPException(status_code=400, detail="Invalid folder path")
+
+    assets_dir = base_assets / safe_folder if safe_folder else base_assets
+    try:
+        ensure_within_root(base_assets, assets_dir, label="Folder path")
+    except PathTraversalError:
+        raise HTTPException(status_code=400, detail="Invalid folder path")
+    folder = safe_folder
     assets_dir.mkdir(parents=True, exist_ok=True)
 
     if isinstance(file_or_req, UploadFile):
         original_filename = file_or_req.filename or "file"
+        declared_size = getattr(file_or_req, "size", None)
+        if declared_size is not None and declared_size > MAX_UPLOAD_SIZE_BYTES:
+            raise HTTPException(status_code=413, detail="File too large")
         content = await file_or_req.read()
     elif isinstance(file_or_req, Request):
         original_filename = unquote(file_or_req.headers.get("x-filename", "file"))
@@ -123,6 +161,9 @@ async def upload_asset(file_or_req: Any, folder: str = "") -> dict[str, str]:
     else:
         original_filename = getattr(file_or_req, "filename", "file")
         content = await file_or_req.read() if hasattr(file_or_req, "read") else b""
+
+    if len(content) > MAX_UPLOAD_SIZE_BYTES:
+        raise HTTPException(status_code=413, detail="File too large")
 
     saved_name = get_available_filename(assets_dir, original_filename, content)
     dest = assets_dir / saved_name
@@ -179,7 +220,7 @@ def get_asset(asset_name: str):
     settings = get_settings()
     assets_dir = settings.resolved_assets_dir()
     real_name = unquote(asset_name)
-    file_path = assets_dir / real_name
+    file_path = _resolve_safe_asset_path(assets_dir, real_name)
 
     if not file_path.is_file():
         raise HTTPException(status_code=404, detail="Asset not found")
@@ -195,7 +236,7 @@ def delete_asset(
     settings = get_settings()
     assets_dir = settings.resolved_assets_dir()
     real_name = unquote(asset_name)
-    file_path = assets_dir / real_name
+    file_path = _resolve_safe_asset_path(assets_dir, real_name)
 
     affected = cleanup_asset_references(real_name, service)
 

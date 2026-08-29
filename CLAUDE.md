@@ -44,3 +44,9 @@ uv run pytest -v
 ## 🎨 Design System e Temas
 - **Temas**: `corporate`, `green-neutral` e `cyber-dark`.
 - **Layout**: Topbar animada, Activity Bar de ícones, Sidebar expansível e redimensionável com salvamento em `localStorage`.
+
+---
+
+## 🔒 Revisão de Segurança
+
+@~/.claude/security-review-checklist.md

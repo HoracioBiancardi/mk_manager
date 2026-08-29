@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 class FileMetaResponse(BaseModel):
     id: str
@@ -27,23 +27,41 @@ class FileDetailResponse(FileMetaResponse):
     content: str
 
 class FileCreateRequest(BaseModel):
-    title: str = Field(default="", description="File title")
+    title: str = Field(default="", description="File title", max_length=500)
     type: Literal["note", "task"] = Field(default="note", description="File type")
     tags: list[str] = Field(default_factory=list, description="List of tags")
-    content: str = Field(default="", description="Markdown body content")
-    folder: str = Field(default="", description="Folder path")
-    status: str = Field(default="", description="Kanban status")
-    status_changed_at: str = Field(default="", description="Timestamp of status change")
-    due_date: str = Field(default="", description="Due date YYYY-MM-DD")
+    content: str = Field(default="", description="Markdown body content", max_length=5_000_000)
+    folder: str = Field(default="", description="Folder path", max_length=1000)
+    status: str = Field(default="", description="Kanban status", max_length=100)
+    status_changed_at: str = Field(default="", description="Timestamp of status change", max_length=100)
+    due_date: str = Field(default="", description="Due date YYYY-MM-DD", max_length=100)
+
+    @field_validator("tags")
+    @classmethod
+    def _validate_tags(cls, value: list[str]) -> list[str]:
+        for tag in value:
+            if len(tag) > 100:
+                raise ValueError("Each tag must be at most 100 characters long.")
+        return value
 
 class FileUpdateRequest(BaseModel):
-    title: str | None = Field(default=None)
+    title: str | None = Field(default=None, max_length=500)
     tags: list[str] | None = Field(default=None)
-    content: str | None = Field(default=None)
-    folder: str | None = Field(default=None)
-    status: str | None = Field(default=None)
-    status_changed_at: str | None = Field(default=None)
-    due_date: str | None = Field(default=None)
+    content: str | None = Field(default=None, max_length=5_000_000)
+    folder: str | None = Field(default=None, max_length=1000)
+    status: str | None = Field(default=None, max_length=100)
+    status_changed_at: str | None = Field(default=None, max_length=100)
+    due_date: str | None = Field(default=None, max_length=100)
+
+    @field_validator("tags")
+    @classmethod
+    def _validate_tags(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return value
+        for tag in value:
+            if len(tag) > 100:
+                raise ValueError("Each tag must be at most 100 characters long.")
+        return value
 
 class TagRenameRequest(BaseModel):
     new_tag: str = Field(description="New tag value")
