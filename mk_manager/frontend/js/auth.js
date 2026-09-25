@@ -157,6 +157,32 @@ async function deleteUser() {
   } catch (err) { usErro(err.message); }
 }
 
+/* ── SHOW/HIDE em todo campo de senha (= ligarMostrarSenha do app_template) ── */
+function ligarMostrarSenha() {
+  document.querySelectorAll('input[type="password"]').forEach((input) => {
+    if (input.parentElement.querySelector("[data-mostra-senha]")) return;
+    let caixa = input.parentElement;
+    if (!caixa.classList.contains("pw-wrap")) {
+      caixa = el("div", "pw-wrap");
+      input.replaceWith(caixa);
+      caixa.append(input);
+    }
+    const botao = el("button", "pw-toggle", "SHOW");
+    botao.type = "button";
+    botao.dataset.mostraSenha = "";
+    botao.title = "Mostrar/ocultar";
+    caixa.append(botao);
+  });
+  document.addEventListener("click", (e) => {
+    const botao = e.target.closest("[data-mostra-senha]");
+    if (!botao) return;
+    const campo = botao.parentElement.querySelector("input");
+    const mostrar = campo.type === "password";
+    campo.type = mostrar ? "text" : "password";
+    botao.textContent = mostrar ? "HIDE" : "SHOW";
+  });
+}
+
 /* ── início ── */
 export async function initAuth(ready) {
   onReady = ready;
@@ -183,11 +209,7 @@ export async function initAuth(ready) {
       $("#login-btn").disabled = false;
     }
   });
-  $("#pw-toggle").addEventListener("click", () => {
-    const input = $("#login-pass"), show = input.type === "password";
-    input.type = show ? "text" : "password";
-    $("#pw-toggle").textContent = show ? "HIDE" : "SHOW";
-  });
+  ligarMostrarSenha();
   $("#btn-change-pw").addEventListener("click", () => openPasswordModal());
   $("#password-close").addEventListener("click", closePasswordModal);
   $("#password-form").addEventListener("submit", (e) => { e.preventDefault(); submitPasswordChange(); });
