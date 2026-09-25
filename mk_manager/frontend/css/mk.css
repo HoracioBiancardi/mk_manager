@@ -3082,3 +3082,11 @@ input[type=number] {
 .activity-btn { min-height: 40px; padding: 4px 0; }
 /* indicador do botão ativo (::before absoluto) precisa do botão como referência */
 .activity-btn { position: relative; }
+/* Modal de ordem dos ícones do menu lateral */
+.activity-order-item { display: flex; align-items: center; justify-content: space-between; padding: .35rem .6rem;
+  background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--r-md); margin-bottom: .35rem; }
+.activity-order-name { display: inline-flex; align-items: center; gap: .5rem; font-size: .85rem; font-weight: 500; }
+.activity-order-name .ms { font-size: 18px; vertical-align: 0; color: var(--primary); }
+.activity-order-actions { display: flex; gap: .3rem; }
+.activity-order-actions .btn { padding: .15rem .35rem; }
+.activity-order-actions .ms { font-size: 16px; }

@@ -8,26 +8,52 @@ import { applyEditorFontSize, getDefaultView, getEditorFontSize, setDefaultView,
 let _assetsDirLoaded = "";
 let _assetsDirWasDefault = true;
 
+// Nome e ícone de cada item vêm do próprio botão da barra lateral (nunca divergem dela).
+function activityItemParts(id) {
+  const btn = document.querySelector(`.activity-bar button[data-panel="${id}"]`);
+  return {
+    icon: btn?.querySelector(".ms")?.textContent || "",
+    label: btn?.querySelector(".activity-label")?.textContent || (ACTIVITY_BAR_LABELS[id] || id),
+  };
+}
+
 export function renderActivityBarOrderList() {
   const container = document.getElementById("settings-activity-order-list");
   if (!container) return;
   const order = getActivityBarOrder();
-  container.innerHTML = order
-    .map((id, index) => {
-      const label = ACTIVITY_BAR_LABELS[id] || id;
-      const isFirst = index === 0;
-      const isLast = index === order.length - 1;
-      return `
-        <div class="activity-order-item" style="display:flex; align-items:center; justify-content:space-between; padding:.3rem .6rem; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); margin-bottom:.3rem;">
-          <span style="font-size:.8rem; font-weight:500;">${esc(label)}</span>
-          <div style="display:flex; gap:.3rem;">
-            <button class="btn btn-ghost btn-sm" onclick="moveActivityIcon('${id}', 'up')" ${isFirst ? 'disabled' : ''} style="padding:0 .4rem;" title="Mover para cima">▲</button>
-            <button class="btn btn-ghost btn-sm" onclick="moveActivityIcon('${id}', 'down')" ${isLast ? 'disabled' : ''} style="padding:0 .4rem;" title="Mover para baixo">▼</button>
-          </div>
-        </div>
-      `;
-    })
-    .join("");
+  container.replaceChildren(...order.map((id, index) => {
+    const { icon, label } = activityItemParts(id);
+    const row = document.createElement("div");
+    row.className = "activity-order-item";
+    const name = document.createElement("span");
+    name.className = "activity-order-name";
+    const ic = document.createElement("span");
+    ic.className = "ms"; ic.textContent = icon;
+    name.append(ic, document.createTextNode(label));
+    const actions = document.createElement("div");
+    actions.className = "activity-order-actions";
+    for (const [dir, arrow, title, disabled] of [["up", "arrow_upward", "Mover para cima", index === 0],
+      ["down", "arrow_downward", "Mover para baixo", index === order.length - 1]]) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "btn btn-ghost btn-sm"; b.title = title; b.disabled = disabled;
+      const bi = document.createElement("span");
+      bi.className = "ms"; bi.textContent = arrow;
+      b.append(bi);
+      b.addEventListener("click", () => { moveActivityBarItem(id, dir); renderActivityBarOrderList(); });
+      actions.append(b);
+    }
+    row.append(name, actions);
+    return row;
+  }));
+}
+
+export function openActivityOrderModal() {
+  renderActivityBarOrderList();
+  document.getElementById("activity-order-overlay").classList.add("open");
+}
+
+export function closeActivityOrderModal() {
+  document.getElementById("activity-order-overlay").classList.remove("open");
 }
 
 export async function openSettingsModal() {
@@ -38,7 +64,6 @@ export async function openSettingsModal() {
   document.getElementById("settings-storage-info").textContent = "–";
   document.getElementById("settings-default-view").value = getDefaultView();
   document.getElementById("settings-font-size").value = getEditorFontSize();
-  renderActivityBarOrderList();
   
   document.getElementById("settings-theme").value = getCrtTheme();
 
@@ -219,10 +244,8 @@ Object.assign(window, {
   folderBrowserSelect,
   saveSettings,
   changeTheme: setCrtTheme,
-  moveActivityIcon: (id, direction) => {
-    moveActivityBarItem(id, direction);
-    renderActivityBarOrderList();
-  },
+  openActivityOrderModal,
+  closeActivityOrderModal,
   resetActivityIconOrder: () => {
     resetActivityBarOrder();
     renderActivityBarOrderList();

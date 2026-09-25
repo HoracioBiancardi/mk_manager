@@ -33,7 +33,7 @@ import {
   archiveFile,
 } from "./files.js";
 import { closeDeleteModal, openDeleteModal } from "./delete-modal.js";
-import { closeSettingsModal } from "./settings.js";
+import { closeSettingsModal, closeActivityOrderModal } from "./settings.js";
 import { openQuickOpen, closeQuickOpen } from "./quickopen.js";
 import { applyPrefsOnBoot } from "./prefs.js";
 import { initAuth } from "./auth.js";
@@ -79,6 +79,11 @@ document.addEventListener("keydown", (e) => {
     if (st.zenMode) setZenMode(false);
     closeDeleteModal();
     closeKanbanQEdit();
+    // Esc fecha primeiro o modal de ordem (aberto por cima das Configurações)
+    if (document.getElementById("activity-order-overlay")?.classList.contains("open")) {
+      closeActivityOrderModal();
+      return;
+    }
     closeSettingsModal();
     closeQuickOpen();
   }
