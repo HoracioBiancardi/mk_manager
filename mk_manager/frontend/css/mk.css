@@ -3076,7 +3076,9 @@ input[type=number] {
 
 /* Tela Usuários (= aba Usuários do app_template) dentro do painel principal */
 .users-pane { flex-direction: column; gap: 1.25rem; padding: 1.25rem; overflow-y: auto; width: 100%; }
-/* 12 seções na activity bar: rola em telas baixas */
-.activity-bar { overflow-y: auto; }
+/* 12 seções na activity bar: botões mais compactos para caber em telas de notebook
+   (a base do template já faz a barra rolar se ainda faltar altura) */
+.activity-bar { gap: 2px; padding: 6px 0; }
+.activity-btn { min-height: 40px; padding: 4px 0; }
 /* indicador do botão ativo (::before absoluto) precisa do botão como referência */
 .activity-btn { position: relative; }

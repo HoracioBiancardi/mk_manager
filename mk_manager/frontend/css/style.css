@@ -732,3 +732,12 @@ body {
 :root { color-scheme: dark; }
 .checkbox-label input { width: 16px; height: 16px; margin: 0; }   /* = .check input do /kit */
 .login-msg { margin: 0 0 14px; font-size: 12.5px; }  /* = .portal-msg do /kit */
+
+/* Modal alto (ex.: Configurações com muitas opções) não passa da tela: cabeçalho e rodapé
+   fixos, só o corpo rola. Vale para todos os projetos que copiam esta base. */
+.modal { max-height: 90vh; display: flex; flex-direction: column; }
+.modal-header, .modal-footer { flex-shrink: 0; }
+.modal-body { overflow-y: auto; flex: 1; min-height: 0; }
+/* Activity bar com muitas seções rola em telas baixas, sem barra de rolagem aparente */
+.activity-bar { overflow-y: auto; scrollbar-width: none; }
+.activity-bar::-webkit-scrollbar { display: none; }
