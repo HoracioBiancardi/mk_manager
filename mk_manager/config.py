@@ -5,6 +5,7 @@ try:
     class Settings(BaseSettings):
         notes_dir: Path = Path("./notes")
         assets_dir: Path | None = None
+        data_dir: Path = Path("./data")  # banco de usuários (mk_manager.db); fora do git
         host: str = "127.0.0.1"
         port: int = 8888
         debug: bool = False
@@ -24,12 +25,14 @@ except ImportError:
             self,
             notes_dir: Path = Path("./notes"),
             assets_dir: Path | None = None,
+            data_dir: Path = Path("./data"),
             host: str = "127.0.0.1",
             port: int = 8888,
             debug: bool = False,
         ):
             self.notes_dir = Path(notes_dir)
             self.assets_dir = Path(assets_dir) if assets_dir else None
+            self.data_dir = Path(data_dir)
             self.host = host
             self.port = port
             self.debug = debug

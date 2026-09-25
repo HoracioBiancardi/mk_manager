@@ -5,11 +5,11 @@ from mk_manager.main import app
 
 client = TestClient(app)
 
-def test_start_demo_task_and_poll_status():
+def test_start_demo_task_and_poll_status(session_cookie):
     # Usa o client como context manager: mantém um único portal/event loop vivo
     # entre as requisições, necessário para a task em segundo plano progredir
     # entre a chamada de start e as chamadas de polling subsequentes.
-    with TestClient(app) as scoped_client:
+    with TestClient(app, cookies=session_cookie) as scoped_client:
         start_response = scoped_client.post("/api/tasks/start-demo", json={
             "name": "Tarefa de Teste",
             "steps": 2,
@@ -38,5 +38,5 @@ def test_get_unknown_task_returns_404():
     assert response.status_code == 404
 
 def test_cancel_unknown_task_returns_400():
-    response = client.post("/api/tasks/unknown-id/cancel")
+    response = client.post("/api/tasks/unknown-id/cancel", json={})
     assert response.status_code == 400

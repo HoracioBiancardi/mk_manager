@@ -41,9 +41,24 @@ uv run pytest -v
 
 ---
 
+## 🔐 Login e usuários (modelo do app_template)
+- `services/auth_service.py` (portado do app_template): tabela `users` em `data/mk_manager.db`
+  (`MK_DATA_DIR`, fora do git), PBKDF2 600k, bloqueio de 5 erros **por usuário** sem enumeração,
+  troca obrigatória quando a senha foi definida pelo admin. Rotas em `routers/auth.py`.
+- Sessão em **cookie** HttpOnly/SameSite=Strict (o app fica aberto o dia todo; não pede login a
+  cada recarregar), expira após 30 min sem uso ou 12 h. Primeiro acesso cria o admin pela tela
+  (o app só escuta em 127.0.0.1).
+- `auth_middleware.py`: exige sessão em `/api/*` **e `/assets/*`** (anexos também são servidos e
+  apagados fora de /api), `Content-Type: application/json` nos métodos que mudam estado (upload
+  multipart liberado) e recusa `Sec-Fetch-Site` de outra origem. Sem CORS (mesma origem).
+- Testes: `tests/conftest.py` dá um banco em memória e sessão de admin a cada teste.
+
 ## 🎨 Design System e Temas
-- **Temas**: `corporate`, `green-neutral` e `cyber-dark`.
-- **Layout**: Topbar animada, Activity Bar de ícones, Sidebar expansível e redimensionável com salvamento em `localStorage`.
+- **Base visual = app_template**: `css/style.css` e `css/theme.css` são cópias de lá (não editar
+  aqui — mudar no template e copiar); `css/mk.css` tem só o domínio (editor, kanban, grafo...).
+- **Temas**: `corporate`, `green-neutral`, `cyber-dark` e `blau`. Ícones Material Symbols.
+- **Layout**: Topbar, Activity Bar com rótulos (reordenável; Usuários e Ajustes fixos no fim),
+  Sidebar redimensionável, tela Usuários (admin), toasts empilhados.
 
 ---
 

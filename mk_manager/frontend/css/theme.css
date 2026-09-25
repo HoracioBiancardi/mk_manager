@@ -1,6 +1,6 @@
 /* =====================================================================
-   TEMAS DE CORES — MK Manager V2
-   Suporte exclusivo para Corporate (Padrão) e Verde Escuro Neutro
+   TEMAS DE CORES — SwordPower Web Starter
+   Corporate (padrão), Verde Escuro Neutro, Cyber Dark e Blau (marca)
    ===================================================================== */
 
 /* Theme Corporativo (Neutro — Padrão) */
@@ -72,3 +72,61 @@ body.theme-green-neutral .brand-by-bg circle { fill: var(--primary) !important; 
 body.theme-green-neutral .brand-by-bg rect:last-of-type { fill: var(--text) !important; }
 body.theme-green-neutral .brand-by-bg path:first-of-type { fill: var(--surface-alt) !important; opacity: 1 !important; stroke: var(--border-bright) !important; stroke-width: 1 !important; }
 body.theme-green-neutral .brand-by-bg path:last-of-type { fill: var(--primary-glow) !important; }
+
+/* Theme Cyber Dark (Neon Blue/Violet) */
+body.theme-cyber-dark {
+  --bg:              #080914;
+  --surface:         #0f1123;
+  --surface-alt:     #171936;
+  --surface-hover:   #21244d;
+
+  --border:          #282c5e;
+  --border-muted:    #171936;
+  --border-bright:   #404694;
+
+  --primary:         #8b5cf6;
+  --primary-hover:   #a78bfa;
+  --primary-dim:     rgba(139, 92, 246, 0.15);
+  --primary-glow:    rgba(139, 92, 246, 0.25);
+  --glow-ring:       0 0 0 3px rgba(139, 92, 246, 0.25);
+
+  --text:            #f3f4f6;
+  --text-muted:      #9ca3af;
+  --text-subtle:     #6b7280;
+
+  --success:         #06b6d4;
+  --warn:            #f59e0b;
+  --danger:          #ec4899;
+  --danger-dim:      rgba(236, 72, 153, 0.12);
+  --info:            #3b82f6;
+}
+
+
+/* Theme Blau (marca) — paleta original do invest_sap (#26B4E9 / #2F343C / Roboto) */
+body.theme-blau {
+  --bg:              #1c1f26;
+  --surface:         #262b33;
+  --surface-alt:     #2f343c;
+  --surface-hover:   #363c45;
+
+  --border:          #3a4149;
+  --border-muted:    #2f343c;
+  --border-bright:   #4a525c;
+
+  --primary:         #26b4e9;
+  --primary-hover:   #4cc3ef;
+  --primary-dim:     rgba(38, 180, 233, 0.12);
+  --primary-glow:    rgba(38, 180, 233, 0.22);
+  --glow-ring:       0 0 0 3px rgba(38, 180, 233, 0.22);
+
+  --text:            #f1f3f5;
+  --text-muted:      #adb5bd;
+  --text-subtle:     #7a838c;
+
+  --success:         #5cb85c;
+  --warn:            #edb50b;
+  --danger:          #d9534f;
+  --danger-dim:      rgba(217, 83, 79, 0.12);
+  --info:            #26b4e9;
+}
+body.theme-blau { font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }

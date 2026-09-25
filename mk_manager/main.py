@@ -3,10 +3,10 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+from mk_manager.auth_middleware import AuthMiddleware, SecurityHeadersMiddleware
 from mk_manager.config import get_settings
-from mk_manager.routers import files, search, stats, tags, graph, assets, settings as settings_router, system, vault, tasks
+from mk_manager.routers import auth, files, search, stats, tags, graph, assets, settings as settings_router, system, vault, tasks
 from mk_manager.services.log_buffer_service import log_buffer_service
 
 def create_app() -> FastAPI:
@@ -19,22 +19,15 @@ def create_app() -> FastAPI:
         openapi_url="/openapi.json" if s.debug else None,
     )
 
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[
-            "http://127.0.0.1:8088", "http://localhost:8088",
-            "http://127.0.0.1:8888", "http://localhost:8888",
-            "http://127.0.0.1:8000", "http://localhost:8000",
-            "http://127.0.0.1:8080", "http://localhost:8080",
-        ],
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["*"],
-    )
+    # Sem CORS: o front é servido pelo próprio app (mesma origem). Liberar outras portas
+    # locais deixava páginas nelas lerem e alterarem as notas.
+    app.add_middleware(AuthMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware)
 
     # Captura logging padrão (logging.getLogger(__name__)) no buffer de logs da UI
     logging.getLogger().addHandler(log_buffer_service.get_handler())
 
+    app.include_router(auth.router)
     app.include_router(files.router)
     app.include_router(search.router)
     app.include_router(stats.router)

@@ -11,6 +11,7 @@ import { renderArchivePane } from "./archive.js";
 import { renderTrashView } from "./trash.js";
 import { renderCalendarView } from "./calendar.js";
 import { loadProjectAssets } from "./assets-panel.js";
+import { loadUsers } from "./auth.js";
 
 const PANES = {
   kanban: "kanban-pane",
@@ -22,6 +23,7 @@ const PANES = {
   trash: "trash-pane",
   calendar: "calendar-pane",
   assets: "assets-pane",
+  users: "users-pane",
 };
 
 function hideAllPanes() {
@@ -78,6 +80,8 @@ export function setMainView(view) {
         renderCalendarView();
       } else if (view === "assets") {
         loadProjectAssets();
+      } else if (view === "users") {
+        loadUsers();
       }
     }
 

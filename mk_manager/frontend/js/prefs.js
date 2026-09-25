@@ -63,7 +63,7 @@ export function applyPrefsOnBoot() {
 }
 
 const THEME_KEY = "mk-crt-theme";
-const VALID_THEMES = new Set(["corporate", "green-neutral", "cyber-dark"]);
+const VALID_THEMES = new Set(["corporate", "green-neutral", "cyber-dark", "blau"]);
 
 
 export function getCrtTheme() {
@@ -90,6 +90,7 @@ export const DEFAULT_ACTIVITY_BAR_ORDER = [
   "list",
   "calendar",
   "archive",
+  "assets",
   "trash",
 ];
 
@@ -102,6 +103,7 @@ export const ACTIVITY_BAR_LABELS = {
   list: "📑 Lista",
   calendar: "📅 Calendário",
   archive: "📦 Arquivo",
+  assets: "🖼️ Assets",
   trash: "🗑️ Lixeira",
 };
 
@@ -130,9 +132,11 @@ export function setActivityBarOrder(orderArray) {
 export function applyActivityBarOrder(order = getActivityBarOrder()) {
   const nav = document.querySelector(".activity-bar");
   if (!nav) return;
+  // Usuários e Ajustes ficam fixos no fim (= app_template): os reordenáveis entram antes deles.
+  const fixo = nav.querySelector('[data-panel="users"]') || nav.querySelector(".activity-settings");
   order.forEach((id) => {
-    let btn = nav.querySelector(`button[data-panel="${id}"]`);
-    if (btn) nav.appendChild(btn);
+    const btn = nav.querySelector(`button[data-panel="${id}"]`);
+    if (btn) nav.insertBefore(btn, fixo);
   });
 }
 

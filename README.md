@@ -34,3 +34,12 @@ Acesse a interface em: **`http://127.0.0.1:8888`**
 ```bash
 PYTHONPATH=. /home/swordpower/snap/antigravity/5/.local/bin/pytest -v
 ```
+
+
+## Acesso
+
+No primeiro acesso a tela pede para criar o **usuário administrador**. Depois, o admin cadastra
+os demais na tela **Usuários** (ícone de pessoas na barra lateral). Senha definida pelo admin é
+trocada pelo dono no próximo login; "Alterar Senha" fica na tela de acesso. A sessão fica
+num cookie seguro e expira após 30 minutos sem uso. Os usuários ficam em `data/mk_manager.db`
+(`MK_DATA_DIR`), fora do git.

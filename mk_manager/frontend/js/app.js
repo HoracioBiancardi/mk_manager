@@ -36,6 +36,7 @@ import { closeDeleteModal, openDeleteModal } from "./delete-modal.js";
 import { closeSettingsModal } from "./settings.js";
 import { openQuickOpen, closeQuickOpen } from "./quickopen.js";
 import { applyPrefsOnBoot } from "./prefs.js";
+import { initAuth } from "./auth.js";
 import "./views.js";
 import "./export.js";
 import "./search-filter.js";
@@ -98,10 +99,13 @@ document.addEventListener("keydown", (e) => {
   initSidebarResizer();
   initPreviewSourceSync();
   initAssetDropZone();
-  const ok = await checkConn();
-  if (ok) {
-    await loadFiles();
-  } else {
-    toast("API offline. Inicie o servidor: uv run mk-manager", "error");
-  }
+  // As notas só carregam depois do login (a API exige sessão).
+  await initAuth(async () => {
+    const ok = await checkConn();
+    if (ok) {
+      await loadFiles();
+    } else {
+      toast("API offline. Inicie o servidor: uv run mk-manager", "error");
+    }
+  });
 })();

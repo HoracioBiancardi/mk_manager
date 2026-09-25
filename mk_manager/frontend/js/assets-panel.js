@@ -110,7 +110,7 @@ export async function deleteProjectAsset(assetName) {
 
     if (!confirm(promptMsg)) return;
 
-    const res = await fetch(`/api/assets/${encodeURIComponent(assetName)}`, { method: "DELETE" });
+    const res = await fetch(`/api/assets/${encodeURIComponent(assetName)}`, { method: "DELETE", headers: { "Content-Type": "application/json" } });  // o servidor exige JSON em métodos que mudam estado (CSRF)
     if (!res.ok) throw new Error("Erro ao excluir asset.");
     const data = await res.json().catch(() => ({ affected_files: [] }));
     

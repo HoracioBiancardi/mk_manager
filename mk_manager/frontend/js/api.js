@@ -17,9 +17,11 @@ function setConnBadge(online) {
 export async function apiFetch(path, opts = {}) {
   let r;
   try {
+    // `headers` depois do spread: um header extra da chamada não apaga o JSON (o servidor
+    // exige Content-Type JSON em POST/PUT/DELETE como defesa CSRF).
     r = await fetch(API + path, {
-      headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
       ...opts,
+      headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
     });
   } catch {
     setConnBadge(false);
@@ -27,8 +29,12 @@ export async function apiFetch(path, opts = {}) {
   }
   setConnBadge(true);
   if (!r.ok) {
+    // Sessão expirada (inatividade/prazo) fora das rotas de credencial: volta ao login.
+    if (r.status === 401 && !path.startsWith('/auth/')) document.dispatchEvent(new CustomEvent('mk:unauthorized'));
     const err = await r.json().catch(() => ({ detail: r.statusText }));
-    throw new Error(err.detail || 'Erro na API');
+    const e = new Error(err.detail || 'Erro na API');
+    e.status = r.status;
+    throw e;
   }
   return r;
 }
@@ -43,6 +49,7 @@ export async function apiUpload(formData) {
   }
   setConnBadge(true);
   if (!r.ok) {
+    if (r.status === 401) document.dispatchEvent(new CustomEvent('mk:unauthorized'));
     const err = await r.json().catch(() => ({ detail: r.statusText }));
     throw new Error(err.detail || 'Erro no upload');
   }

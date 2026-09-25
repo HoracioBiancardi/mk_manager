@@ -1,11 +1,16 @@
 // Responsabilidade: utilitários reutilizáveis
 
-export function toast(msg, type = 'info', duration = 3000) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = `toast ${type} visible`;
-  clearTimeout(t._tid);
-  t._tid = setTimeout(() => { t.className = 'toast'; }, duration);
+// Toast = o do app_template: empilha no canto, fundo neutro, faixa colorida por tipo.
+const TOAST_CLASSE = { success: '', error: 'toast--erro', warn: 'toast--aviso', warning: 'toast--aviso', info: 'toast--info' };
+export function toast(msg, type = 'info', duration = 4500) {
+  const caixa = document.getElementById('toasts');
+  if (!caixa) return;
+  const el = document.createElement('div');
+  el.className = ('toast ' + (TOAST_CLASSE[type] ?? 'toast--info')).trim();
+  el.setAttribute('role', 'status');
+  el.textContent = msg;
+  caixa.appendChild(el);
+  setTimeout(() => el.remove(), duration);
 }
 
 // esc local: inclui aspas simples (necessário para atributos onclick inline)

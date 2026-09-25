@@ -23,6 +23,6 @@ def test_system_logs_and_clear():
     assert response.status_code == 200
     assert "logs" in response.json()
 
-    clear_response = client.post("/api/system/logs/clear")
+    clear_response = client.post("/api/system/logs/clear", json={})
     assert clear_response.status_code == 200
     assert clear_response.json()["status"] == "ok"
