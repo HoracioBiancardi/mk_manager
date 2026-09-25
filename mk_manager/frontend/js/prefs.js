@@ -34,7 +34,7 @@ export function setEditorFontSize(px) {
 const SIDEBAR_WIDTH_KEY = "mk-sidebar-width";
 export const SIDEBAR_WIDTH_DEFAULT = 240;
 const SIDEBAR_WIDTH_MIN = 160;
-const SIDEBAR_WIDTH_MAX = 480;
+const SIDEBAR_WIDTH_MAX = 550;
 
 export function getSidebarWidth() {
   const saved = parseInt(localStorage.getItem(SIDEBAR_WIDTH_KEY), 10);
@@ -44,7 +44,7 @@ export function getSidebarWidth() {
 }
 
 export function applySidebarWidth(px = getSidebarWidth()) {
-  document.documentElement.style.setProperty("--sidebar-panel-w", px + "px");
+  document.documentElement.style.setProperty("--sidebar-w", px + "px");
 }
 
 export function setSidebarWidth(px) {
