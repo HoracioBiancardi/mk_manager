@@ -147,8 +147,14 @@ export function renderTree() {
     return;
   }
 
+  const q = normalizar(st.treeQuery || '');
   const files = (st.filter === 'all' ? st.files : st.files.filter(f => f.type === st.filter))
-    .filter(f => (f.folder || '') !== 'assets' && !(f.folder || '').startsWith('assets/'));
+    .filter(f => (f.folder || '') !== 'assets' && !(f.folder || '').startsWith('assets/'))
+    .filter(f => !q || normalizar(`${f.title || ''} ${f.name || ''} ${f.folder || ''}`).includes(q));
+  if (q && !files.length) {
+    tree.innerHTML = '<div class="tree-empty">Nada encontrado para esse filtro.</div>';
+    return;
+  }
 
   const allFolderPaths = folderPathsFromFiles(files);
   const rootFiles = files
@@ -184,11 +190,12 @@ export function renderTree() {
     const parentPath = folderPath.includes('/')
       ? folderPath.split('/').slice(0, -1).join('/')
       : null;
-    if (parentPath && !st.expandedFolders.has(parentPath)) return;
+    // com filtro ativo, as pastas com resultado ficam abertas (senão o achado fica escondido)
+    if (parentPath && !q && !st.expandedFolders.has(parentPath)) return;
 
     const depth = (folderPath.match(/\//g) || []).length;
     const name = folderPath.split('/').pop();
-    const isOpen = st.expandedFolders.has(folderPath);
+    const isOpen = !!q || st.expandedFolders.has(folderPath);
     const filesHere = filesByFolder[folderPath] || [];
     const hasSubfolders = allFolderPaths.some(p =>
       p.startsWith(folderPath + '/') &&
@@ -745,6 +752,16 @@ export function onRenameBlur(id, value) {
   if (st.renamingId === id) _confirmRenameFile?.(id, value);
 }
 
+// sem acento e sem caixa: "reuniao" acha "Reunião"
+function normalizar(t) {
+  return String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+export function setTreeQuery(value) {
+  st.treeQuery = value;
+  renderTree();
+}
+
 export function setSidebarFilter(filter) {
   st.filter = filter;
   document.querySelectorAll("#sidebar-filters .filter-tab").forEach(btn => {
@@ -800,4 +817,5 @@ Object.assign(window, {
   onTreeBackgroundContextMenu,
   toggleTagTreeNode,
   setSidebarFilter,
+  setTreeQuery,
 });

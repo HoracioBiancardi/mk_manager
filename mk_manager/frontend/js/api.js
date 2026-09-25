@@ -10,7 +10,7 @@ const API = '/api';
 function setConnBadge(online) {
   const b = document.getElementById('conn-badge');
   if (!b) return;
-  b.textContent = online ? '● online' : '● offline';
+  b.textContent = online ? 'online' : 'offline';  // a bolinha vem do CSS (.conn-badge::before)
   b.classList.toggle('online', online);
 }
 

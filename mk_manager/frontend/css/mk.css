@@ -363,7 +363,9 @@ body.zen-mode .editor-info-bar {
 }
 
 .kanban-col {
-  flex: 0 0 220px; min-width: 220px; display: flex; flex-direction: column;
+  /* ocupa a largura disponível (responsivo); com muitas colunas, mínimo de 240px e o
+     quadro rola na horizontal. "+ Nova coluna" (flex: 0 0 auto) fica sempre ao lado, sem ser coberto. */
+  flex: 1 1 0; min-width: 240px; display: flex; flex-direction: column;
   background: var(--surface-alt); border: 1px solid var(--border);
   border-radius: var(--r-md); padding: .625rem;
   overflow: hidden; min-height: 0;
@@ -2458,7 +2460,9 @@ body.theme-white select option {
   color: var(--text-muted);
   cursor: pointer;
   transition: all var(--t);
-  font-family: 'Share Tech Mono', monospace !important;
+  font-family: inherit;               /* fonte do tema (antes: monoespaçada fixa) */
+  font-size: .72rem; font-weight: 500;
+  border-radius: var(--r-md);
 }
 
 .sidebar-filters .filter-tab:hover {
@@ -2470,8 +2474,7 @@ body.theme-white select option {
   background: var(--primary-dim);
   color: var(--primary);
   border-color: var(--border-bright);
-  font-weight: bold;
-  text-shadow: var(--glow-text);
+  font-weight: 600;
 }
 
 /* ── Autocomplete de Wiki-Links [[ ───────────────────────────────────────── */
@@ -3090,3 +3093,21 @@ input[type=number] {
 .activity-order-actions { display: flex; gap: .3rem; }
 .activity-order-actions .btn { padding: .15rem .35rem; }
 .activity-order-actions .ms { font-size: 16px; }
+/* campo de filtro da lateral = .sidebar-search do app_template */
+.sidebar-search { padding: .5rem .75rem; border-bottom: 1px solid var(--border-muted); }
+
+/* Árvore de arquivos: nome numa linha só, com reticências (a .tree-item do template quebra a linha) */
+.file-tree .tree-item { white-space: nowrap; overflow: hidden; gap: .3rem; }
+.file-tree .tree-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* Ações do item (renomear/excluir) só ocupam espaço ao passar o mouse ou focar: o nome
+   usa a largura toda (antes ficavam invisíveis mas roubavam 60px e o nome quebrava). */
+.file-tree .tree-item-actions { display: none; }
+.file-tree .tree-item:hover .tree-item-actions,
+.file-tree .tree-folder-row:hover .tree-item-actions,
+.file-tree .tree-item:focus-within .tree-item-actions,
+.file-tree .tree-folder-row:focus-within .tree-item-actions { display: flex; }
+/* Cabeçalho da lateral: 4 ações (nova nota/task/pasta, fechar) cabem nos 240px */
+.sidebar-panel .panel-header { padding: .6rem .75rem .6rem 1rem; }
+.panel-header-actions { display: flex; gap: 2px; }
+.panel-header-actions .icon-btn { padding: 3px; }
+.panel-header-actions .icon-btn .ms { font-size: 18px; }

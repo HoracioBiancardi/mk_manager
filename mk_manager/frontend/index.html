@@ -144,6 +144,7 @@
       </svg>
     </button>
     <div class="brand">
+      <button class="icon-btn sidebar-toggle-btn" type="button" onclick="switchPanel('explorer')" title="Alternar Barra Lateral (Sidebar)"><span class="ms" aria-hidden="true">menu</span></button>
       <div class="brand-icon"><span class="ms" aria-hidden="true">edit_note</span></div>
       <div class="brand-text">
         <span class="brand-name">MK Manager</span>
@@ -167,7 +168,7 @@
         <span><kbd>Ctrl+S</kbd> salvar</span>
       </div>
       <span id="user-badge" class="user-badge" title="Usuário logado"></span>
-      <span id="conn-badge" class="conn-badge">● offline</span>
+      <span id="conn-badge" class="conn-badge">offline</span>
       <button class="btn btn-ghost btn-sm btn-sair" id="btn-logout" type="button" title="Sair (encerrar a sessão)"><span class="ms" aria-hidden="true">logout</span>Sair</button>
     </div>
   </div>
@@ -199,30 +200,15 @@
         <div class="panel-header">
           <span class="panel-title">Explorador</span>
           <div class="panel-header-actions">
-            <button class="icon-btn" id="btn-new-note" onclick="newFile('note')" title="Nova Nota">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="currentColor"
-                  stroke-width="1.8" stroke-linejoin="round" />
-                <path d="M14 2v6h6" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
-                <path d="M12 18v-6M9 15h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-              </svg>
-            </button>
-            <button class="icon-btn" id="btn-new-task" onclick="newFile('task')" title="Nova Task">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M9 11l3 3L22 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round" />
-                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </button>
-            <button class="icon-btn" onclick="startNewFolderInput()" title="Nova Pasta">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" stroke="currentColor"
-                  stroke-width="1.8" stroke-linejoin="round" />
-                <path d="M12 13v4M10 15h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-              </svg>
-            </button>
+            <button class="icon-btn" id="btn-new-note" onclick="newFile('note')" title="Nova Nota"><span class="ms" aria-hidden="true">note_add</span></button>
+            <button class="icon-btn" id="btn-new-task" onclick="newFile('task')" title="Nova Task"><span class="ms" aria-hidden="true">add_task</span></button>
+            <button class="icon-btn" onclick="startNewFolderInput()" title="Nova Pasta"><span class="ms" aria-hidden="true">create_new_folder</span></button>
+            <button class="icon-btn" type="button" onclick="switchPanel('explorer')" title="Recolher Sidebar"><span class="ms" aria-hidden="true">close</span></button>
           </div>
+        </div>
+        <div class="sidebar-search">
+          <input type="text" class="form-input form-input-sm" id="tree-query" placeholder="Filtrar notas e tasks…"
+            aria-label="Filtrar notas e tasks" oninput="setTreeQuery(this.value)">
         </div>
         <div class="sidebar-filters" id="sidebar-filters">
           <button class="filter-tab active" data-filter="all" onclick="setSidebarFilter('all')">Tudo</button>
