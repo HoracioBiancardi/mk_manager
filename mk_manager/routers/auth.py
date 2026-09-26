@@ -5,6 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel
 
+from mk_manager.services import password_policy
 from mk_manager.services.auth_service import (
     SESSION_COOKIE,
     SESSION_TTL_SECONDS,
@@ -37,7 +38,8 @@ class NewUserRequest(BaseModel):
 
 
 class ResetPasswordRequest(BaseModel):
-    password: str
+    # Vazio = o servidor gera uma senha temporária forte e devolve uma vez só (= invest_sap).
+    password: str = ""
 
 
 def _locked(exc: AuthLockedError) -> HTTPException:
@@ -130,11 +132,16 @@ def create_user(req: NewUserRequest, sessao: dict = Depends(require_admin), auth
 @router.post("/users/{username}/password")
 def reset_password(username: str, req: ResetPasswordRequest, sessao: dict = Depends(require_admin),
                    auth: AuthService = Depends(get_auth_service)):
+    gerada = not req.password
+    if gerada and auth.normalize(username) == sessao["username"]:
+        # redefinir encerra as sessões do dono: a temporária sumiria junto com a do próprio admin
+        raise HTTPException(status_code=400, detail="Para a sua própria senha use “Alterar Senha”.")
+    senha = password_policy.gerar() if gerada else req.password
     try:
-        auth.set_password(username, req.password, must_change=auth.normalize(username) != sessao["username"])
+        auth.set_password(username, senha, must_change=gerada or auth.normalize(username) != sessao["username"])
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return {"ok": True}
+    return {"ok": True, "temporary_password": senha if gerada else None}
 
 
 @router.delete("/users/{username}")

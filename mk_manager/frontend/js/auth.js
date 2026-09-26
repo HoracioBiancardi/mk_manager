@@ -4,6 +4,7 @@
 // recarregar; expira por inatividade no servidor). Só textContent com dado da API.
 
 import { apiFetch } from "./api.js";
+import { ligarSenhas } from "./senha.js";
 import { toast } from "./utils.js";
 
 const $ = (sel) => document.querySelector(sel);
@@ -54,7 +55,7 @@ function applyLoginMode(configured) {
   $("#login-user-label").textContent = setupMode ? "Usuário Administrador" : "Usuário";
   $("#login-pass-label").textContent = setupMode ? "Crie a Senha" : "Senha";
   $("#login-hint").textContent = setupMode
-    ? "Primeiro acesso: crie o usuário administrador (senha com mínimo de 8 caracteres). Ele cadastra os demais na tela Usuários."
+    ? "Primeiro acesso: crie o usuário administrador (senha com mínimo de 10 caracteres e força Média). Ele cadastra os demais na tela Usuários."
     : "Sessão com bloqueio por inatividade.";
   $("#setup-confirm-group").style.display = setupMode ? "" : "none";
   $("#btn-change-pw").style.display = setupMode ? "none" : "";
@@ -141,15 +142,33 @@ async function createUser() {
     const r = await api("/auth/users", "POST", { username: nome.value, password: senha.value, is_admin: admin.checked });
     usErro(""); toast(`Usuário “${r.user.username}” criado.`, "success");
     nome.value = ""; senha.value = ""; admin.checked = false;
+    senha.type = "password"; const olho = senha.parentElement.querySelector(".pw-toggle"); if (olho) olho.textContent = "SHOW"; senha.dispatchEvent(new Event("input", { bubbles: true }));  // zera o medidor
     renderUsers(r.users);
   } catch (err) { usErro(err.message); }
 }
+// Senha temporária gerada pelo servidor, mostrada só agora (= invest_sap); DOM + textContent.
+function mostrarTemporaria(alvo, senha) {
+  const caixa = $("#us-temporaria");
+  caixa.replaceChildren();
+  if (!senha) return;
+  const aviso = el("div", "alert alert-warn");
+  const corpo = el("div");
+  const codigo = el("code", "senha-temporaria", senha);
+  const copiar = el("button", "btn btn-ghost btn-sm", "Copiar");
+  copiar.type = "button";
+  copiar.addEventListener("click", () => navigator.clipboard?.writeText(senha).then(() => toast("Senha copiada.", "success")));
+  corpo.append(el("div", "", `Senha temporária de “${alvo}” (mostrada só agora):`), codigo, copiar);
+  aviso.append(el("span", "alert-icon ms", "key"), corpo);
+  caixa.append(aviso);
+}
 async function resetUserPassword() {
-  const alvo = $("#us-alvo").value, senha = $("#us-alvo-senha");
+  const alvo = $("#us-alvo").value;
+  if (currentUser && alvo === currentUser.username) return usErro("Para a sua própria senha use “Alterar Senha”.");
+  if (!alvo || !confirm(`Gerar uma senha temporária para “${alvo}”? As sessões abertas dele serão encerradas.`)) return;
   try {
-    await api(`/auth/users/${encodeURIComponent(alvo)}/password`, "POST", { password: senha.value });
-    usErro(""); senha.value = "";
-    toast(`Senha de “${alvo}” redefinida; ele troca a senha no próximo login.`, "success");
+    const r = await api(`/auth/users/${encodeURIComponent(alvo)}/password`, "POST", {});
+    usErro("");
+    mostrarTemporaria(alvo, r.temporary_password);
     loadUsers();
   } catch (err) { usErro(err.message); }
 }
@@ -215,6 +234,7 @@ export async function initAuth(ready) {
     }
   });
   ligarMostrarSenha();
+  ligarSenhas();
   $("#btn-change-pw").addEventListener("click", () => openPasswordModal());
   $("#password-close").addEventListener("click", closePasswordModal);
   $("#password-form").addEventListener("submit", (e) => { e.preventDefault(); submitPasswordChange(); });

@@ -17,10 +17,11 @@ from typing import Optional
 
 from fastapi import HTTPException, Request
 
+from mk_manager.services import password_policy
 from mk_manager.services.db_service import DatabaseService
 
 PBKDF2_ITERATIONS = 600_000
-MIN_PASSWORD_LEN = 8
+MIN_PASSWORD_LEN = password_policy.MIN_TAMANHO  # regra completa em services/password_policy.py
 MAX_FAILURES = 5          # tentativas erradas seguidas (por usuário) antes do bloqueio
 LOCKOUT_SECONDS = 30
 SESSION_TTL_SECONDS = 12 * 3600      # prazo máximo desde o login
@@ -96,8 +97,8 @@ class AuthService:
 
     @staticmethod
     def _check_password(password: str) -> None:
-        if len(password) < MIN_PASSWORD_LEN:
-            raise ValueError(f"A senha precisa ter pelo menos {MIN_PASSWORD_LEN} caracteres.")
+        # Regra do ecossistema (= invest_sap): mínimo 10 caracteres e força pelo menos Média.
+        password_policy.validar(password)
 
     def create_user(self, username: str, password: str, is_admin: bool = False, must_change: bool = False) -> dict:
         """`must_change`: senha definida por outra pessoa (admin) — o dono troca no próximo login."""

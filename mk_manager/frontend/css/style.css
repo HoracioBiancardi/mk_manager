@@ -725,3 +725,10 @@ body {
 .activity-bar { overflow-y: auto; scrollbar-width: none; }
 .activity-bar::-webkit-scrollbar { display: none; }
 #us-erro:empty { display: none; }  /* div de erro vazia no fluxo da tela Usuários deixava um vão sob o título */
+/* Medidor de força de senha e senha temporária (= invest_sap / htmx_kit) */
+.forca { margin: .45rem 0 .2rem; }
+.forca-trilho { height: 6px; background: var(--surface-alt); border-radius: 99px; overflow: hidden; }
+.forca-barra { height: 100%; width: 0; background: var(--warn); transition: width .2s; }
+.forca--ok .forca-barra { background: var(--success); } .forca--erro .forca-barra { background: var(--danger); }
+.forca-info { display: flex; gap: .5rem; align-items: center; margin-top: .4rem; font-size: .75rem; color: var(--text-muted); flex-wrap: wrap; }
+.senha-temporaria { display: block; margin: .4rem 0; padding: .45rem .6rem; background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--r-sm); font-family: "Share Tech Mono", ui-monospace, monospace; user-select: all; word-break: break-all; color: var(--text); }
