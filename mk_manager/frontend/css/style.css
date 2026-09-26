@@ -374,19 +374,6 @@ body {
 }
 
 /* ── Navegação por Abas (Nav Tabs) ───────────────────────────────── */
-.nav-tabs { display: flex; align-items: center; gap: .4rem; margin-left: 1rem; }
-.nav-btn {
-  background: transparent; border: 1px solid transparent;
-  color: var(--text-muted); padding: .35rem .75rem;
-  border-radius: var(--r-md); font-size: .8125rem; font-weight: 500;
-  cursor: pointer; transition: all var(--t); font-family: inherit;
-}
-.nav-btn:hover { background: var(--surface-hover); color: var(--text); }
-.nav-btn.active {
-  background: var(--surface-alt); color: var(--primary);
-  border-color: var(--border-bright); font-weight: 600;
-  box-shadow: 0 1px 4px rgba(0,0,0,.3);
-}
 
 /* ── Tab Views & Grid ────────────────────────────────────────────── */
 .tab-view { display: none; flex-direction: column; width: 100%; height: 100%; overflow-y: auto; padding: 1.25rem; gap: 1.25rem; }
@@ -644,8 +631,6 @@ body {
 @media (prefers-reduced-motion: reduce) { .skel { animation: none; } }
 
 /* ── Ajustes de layout ───────────────────────────────────────────── */
-.nav-tabs { flex: 1; min-width: 0; overflow-x: auto; }
-.nav-btn { white-space: nowrap; }
 .component-section-title { margin: 1.4rem 0 .6rem; font-size: .9rem; font-weight: 600; color: var(--text); }
 .component-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
 
@@ -683,7 +668,6 @@ body {
 /* Topbar: sem espaço para marca + selo + abas, as abas saem primeiro (a activity bar e a sidebar
    continuam navegando). Mesmas quebras no /kit (htmx_kit/static/app.css). */
 @media (max-width: 1599px) { .brand-divider, .brand-by { display: none; } }
-@media (max-width: 1499px) { .nav-tabs { display: none; } }
 .user-badge { font-size: .8rem; color: var(--text-muted); white-space: nowrap; }
 .user-badge { display: inline-flex; align-items: center; gap: 4px; }
 .user-badge .ms { font-size: 16px; vertical-align: 0; }
@@ -701,9 +685,8 @@ body {
 .tree-icon.ms { font-size: 17px; }
 .page-title-icon.ms { font-size: 28px; color: var(--primary); }
 .card-header h3 .ms, .card-label .ms { font-size: 18px; margin-right: 6px; color: var(--primary); }
-.nav-btn .ms, .btn .ms { font-size: 16px; vertical-align: 0; }
-.nav-btn, .btn { gap: 6px; }
-.nav-btn { display: inline-flex; align-items: center; }
+.btn .ms { font-size: 16px; vertical-align: 0; }
+.btn { gap: 6px; }
 .brand-icon .ms { font-size: 19px; vertical-align: 0; }
 .login-icon .ms { vertical-align: 0; }
 .alert-icon.ms { font-size: 20px; margin-top: 1px; }
@@ -741,3 +724,4 @@ body {
 /* Activity bar com muitas seções rola em telas baixas, sem barra de rolagem aparente */
 .activity-bar { overflow-y: auto; scrollbar-width: none; }
 .activity-bar::-webkit-scrollbar { display: none; }
+#us-erro:empty { display: none; }  /* div de erro vazia no fluxo da tela Usuários deixava um vão sob o título */

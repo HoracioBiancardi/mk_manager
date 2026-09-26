@@ -115,17 +115,22 @@ function renderUsers(users) {
   const atual = alvo.value;
   alvo.replaceChildren(...users.map((u) => el("option", "", u.username)));
   if (users.some((u) => u.username === atual)) alvo.value = atual;
+  // Lista com selos (= invest_sap); só textContent com dado da API.
+  const selo = (texto, tipo) => el("span", `pill pill-${tipo}`, texto);
   const head = el("thead"), trh = el("tr");
-  ["Usuário", "Perfil", "Senha", "Criado em"].forEach((t) => trh.append(el("th", "", t)));
+  ["Usuário", "Perfil", "Troca de senha pendente", "Criado em"].forEach((t) => trh.append(el("th", "", t)));
   head.append(trh);
   const body = el("tbody");
   for (const u of users) {
     const tr = el("tr");
-    tr.append(el("td", "", u.username), el("td", "", u.is_admin ? "Administrador" : "Usuário"),
-      el("td", "", u.must_change_password ? "Troca pendente" : "Definida pelo usuário"), el("td", "", u.created_at));
+    const nome = el("td"); nome.append(el("strong", "", u.username));
+    const perfil = el("td"); perfil.append(u.is_admin ? selo("admin", "primary") : selo("usuário", "muted"));
+    const troca = el("td"); troca.append(u.must_change_password ? selo("Sim", "warn") : selo("Não", "muted"));
+    tr.append(nome, perfil, troca, el("td", "", u.created_at));
     body.append(tr);
   }
   $("#us-tabela").replaceChildren(head, body);
+  $("#us-total").textContent = users.length;
 }
 export async function loadUsers() {
   try { usErro(""); renderUsers((await api("/auth/users")).users); } catch (err) { usErro(err.message); }

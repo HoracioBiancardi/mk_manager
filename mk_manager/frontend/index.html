@@ -481,8 +481,8 @@
       <div id="users-pane" class="main-pane users-pane" style="display:none">
         <h1 class="page-title"><span class="page-title-icon ms" aria-hidden="true">group</span>Usuários</h1>
         <div id="us-erro"></div>
-        <div class="grid-form">
-          <div style="display:flex;flex-direction:column;gap:1.25rem;min-width:0">
+        <!-- = invest_sap (Admin → Usuários): formulários lado a lado em cima, lista com selos embaixo. -->
+        <div class="grid-2">
             <div class="card">
               <div class="card-header"><h3><span class="ms" aria-hidden="true">person_add</span>Novo Usuário</h3></div>
               <div class="form-group"><label class="form-label" for="us-novo">Usuário</label>
@@ -502,11 +502,10 @@
                 <button class="btn btn-secondary" id="us-remover" type="button"><span class="ms" aria-hidden="true">person_remove</span>Remover usuário</button>
               </div>
             </div>
-          </div>
-          <div class="card">
-            <div class="card-header"><h3><span class="ms" aria-hidden="true">group</span>Usuários</h3></div>
-            <div class="table-container"><table class="data-table" id="us-tabela"></table></div>
-          </div>
+        </div>
+        <div class="card glass">
+          <div class="card-header"><h3><span class="ms" aria-hidden="true">group</span>Usuários (<span id="us-total">0</span>)</h3></div>
+          <div class="table-container"><table class="data-table" id="us-tabela"></table></div>
         </div>
       </div>
 
