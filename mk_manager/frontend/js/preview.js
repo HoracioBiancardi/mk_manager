@@ -1,7 +1,7 @@
 // Responsabilidade: renderização do preview markdown/mermaid e exportação de imagens/tabelas/código
 
 import { st } from "./state.js";
-import { esc, toast } from "./utils.js";
+import { esc, sanitizeHtml, toast } from "./utils.js";
 import { onEditorInput, jumpToSourceLine, replaceRange } from "./editor.js";
 import { openDiagramBuilder } from "./diagram-builder.js";
 import { openTableBuilder } from "./table-builder.js";
@@ -48,6 +48,8 @@ marked.use({
       }
 
       const target = isExternal ? ' target="_blank" rel="noopener noreferrer"' : "";
+      // javascript:/data:/vbscript: passam pelo esc() e executam no clique: só esquemas seguros.
+      if (/^\s*(javascript|data|vbscript):/i.test(hrefStr)) return text;
       return `<a href="${esc(hrefStr)}"${titleAttr}${target}>${text}</a>`;
     },
   },
@@ -148,7 +150,7 @@ function renderBlocksWithLineMap(content) {
 }
 
 export function renderMarkdown(content, el, { onCheckboxChange, enableCapture = true, trackSourceLines = false } = {}) {
-  el.innerHTML = trackSourceLines ? renderBlocksWithLineMap(content) : marked.parse(content);
+  el.innerHTML = sanitizeHtml(trackSourceLines ? renderBlocksWithLineMap(content) : marked.parse(content));
 
   const diagrams = el.querySelectorAll(".mermaid");
   if (diagrams.length && typeof mermaid !== "undefined") {

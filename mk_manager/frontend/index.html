@@ -17,11 +17,14 @@
   <link rel="stylesheet" href="/static/css/theme.css">
   <link rel="stylesheet" href="/static/css/mk.css">
 
-  <!-- marked deve ser carregado antes do módulo ES (scripts regulares são síncronos) -->
-  <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <!-- marked deve ser carregado antes do módulo ES (scripts regulares são síncronos).
+       Versões fixas + integrity (SRI): se o CDN servir outro arquivo, o navegador recusa.
+       DOMPurify limpa o HTML do preview (notas são compartilhadas entre usuários). -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js" integrity="sha384-odPBjvtXVM/5hOYIr3A1dB+flh0c3wAT3bSesIOqEGmyUA4JoKf/YTWy0XKOYAY7" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.4.16/purify.min.js" integrity="sha384-a7SzOxErzJ3ZpQz0zJ32d67dSitNzPcbfybc/ykU9KJhMgZkwqfSxlhhdJRS+XGL" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" integrity="sha384-wH75j6z1lH97ZOpMOInqhgKzFkAInZPPSPlZpYKYTOqsaizPvhQZmAtLcPKXpLyH" crossorigin="anonymous">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" integrity="sha384-F/bZzf7p3Joyp5psL90p/p89AZJsndkSoGwRpXcZhleCWhd8SnRuoYo4d0yirjJp" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.8/dist/mermaid.min.js" integrity="sha384-N3QqR/7q+xm3BGX+CBbNI8AUmRRqcsDzToy+0z1NLDI0QmTKW8zvwLvqulJgk3dP" crossorigin="anonymous"></script>
   <script>
     mermaid.initialize({
       startOnLoad: false,
@@ -58,7 +61,8 @@
           const text = typeof code === 'object' ? code.text : code;
           const l = typeof code === 'object' ? (code.lang || lang || 'text') : (lang || 'text');
           if (l === 'mermaid') {
-            return `<div class="mermaid-wrap"><div class="mermaid">${text}</div></div>`;
+            const seguro = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return `<div class="mermaid-wrap"><div class="mermaid">${seguro}</div></div>`;
           }
           const language = hljs.getLanguage(l) ? l : 'plaintext';
           const highlighted = hljs.highlight(text, { language }).value;
@@ -706,7 +710,7 @@
   <input type="file" id="asset-file-input" style="display:none" multiple onchange="onAssetFiles(this.files)">
 
   <!-- html2canvas: captura de código/tabela como PNG (carregado sob demanda via CDN) -->
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous" defer></script>
 
   <!-- Módulo principal (deferred automaticamente, marked já está carregado) -->
   <script type="module" src="/static/js/trash.js"></script>

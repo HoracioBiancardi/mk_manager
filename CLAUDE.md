@@ -65,3 +65,12 @@ uv run pytest -v
 ## 🔒 Revisão de Segurança
 
 @~/.claude/security-review-checklist.md
+
+Decisões da 2ª rodada (2026-09-29):
+- **Markdown → HTML sempre por `sanitizeHtml()`** (`js/utils.js`, DOMPurify): as notas são
+  compartilhadas entre usuários, e o `marked` repassa HTML cru (`<img onerror>`). Vale para o
+  preview e para a exportação (janela `about:blank` herda a origem). Links `javascript:` viram texto.
+- **CDN com versão exata + `integrity` (SRI)** no `index.html`. Ao trocar versão, recalcule:
+  `curl -sL URL | openssl dgst -sha384 -binary | openssl base64 -A`.
+- **Lockout reserva a tentativa antes do hash** (`auth_service.verify_password`, sob `threading.Lock`).
+- Pendente: CSP (194 handlers `onclick=` inline a migrar para `data-*`, como no app_template).

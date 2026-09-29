@@ -38,3 +38,10 @@ export function timeAgo(iso) {
   const d = Math.floor(h / 24); if (d < 30) return `${d}d atrás`;
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
 }
+
+// O marked repassa HTML cru da nota (<img onerror=...>, <script>) e as notas são compartilhadas
+// entre usuários: sem limpar, quem escreve uma nota roda código na sessão de quem a abre (admin).
+// Todo HTML gerado de Markdown passa por aqui antes de ir para innerHTML/document.write.
+export function sanitizeHtml(html) {
+  return DOMPurify.sanitize(html, { ADD_ATTR: ["target"] });
+}

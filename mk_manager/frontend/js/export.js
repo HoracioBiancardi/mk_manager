@@ -1,7 +1,7 @@
 // Responsabilidade: exportação de Notas (PDF / MD / Standalone HTML)
 
 import { st } from "./state.js";
-import { esc, toast } from "./utils.js";
+import { esc, sanitizeHtml, toast } from "./utils.js";
 import { apiFetch } from "./api.js";
 
 export async function exportCurrentNoteAsPdf() {
@@ -16,7 +16,7 @@ export async function exportCurrentNoteAsPdf() {
   const content = document.getElementById("md-editor")?.value || file?.content || "";
   let bodyHtml = "";
   try {
-    bodyHtml = typeof marked !== "undefined" ? marked.parse(content) : `<pre>${esc(content)}</pre>`;
+    bodyHtml = typeof marked !== "undefined" ? sanitizeHtml(marked.parse(content)) : `<pre>${esc(content)}</pre>`;
   } catch (e) {
     const previewEl = document.getElementById("preview-pane");
     bodyHtml = previewEl ? previewEl.innerHTML : `<pre>${esc(content)}</pre>`;

@@ -12,6 +12,7 @@ import hashlib
 import hmac
 import re
 import secrets
+import threading
 import time
 from typing import Optional
 
@@ -45,6 +46,10 @@ class AuthService:
         self._db = db
         self._iterations = iterations
         self._sessions: dict[str, dict] = {}
+        # As rotas síncronas rodam em várias threads: contagem de tentativas e dicionário de
+        # sessões só mudam com a trava (sem ela, somas se perdiam e o revoke_user podia
+        # iterar o dicionário enquanto outra thread criava uma sessão).
+        self._lock = threading.Lock()
         self._failures: dict[str, int] = {}
         self._locked_until: dict[str, float] = {}
         self._db.execute(
@@ -145,23 +150,31 @@ class AuthService:
         self.revoke_user(user["username"])
 
     def verify_password(self, username: str, password: str) -> Optional[dict]:
-        """Usuário se a senha confere, senão None; aplica o bloqueio por tentativas (AuthLockedError)."""
+        """Usuário se a senha confere, senão None; aplica o bloqueio por tentativas (AuthLockedError).
+
+        A tentativa é reservada ANTES do hash: se a checagem do bloqueio viesse antes e a contagem
+        depois, uma rajada de requisições em paralelo passaria toda pela checagem e testaria dezenas
+        de senhas antes de bloquear. Assim, no máximo MAX_FAILURES senhas por janela de bloqueio."""
         nome = self.normalize(username)
-        remaining = self._locked_until.get(nome, 0) - time.time()
-        if remaining > 0:
-            raise AuthLockedError(int(remaining) + 1)
+        with self._lock:
+            remaining = self._locked_until.get(nome, 0) - time.time()
+            if remaining > 0:
+                raise AuthLockedError(int(remaining) + 1)
+            tentativa = self._failures.get(nome, 0) + 1
+            self._failures[nome] = tentativa
+        if tentativa > MAX_FAILURES:  # outra requisição em paralelo já gastou as tentativas
+            raise AuthLockedError(LOCKOUT_SECONDS)
 
         row = self._db.fetch_one("SELECT salt, iterations, hash FROM users WHERE username = ?", (nome,)) or self._dummy
         calculado = self._hash(password, bytes.fromhex(row["salt"]), row["iterations"])
         ok = bool(row["hash"]) and hmac.compare_digest(calculado, row["hash"])
-        if ok:
-            self._failures.pop(nome, None)
-            return self.get_user(nome)
-        self._failures[nome] = self._failures.get(nome, 0) + 1
-        if self._failures[nome] >= MAX_FAILURES:
-            self._failures.pop(nome, None)
-            self._locked_until[nome] = time.time() + LOCKOUT_SECONDS
-        return None
+        with self._lock:
+            if ok:
+                self._failures.pop(nome, None)
+            elif tentativa >= MAX_FAILURES:
+                self._failures.pop(nome, None)
+                self._locked_until[nome] = time.time() + LOCKOUT_SECONDS
+        return self.get_user(nome) if ok else None
 
     def change_password(self, username: str, current: str, new: str) -> bool:
         """Troca a própria senha se `current` estiver correta; encerra as sessões desse usuário."""
@@ -176,11 +189,12 @@ class AuthService:
         têm onde guardá-la no navegador. Fica só em memória e some no logout/expiração."""
         token = secrets.token_hex(32)
         agora = time.time()
-        self._sessions[token] = {
-            "username": user["username"], "is_admin": bool(user["is_admin"]),
-            "must_change_password": bool(user.get("must_change_password")),
-            "created_at": agora, "last_activity": agora, "vault_key": vault_key,
-        }
+        with self._lock:
+            self._sessions[token] = {
+                "username": user["username"], "is_admin": bool(user["is_admin"]),
+                "must_change_password": bool(user.get("must_change_password")),
+                "created_at": agora, "last_activity": agora, "vault_key": vault_key,
+            }
         return token
 
     def get_session(self, token: Optional[str], activity: bool = True) -> Optional[dict]:
@@ -189,7 +203,8 @@ class AuthService:
         agora = time.time()
         if sessao and (agora - sessao["created_at"] > SESSION_TTL_SECONDS
                        or agora - sessao.get("last_activity", sessao["created_at"]) > SESSION_IDLE_SECONDS):
-            self._sessions.pop(token, None)
+            with self._lock:
+                self._sessions.pop(token, None)
             return None
         if sessao and activity:
             sessao["last_activity"] = agora
@@ -199,11 +214,13 @@ class AuthService:
         return self.get_session(token) is not None
 
     def revoke(self, token: str) -> None:
-        self._sessions.pop(token, None)
+        with self._lock:
+            self._sessions.pop(token, None)
 
     def revoke_user(self, username: str) -> None:
-        for token in [t for t, s in self._sessions.items() if s["username"] == username]:
-            self._sessions.pop(token, None)
+        with self._lock:
+            for token in [t for t, s in self._sessions.items() if s["username"] == username]:
+                self._sessions.pop(token, None)
 
 
 _auth_service: Optional[AuthService] = None

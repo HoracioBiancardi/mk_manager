@@ -1312,8 +1312,13 @@ function showTagSuggestions(items) {
     const isSelected = idx === _tagSelectedIdx ? "selected" : "";
     const cls = "inline-tag-suggestion-item" + (item.isCreate ? " inline-tag-suggestion-create" : "") + (isSelected ? " selected" : "");
     const label = item.isCreate ? `+ Criar #${esc(item.value)}` : `#${esc(item.value)}`;
-    return `<div class="${cls}" onclick="insertInlineTag('${esc(item.value)}')">${label}</div>`;
+    return `<div class="${cls}" data-tag="${esc(item.value)}">${label}</div>`;
   }).join("");
+  // Sem onclick="insertInlineTag('${...}')": o navegador decodifica &#039; de volta para ' antes
+  // de rodar o atributo, e uma tag com aspas fechava a string e injetava código.
+  dropdown.querySelectorAll("[data-tag]").forEach((div) => {
+    div.addEventListener("click", () => insertInlineTag(div.dataset.tag));
+  });
 }
 
 function hideTagSuggestions() {
