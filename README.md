@@ -11,7 +11,7 @@ Gerenciador de notas e tarefas baseado em arquivos Markdown (.md) com frontmatte
 - **Visão Kanban & Tags**: Transição de status de tarefas, tags hierárquicas (`#área/sub`) e wikilinks (`[[WikiLink]]`).
 - **Gerenciador de Assets & Anexos**: Upload inteligente de imagens/PDFs.
 - **Activity Bar & Sidebar Redimensionável**: Painéis laterais com ajuste por drag-and-drop.
-- **Suporte a 3 Temas**: Corporativo (`corporate`), Verde Neutro (`green-neutral`) e Cyber Dark (`cyber-dark`).
+- **Suporte a 3 Temas**: Corporativo escuro (`corporate`), Corporativo claro (`corporate-light`) e Blau (`blau`).
 
 ---
 

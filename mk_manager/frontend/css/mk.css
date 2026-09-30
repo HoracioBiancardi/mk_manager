@@ -1,37 +1,30 @@
 /* =====================================================================
    mk.css — só o que é do domínio do MK Manager (editor, preview, kanban, lista,
    calendário, grafo, arquivo, assets...). A base visual (casca, botões, formulários,
-   modais, toasts, temas) vem do app_template: css/style.css e css/theme.css são
-   cópias de lá — não edite esses dois aqui; atualize no template e copie.
+   modais, toasts) vem do app_template: css/style.css é cópia de lá, e os temas
+   (corporate.css, blau-tokens.css, blau-spa.css) são cópias do design_system/ —
+   não edite esses arquivos aqui; atualize no template e copie.
    ===================================================================== */
-
-/* Theme Corporativo (Neutro — uso profissional) */
-
-
-/* Theme Verde Escuro Neutro */
-
-
-
 
 /* Scrollbars Retro */
 
-body.theme-green *, body.theme-amber *, body.theme-blue *, body.theme-white *, body.theme-red *, body.theme-purple *, body.theme-green-neutral * {
+body.theme-green *, body.theme-amber *, body.theme-blue *, body.theme-white *, body.theme-red *, body.theme-purple * {
   scrollbar-width: thin;
   scrollbar-color: var(--border-bright) transparent;
 }
 
-body.theme-green *::-webkit-scrollbar, body.theme-amber *::-webkit-scrollbar, body.theme-blue *::-webkit-scrollbar, body.theme-white *::-webkit-scrollbar, body.theme-red *::-webkit-scrollbar, body.theme-purple *::-webkit-scrollbar, body.theme-green-neutral *::-webkit-scrollbar {
+body.theme-green *::-webkit-scrollbar, body.theme-amber *::-webkit-scrollbar, body.theme-blue *::-webkit-scrollbar, body.theme-white *::-webkit-scrollbar, body.theme-red *::-webkit-scrollbar, body.theme-purple *::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
-body.theme-green *::-webkit-scrollbar-thumb, body.theme-amber *::-webkit-scrollbar-thumb, body.theme-blue *::-webkit-scrollbar-thumb, body.theme-white *::-webkit-scrollbar-thumb, body.theme-red *::-webkit-scrollbar-thumb, body.theme-purple *::-webkit-scrollbar-thumb, body.theme-green-neutral *::-webkit-scrollbar-thumb {
+body.theme-green *::-webkit-scrollbar-thumb, body.theme-amber *::-webkit-scrollbar-thumb, body.theme-blue *::-webkit-scrollbar-thumb, body.theme-white *::-webkit-scrollbar-thumb, body.theme-red *::-webkit-scrollbar-thumb, body.theme-purple *::-webkit-scrollbar-thumb {
   background: var(--border-bright);
   border-radius: var(--r-sm);
   border: 1px solid var(--bg);
 }
 
-body.theme-green *::-webkit-scrollbar-thumb:hover, body.theme-amber *::-webkit-scrollbar-thumb:hover, body.theme-blue *::-webkit-scrollbar-thumb:hover, body.theme-white *::-webkit-scrollbar-thumb:hover, body.theme-red *::-webkit-scrollbar-thumb:hover, body.theme-purple *::-webkit-scrollbar-thumb:hover, body.theme-green-neutral *::-webkit-scrollbar-thumb:hover {
+body.theme-green *::-webkit-scrollbar-thumb:hover, body.theme-amber *::-webkit-scrollbar-thumb:hover, body.theme-blue *::-webkit-scrollbar-thumb:hover, body.theme-white *::-webkit-scrollbar-thumb:hover, body.theme-red *::-webkit-scrollbar-thumb:hover, body.theme-purple *::-webkit-scrollbar-thumb:hover {
   background: var(--primary);
 }
 
@@ -45,7 +38,7 @@ body.theme-green *::-webkit-scrollbar-thumb:hover, body.theme-amber *::-webkit-s
 
 /* Realce de sintaxe hljs monocromático phosphor */
 
-body.theme-green .hljs, body.theme-amber .hljs, body.theme-blue .hljs, body.theme-white .hljs, body.theme-red .hljs, body.theme-purple .hljs, body.theme-green-neutral .hljs {
+body.theme-green .hljs, body.theme-amber .hljs, body.theme-blue .hljs, body.theme-white .hljs, body.theme-red .hljs, body.theme-purple .hljs {
   background: var(--surface-alt) !important;
   color: var(--text) !important;
 }
@@ -55,8 +48,7 @@ body.theme-amber .hljs-keyword, body.theme-amber .hljs-selector-tag, body.theme-
 body.theme-blue .hljs-keyword, body.theme-blue .hljs-selector-tag, body.theme-blue .hljs-title, body.theme-blue .hljs-section, body.theme-blue .hljs-name, body.theme-blue .hljs-strong,
 body.theme-red .hljs-keyword, body.theme-red .hljs-selector-tag, body.theme-red .hljs-title, body.theme-red .hljs-section, body.theme-red .hljs-name, body.theme-red .hljs-strong,
 body.theme-purple .hljs-keyword, body.theme-purple .hljs-selector-tag, body.theme-purple .hljs-title, body.theme-purple .hljs-section, body.theme-purple .hljs-name, body.theme-purple .hljs-strong,
-body.theme-white .hljs-keyword, body.theme-white .hljs-selector-tag, body.theme-white .hljs-title, body.theme-white .hljs-section, body.theme-white .hljs-name, body.theme-white .hljs-strong,
-body.theme-green-neutral .hljs-keyword, body.theme-green-neutral .hljs-selector-tag, body.theme-green-neutral .hljs-title, body.theme-green-neutral .hljs-section, body.theme-green-neutral .hljs-name, body.theme-green-neutral .hljs-strong {
+body.theme-white .hljs-keyword, body.theme-white .hljs-selector-tag, body.theme-white .hljs-title, body.theme-white .hljs-section, body.theme-white .hljs-name, body.theme-white .hljs-strong {
   color: var(--primary) !important;
   font-weight: bold;
 }
@@ -66,8 +58,7 @@ body.theme-amber .hljs-comment, body.theme-amber .hljs-quote,
 body.theme-blue .hljs-comment, body.theme-blue .hljs-quote,
 body.theme-red .hljs-comment, body.theme-red .hljs-quote,
 body.theme-purple .hljs-comment, body.theme-purple .hljs-quote,
-body.theme-white .hljs-comment, body.theme-white .hljs-quote,
-body.theme-green-neutral .hljs-comment, body.theme-green-neutral .hljs-quote {
+body.theme-white .hljs-comment, body.theme-white .hljs-quote {
   color: var(--text-subtle) !important;
 }
 
@@ -76,8 +67,7 @@ body.theme-amber .hljs-string, body.theme-amber .hljs-literal, body.theme-amber 
 body.theme-blue .hljs-string, body.theme-blue .hljs-literal, body.theme-blue .hljs-number, body.theme-blue .hljs-addition, body.theme-blue .hljs-attribute, body.theme-blue .hljs-type,
 body.theme-red .hljs-string, body.theme-red .hljs-literal, body.theme-red .hljs-number, body.theme-red .hljs-addition, body.theme-red .hljs-attribute, body.theme-red .hljs-type,
 body.theme-purple .hljs-string, body.theme-purple .hljs-literal, body.theme-purple .hljs-number, body.theme-purple .hljs-addition, body.theme-purple .hljs-attribute, body.theme-purple .hljs-type,
-body.theme-white .hljs-string, body.theme-white .hljs-literal, body.theme-white .hljs-number, body.theme-white .hljs-addition, body.theme-white .hljs-attribute, body.theme-white .hljs-type,
-body.theme-green-neutral .hljs-string, body.theme-green-neutral .hljs-literal, body.theme-green-neutral .hljs-number, body.theme-green-neutral .hljs-addition, body.theme-green-neutral .hljs-attribute, body.theme-green-neutral .hljs-type {
+body.theme-white .hljs-string, body.theme-white .hljs-literal, body.theme-white .hljs-number, body.theme-white .hljs-addition, body.theme-white .hljs-attribute, body.theme-white .hljs-type {
   color: var(--text-muted) !important;
 }
 
@@ -93,7 +83,7 @@ body.theme-green-neutral .hljs-string, body.theme-green-neutral .hljs-literal, b
 
 .spinner {
   display: inline-block; width: .8rem; height: .8rem;
-  border: 2px solid rgba(255,255,255,.2); border-top-color: currentColor;
+  border: 2px solid color-mix(in srgb, currentColor 25%, transparent); border-top-color: currentColor;
   border-radius: 50%; animation: spin .6s linear infinite;
 }
 
@@ -119,13 +109,13 @@ kbd {
 
 .toast.visible { opacity: 1; transform: translateY(0) scale(1); }
 
-.toast.success { background: #0d2a1a; color: var(--success); border-color: rgba(63,185,80,.25); }
+.toast.success { background: color-mix(in srgb, var(--success) 12%, var(--surface)); color: var(--success); border-color: color-mix(in srgb, var(--success) 25%, transparent); }
 
-.toast.error   { background: #2d0b0b; color: var(--danger);  border-color: rgba(248,81,73,.25); }
+.toast.error   { background: color-mix(in srgb, var(--danger) 12%, var(--surface)); color: var(--danger);  border-color: color-mix(in srgb, var(--danger) 25%, transparent); }
 
-.toast.info    { background: #0c1f3f; color: #58a6ff;        border-color: rgba(56,139,253,.25); }
+.toast.info    { background: color-mix(in srgb, var(--info) 12%, var(--surface)); color: var(--info); border-color: color-mix(in srgb, var(--info) 25%, transparent); }
 
-.toast.warn    { background: #291e0b; color: #e3b341;        border-color: rgba(210,153,34,.25); }
+.toast.warn    { background: color-mix(in srgb, var(--warn) 12%, var(--surface)); color: var(--warn); border-color: color-mix(in srgb, var(--warn) 25%, transparent); }
 
 @keyframes fadeSlideIn {
   from { opacity: 0; transform: translateX(-8px); }
@@ -318,7 +308,7 @@ body.zen-mode .editor-info-bar {
   background: var(--surface-alt); border: 1px solid var(--border);
   border-radius: var(--r-md); padding: .625rem .75rem;
   font-size: .78rem; color: var(--text);
-  box-shadow: 0 4px 20px rgba(0,0,0,.3);
+  box-shadow: var(--shadow-md);
   pointer-events: none;
   opacity: 0; transform: translateX(-6px);
   transition: opacity .12s, transform .12s;
@@ -1139,7 +1129,7 @@ body.zen-mode .editor-info-bar {
 }
 
 .type-badge.note {
-  background: rgba(56,139,253,.12); color: #58a6ff;
+  background: color-mix(in srgb, var(--info) 12%, transparent); color: var(--info);
   border: 1px solid rgba(56,139,253,.25);
 }
 
@@ -1274,7 +1264,7 @@ body.zen-mode .editor-info-bar {
 
 .status-select:focus { border-color: var(--primary); }
 
-.status-select option { background: #161b22; }
+.status-select option { background: var(--surface); }
 
 /* Status badges */
 
@@ -1283,11 +1273,11 @@ body.zen-mode .editor-info-bar {
   text-transform: uppercase; padding: .1rem .34rem; border-radius: 4px; flex-shrink: 0;
 }
 
-.sbadge.planning    { background: rgba(210,153,34,.12);  color: #e3b341; border: 1px solid rgba(210,153,34,.25); }
+.sbadge.planning    { background: rgba(210,153,34,.12);  color: var(--warn); border: 1px solid rgba(210,153,34,.25); }
 
-.sbadge.development { background: rgba(56,139,253,.12);  color: #58a6ff; border: 1px solid rgba(56,139,253,.25); }
+.sbadge.development { background: rgba(56,139,253,.12);  color: var(--info); border: 1px solid rgba(56,139,253,.25); }
 
-.sbadge.review      { background: rgba(168,85,247,.12);  color: #c084fc; border: 1px solid rgba(168,85,247,.25); }
+.sbadge.review      { background: rgba(168,85,247,.12);  color: color-mix(in srgb, #a855f7 65%, var(--text)); border: 1px solid rgba(168,85,247,.25); }
 
 .sbadge.done        { background: var(--primary-dim);    color: var(--primary); border: 1px solid rgba(16,185,129,.25); }
 
@@ -1373,7 +1363,7 @@ body.zen-mode .editor-info-bar {
 
 .resize-handle:hover .rh-dots, .resize-handle.dragging .rh-dots { opacity: 1; }
 
-.rh-dot { width: 3px; height: 3px; border-radius: 50%; background: rgba(255,255,255,.5); }
+.rh-dot { width: 3px; height: 3px; border-radius: 50%; background: color-mix(in srgb, var(--text) 50%, transparent); }
 
 /* Preview pane */
 
@@ -1423,11 +1413,11 @@ body.zen-mode .editor-info-bar {
    e em tom mais apagado quando é um link "fantasma" (nota ainda não existe). */
 
 .md-preview a.wikilink {
-  color: #a78bfa; border-bottom: 1px solid rgba(167,139,250,.4);
+  color: color-mix(in srgb, #8b5cf6 65%, var(--text)); border-bottom: 1px solid rgba(167,139,250,.4);
   text-decoration: none; padding-bottom: 1px;
 }
 
-.md-preview a.wikilink:hover { color: #c4b5fd; border-bottom-color: rgba(196,181,253,.7); }
+.md-preview a.wikilink:hover { color: color-mix(in srgb, #a78bfa 65%, var(--text)); border-bottom-color: rgba(196,181,253,.7); }
 
 .md-preview a.wikilink.phantom {
   color: var(--text-subtle); border-bottom: 1px dashed var(--text-subtle);
@@ -1437,7 +1427,7 @@ body.zen-mode .editor-info-bar {
 
 .md-preview strong { color: var(--text); font-weight: 700; }
 
-.md-preview em     { color: #c4b5fd; font-style: italic; }
+.md-preview em     { color: color-mix(in srgb, #a78bfa 65%, var(--text)); font-style: italic; }
 
 .md-preview del    { color: var(--text-subtle); }
 
@@ -1500,7 +1490,7 @@ body.zen-mode .editor-info-bar {
   transition: background 0.15s, color 0.15s, border-color 0.15s;
   white-space: nowrap;
   line-height: 1.4;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  box-shadow: var(--shadow-sm);
 }
 
 .block-actions button:hover,
@@ -1554,7 +1544,7 @@ body.zen-mode .editor-info-bar {
 
 .mermaid-zoom-overlay {
   position: fixed; inset: 0;
-  background: rgba(0,0,0,.72);
+  background: var(--veu);
   z-index: 9999;
   display: flex; align-items: center; justify-content: center;
   animation: fadeInOverlay .15s ease;
@@ -1570,7 +1560,7 @@ body.zen-mode .editor-info-bar {
   width: 90vw; height: 85vh;
   display: flex; flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 8px 40px rgba(0,0,0,.45);
+  box-shadow: var(--shadow-lg);
   animation: slideUpModal .15s ease;
 }
 
@@ -2030,14 +2020,14 @@ body.zen-mode .editor-info-bar {
 
 /* ── Overrides adicionais para visual retro e cantos Pip-Boy ─────────── */
 
-body.theme-green .modal, body.theme-amber .modal, body.theme-blue .modal, body.theme-white .modal, body.theme-red .modal, body.theme-purple .modal, body.theme-green-neutral .modal {
+body.theme-green .modal, body.theme-amber .modal, body.theme-blue .modal, body.theme-white .modal, body.theme-red .modal, body.theme-purple .modal {
   position: relative;
   border: 1px solid var(--border-bright) !important;
   background: var(--surface) !important;
   box-shadow: 0 0 15px rgba(0, 0, 0, 0.8), 0 0 5px var(--primary-glow) !important;
 }
 
-body.theme-green .modal::before, body.theme-amber .modal::before, body.theme-blue .modal::before, body.theme-white .modal::before, body.theme-red .modal::before, body.theme-purple .modal::before, body.theme-green-neutral .modal::before {
+body.theme-green .modal::before, body.theme-amber .modal::before, body.theme-blue .modal::before, body.theme-white .modal::before, body.theme-red .modal::before, body.theme-purple .modal::before {
   content: "";
   position: absolute;
   top: 0; left: 0; width: 10px; height: 10px;
@@ -2046,7 +2036,7 @@ body.theme-green .modal::before, body.theme-amber .modal::before, body.theme-blu
   pointer-events: none;
 }
 
-body.theme-green .modal::after, body.theme-amber .modal::after, body.theme-blue .modal::after, body.theme-white .modal::after, body.theme-red .modal::after, body.theme-purple .modal::after, body.theme-green-neutral .modal::after {
+body.theme-green .modal::after, body.theme-amber .modal::after, body.theme-blue .modal::after, body.theme-white .modal::after, body.theme-red .modal::after, body.theme-purple .modal::after {
   content: "";
   position: absolute;
   bottom: 0; right: 0; width: 10px; height: 10px;
@@ -2057,13 +2047,13 @@ body.theme-green .modal::after, body.theme-amber .modal::after, body.theme-blue 
 
 /* Cantos em colchete também para o empty-panel e editor/preview */
 
-body.theme-green .empty-state, body.theme-amber .empty-state, body.theme-blue .empty-state, body.theme-white .empty-state, body.theme-red .empty-state, body.theme-purple .empty-state, body.theme-green-neutral .empty-state {
+body.theme-green .empty-state, body.theme-amber .empty-state, body.theme-blue .empty-state, body.theme-white .empty-state, body.theme-red .empty-state, body.theme-purple .empty-state {
   position: relative;
   padding: 2rem;
   border: 1px dashed var(--border);
 }
 
-body.theme-green .empty-state::before, body.theme-amber .empty-state::before, body.theme-blue .empty-state::before, body.theme-white .empty-state::before, body.theme-red .empty-state::before, body.theme-purple .empty-state::before, body.theme-green-neutral .empty-state::before {
+body.theme-green .empty-state::before, body.theme-amber .empty-state::before, body.theme-blue .empty-state::before, body.theme-white .empty-state::before, body.theme-red .empty-state::before, body.theme-purple .empty-state::before {
   content: "";
   position: absolute;
   top: -1px; left: -1px; width: 8px; height: 8px;
@@ -2071,7 +2061,7 @@ body.theme-green .empty-state::before, body.theme-amber .empty-state::before, bo
   border-left: 2px solid var(--primary);
 }
 
-body.theme-green .empty-state::after, body.theme-amber .empty-state::after, body.theme-blue .empty-state::after, body.theme-white .empty-state::after, body.theme-red .empty-state::after, body.theme-purple .empty-state::after, body.theme-green-neutral .empty-state::after {
+body.theme-green .empty-state::after, body.theme-amber .empty-state::after, body.theme-blue .empty-state::after, body.theme-white .empty-state::after, body.theme-red .empty-state::after, body.theme-purple .empty-state::after {
   content: "";
   position: absolute;
   bottom: -1px; right: -1px; width: 8px; height: 8px;
@@ -2086,8 +2076,7 @@ body.theme-amber .empty-panel::before,
 body.theme-blue .empty-panel::before,
 body.theme-white .empty-panel::before,
 body.theme-red .empty-panel::before,
-body.theme-purple .empty-panel::before,
-body.theme-green-neutral .empty-panel::before {
+body.theme-purple .empty-panel::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -2110,8 +2099,7 @@ body.theme-amber input[type="text"], body.theme-amber input[type="date"], body.t
 body.theme-blue input[type="text"], body.theme-blue input[type="date"], body.theme-blue textarea, body.theme-blue select,
 body.theme-red input[type="text"], body.theme-red input[type="date"], body.theme-red textarea, body.theme-red select,
 body.theme-purple input[type="text"], body.theme-purple input[type="date"], body.theme-purple textarea, body.theme-purple select,
-body.theme-white input[type="text"], body.theme-white input[type="date"], body.theme-white textarea, body.theme-white select,
-body.theme-green-neutral input[type="text"], body.theme-green-neutral input[type="date"], body.theme-green-neutral textarea, body.theme-green-neutral select {
+body.theme-white input[type="text"], body.theme-white input[type="date"], body.theme-white textarea, body.theme-white select {
   background: var(--surface) !important;
   border: 1px solid var(--border-bright) !important;
   color: var(--text) !important;
@@ -2123,8 +2111,7 @@ body.theme-amber input[type="text"]:focus, body.theme-amber input[type="date"]:f
 body.theme-blue input[type="text"]:focus, body.theme-blue input[type="date"]:focus, body.theme-blue textarea:focus, body.theme-blue select:focus,
 body.theme-red input[type="text"]:focus, body.theme-red input[type="date"]:focus, body.theme-red textarea:focus, body.theme-red select:focus,
 body.theme-purple input[type="text"]:focus, body.theme-purple input[type="date"]:focus, body.theme-purple textarea:focus, body.theme-purple select:focus,
-body.theme-white input[type="text"]:focus, body.theme-white input[type="date"]:focus, body.theme-white textarea:focus, body.theme-white select:focus,
-body.theme-green-neutral input[type="text"]:focus, body.theme-green-neutral input[type="date"]:focus, body.theme-green-neutral textarea:focus, body.theme-green-neutral select:focus {
+body.theme-white input[type="text"]:focus, body.theme-white input[type="date"]:focus, body.theme-white textarea:focus, body.theme-white select:focus {
   border-color: var(--primary) !important;
   box-shadow: 0 0 6px var(--primary-glow) !important;
   outline: none !important;
@@ -2132,13 +2119,13 @@ body.theme-green-neutral input[type="text"]:focus, body.theme-green-neutral inpu
 
 /* Altura e padding do topbar brand SVG */
 
-body.theme-green .brand-by, body.theme-amber .brand-by, body.theme-blue .brand-by, body.theme-white .brand-by, body.theme-red .brand-by, body.theme-purple .brand-by, body.theme-green-neutral .brand-by {
+body.theme-green .brand-by, body.theme-amber .brand-by, body.theme-blue .brand-by, body.theme-white .brand-by, body.theme-red .brand-by, body.theme-purple .brand-by {
   filter: drop-shadow(0 0 2px var(--primary-glow));
 }
 
 /* Atalhos de teclado retro */
 
-body.theme-green kbd, body.theme-amber kbd, body.theme-blue kbd, body.theme-white kbd, body.theme-red kbd, body.theme-purple kbd, body.theme-green-neutral kbd {
+body.theme-green kbd, body.theme-amber kbd, body.theme-blue kbd, body.theme-white kbd, body.theme-red kbd, body.theme-purple kbd {
   background: var(--surface-alt) !important;
   border: 1px solid var(--border-bright) !important;
   color: var(--text) !important;

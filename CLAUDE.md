@@ -54,9 +54,9 @@ uv run pytest -v
 - Testes: `tests/conftest.py` dá um banco em memória e sessão de admin a cada teste.
 
 ## 🎨 Design System e Temas
-- **Base visual = app_template**: `css/style.css` e `css/theme.css` são cópias de lá (não editar
+- **Base visual = app_template**: `css/style.css` e `css/corporate.css`, `css/blau-tokens.css` e `css/blau-spa.css` (temas, cópias de `app_template/design_system/`) são cópias de lá (não editar
   aqui — mudar no template e copiar); `css/mk.css` tem só o domínio (editor, kanban, grafo...).
-- **Temas**: `corporate`, `green-neutral`, `cyber-dark` e `blau`. Ícones Material Symbols.
+- **Temas**: `corporate` (Corporativo escuro, padrão), `corporate-light` (Corporativo claro) e `blau` (design system Blau). Ícones Material Symbols.
 - **Layout**: Topbar, Activity Bar com rótulos (reordenável; Usuários e Ajustes fixos no fim),
   Sidebar redimensionável, tela Usuários (admin), toasts empilhados.
 
