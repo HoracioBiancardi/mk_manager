@@ -1,10 +1,13 @@
 import base64
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from mk_manager.services.crypto_vault_service import CryptoVaultService
+from mk_manager.services.auth_service import require_admin
 from mk_manager.services.log_buffer_service import log_buffer_service
 
-router = APIRouter(prefix="/api/vault", tags=["Vault"])
+# Sem UI no mk_manager (paridade com o app_template): só admin. Cada chamada custa 600k
+# iterações de PBKDF2, então não fica aberta a qualquer sessão.
+router = APIRouter(prefix="/api/vault", tags=["Vault"], dependencies=[Depends(require_admin)])
 
 class EncryptRequest(BaseModel):
     text: str

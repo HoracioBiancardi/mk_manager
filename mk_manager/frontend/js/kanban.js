@@ -197,6 +197,7 @@ export async function moveTaskStatus(id, status) {
     const idx = st.files.findIndex((f) => f.id === id);
     if (idx !== -1) st.files[idx] = { ...updated };
     if (st.activeId === id) {
+      st.activeModified = updated.modified || null; // mudança desta aba: não é conflito
       st.activeStatus = updated.status || "";
       updateStatusSelect();
       const sel = document.getElementById("status-select");

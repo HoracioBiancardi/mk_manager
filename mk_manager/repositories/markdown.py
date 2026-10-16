@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import dataclasses
+import os
 import re
-import shutil
 import threading
 import unicodedata
 from datetime import datetime, timezone
@@ -13,12 +13,11 @@ import yaml
 
 from mk_manager.domain.entities import FileRecord
 from mk_manager.repositories.base import AbstractFileRepository
+from mk_manager.utils.security import PathTraversalError, is_contained, sanitize_relative_path
+
+__all__ = ["MarkdownFileRepository", "PathTraversalError"]
 
 _FRONTMATTER_RE: re.Pattern[str] = re.compile(r"^---\n(.*?)\n---\n?", re.DOTALL)
-
-
-class PathTraversalError(ValueError):
-    """Raised when a user-supplied path would escape the notes root directory."""
 
 def _slugify(text: str) -> str:
     text = unicodedata.normalize("NFD", text)
@@ -43,6 +42,19 @@ def _cleanup_empty_dirs(start: Path, stop_at: Path) -> None:
             current = current.parent
         except OSError:
             break
+
+def _atomic_write_text(path: Path, text: str) -> None:
+    """Grava num temporário ao lado e troca com `os.replace`: uma queda no meio não trunca a nota."""
+    tmp = path.with_name(f".{path.name}.tmp")
+    try:
+        with open(tmp, "w", encoding="utf-8") as fh:
+            fh.write(text)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp, path)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
 
 class MarkdownFileRepository(AbstractFileRepository):
     ARCHIVE_FOLDER = "_archive"
@@ -117,21 +129,28 @@ class MarkdownFileRepository(AbstractFileRepository):
 
     def _sanitize_folder(self, folder: str) -> str:
         """Strip and validate a user-supplied folder path, rejecting traversal segments."""
-        folder = (folder or "").strip("/")
-        if not folder:
-            return ""
-        if Path(folder).is_absolute():
-            raise PathTraversalError(f"Invalid folder path: '{folder}'")
-        parts = Path(folder).parts
-        if ".." in parts:
-            raise PathTraversalError(f"Invalid folder path: '{folder}'")
-        return folder
+        return sanitize_relative_path(folder, label="folder path")
 
     def _is_contained(self, path: Path) -> bool:
         """Return True if `path`, once resolved, is the notes root or lives under it."""
-        root = self._dir.resolve()
-        resolved = path.resolve()
-        return resolved == root or root in resolved.parents
+        return is_contained(self._dir, path)
+
+    def _user_folder(self, folder: str, *, allow_root: bool = False) -> str:
+        """Pasta que o usuário pode criar/mover/apagar: dentro da raiz e fora das reservadas.
+
+        A raiz ("") só é aceita como destino (`allow_root`): como origem, mover ou apagar
+        "" significaria mexer na pasta de notas inteira.
+        """
+        cleaned = self._sanitize_folder(folder)
+        if not cleaned:
+            if allow_root:
+                return ""
+            raise ValueError("Folder path cannot be empty.")
+        top = Path(cleaned).parts[0]
+        if top in (self.ARCHIVE_FOLDER, self.ASSETS_FOLDER, self.TRASH_FOLDER):
+            raise ValueError(f"'{top}' is a reserved folder name.")
+        self._ensure_within_root(self._dir / cleaned)
+        return cleaned
 
     def _ensure_within_root(self, path: Path) -> Path:
         if not self._is_contained(path):
@@ -274,7 +293,7 @@ class MarkdownFileRepository(AbstractFileRepository):
         frontmatter = yaml.dump(
             fm_data, allow_unicode=True, default_flow_style=False
         ).strip()
-        path.write_text(f"---\n{frontmatter}\n---\n{record.content}", "utf-8")
+        _atomic_write_text(path, f"---\n{frontmatter}\n---\n{record.content}")
 
     def list_all(self, include_archived: bool = False) -> list[FileRecord]:
         paths: list[Path] = []
@@ -549,25 +568,43 @@ class MarkdownFileRepository(AbstractFileRepository):
         return sorted(paths)
 
     def create_folder(self, folder: str) -> None:
-        folder = folder.strip("/")
-        if not folder:
-            raise ValueError("Folder path cannot be empty.")
-        parts = Path(folder).parts
-        if ".." in parts:
-            raise ValueError("Invalid folder path.")
-        if parts[0] in (self.ARCHIVE_FOLDER, self.ASSETS_FOLDER, self.TRASH_FOLDER):
-            raise ValueError(f"'{parts[0]}' is a reserved folder name.")
+        folder = self._user_folder(folder)
         (self._dir / folder).mkdir(parents=True, exist_ok=True)
 
+    def validate_folder_move(self, old_folder: str, new_folder: str) -> tuple[str, str]:
+        old_folder = self._user_folder(old_folder)
+        new_folder = self._user_folder(new_folder, allow_root=True)
+        if new_folder == old_folder or new_folder.startswith(old_folder + "/"):
+            raise ValueError("Cannot move a folder into itself.")
+        return old_folder, new_folder
+
     def move_folder(self, old_folder: str, new_folder: str) -> None:
-        old_folder = old_folder.strip("/")
-        new_folder = new_folder.strip("/")
+        """Leva o que sobrou em `old_folder` para `new_folder` e remove só diretórios vazios.
+
+        As notas já foram movidas pelo serviço; aqui ficam arquivos que ele não lista
+        (ocultos, YAML inválido...). Nada é apagado: se o destino já tem um arquivo com o
+        mesmo nome, o original fica onde está e a pasta antiga é mantida.
+        """
+        old_folder, new_folder = self.validate_folder_move(old_folder, new_folder)
         old_path = self._dir / old_folder
         if not old_path.is_dir():
             return
         new_root = self._dir / new_folder if new_folder else self._dir
-        for sub in sorted(old_path.rglob("*")):
-            if sub.is_dir():
-                (new_root / sub.relative_to(old_path)).mkdir(parents=True, exist_ok=True)
-        shutil.rmtree(old_path, ignore_errors=True)
+        for sub in sorted(old_path.rglob("*"), key=lambda p: len(p.parts), reverse=True):
+            target = new_root / sub.relative_to(old_path)
+            if sub.is_file() or sub.is_symlink():
+                if not target.exists():
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    sub.rename(target)
+                    self._forget(sub)
+            elif sub.is_dir():
+                target.mkdir(parents=True, exist_ok=True)
+                try:
+                    sub.rmdir()
+                except OSError:
+                    pass
+        try:
+            old_path.rmdir()
+        except OSError:
+            return
         _cleanup_empty_dirs(old_path.parent, self._dir)

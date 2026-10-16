@@ -94,9 +94,11 @@ export async function saveFile() {
         status,
         status_changed_at: statusChangedAt,
         due_date: dueDate,
+        ...(st.activeModified ? { expected_modified: st.activeModified } : {}),
       }),
     });
     const updated = await r.json();
+    st.activeModified = updated.modified || null;
     const idx = st.files.findIndex((f) => f.id === prevId);
     if (idx !== -1) st.files[idx] = { ...updated };
 
@@ -118,8 +120,31 @@ export async function saveFile() {
     refreshGraphIfActive();
     refreshListIfActive();
   } catch (e) {
+    if (e.status === 409) return resolveSaveConflict();
     setSaveStatus("error");
     toast("Erro ao salvar: " + e.message, "error");
+  }
+}
+
+let _conflictOpen = false;
+async function resolveSaveConflict() {
+  if (_conflictOpen) return; // o autosave pode disparar de novo enquanto a pergunta está aberta
+  _conflictOpen = true;
+  try {
+    const sobrescrever = confirm(
+      "Esta nota foi alterada em outro lugar (outro usuário ou outra aba).\n\n" +
+      "OK = sobrescrever com a sua versão\nCancelar = descartar suas mudanças e recarregar",
+    );
+    if (sobrescrever) {
+      st.activeModified = null;
+      await saveFile();
+    } else {
+      st.isDirty = false;
+      await openFile(st.activeId);
+      toast("Nota recarregada com a versão mais recente.", "info");
+    }
+  } finally {
+    _conflictOpen = false;
   }
 }
 
@@ -130,6 +155,7 @@ export async function openFile(id) {
     const r = await apiFetch(`/files/${encodeURIComponent(id)}`);
     const file = await r.json();
     st.activeId = id;
+    st.activeModified = file.modified || null;
     st.activeTags = [...(file.tags || [])];
     st.activeFolder = file.folder || "";
     st.activeStatus = file.status || "";
@@ -320,6 +346,7 @@ export async function moveFileToFolder(fileId, folderPath) {
     const idx = st.files.findIndex((f) => f.id === fileId);
     if (idx !== -1) st.files[idx] = { ...updated };
     if (st.activeId === fileId) {
+      st.activeModified = updated.modified || null; // mudança desta aba: não é conflito
       st.activeFolder = updated.folder || "";
       const folderInput = document.getElementById("folder-input");
       if (folderInput) folderInput.value = updated.folder || "";
@@ -353,6 +380,7 @@ function syncActiveFolderFromState() {
   if (!st.activeId) return;
   const active = st.files.find((f) => f.id === st.activeId);
   if (!active) return;
+  st.activeModified = active.modified || null; // a pasta foi movida por esta aba
   st.activeFolder = active.folder || "";
   const folderInput = document.getElementById("folder-input");
   if (folderInput) folderInput.value = active.folder || "";
@@ -418,6 +446,7 @@ export async function confirmRenameFile(id, newTitle) {
     const idx = st.files.findIndex((f) => f.id === id);
     if (idx !== -1) st.files[idx] = { ...updated };
     if (st.activeId === id) {
+      st.activeModified = updated.modified || null; // mudança desta aba: não é conflito
       document.getElementById("title-input").value = updated.title;
       if (updated.id !== id) st.activeId = updated.id;
     }

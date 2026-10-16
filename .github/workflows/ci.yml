@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22  # detecta ES modules sozinho no `node --check`
+      - name: Lint (ruff)
+        run: uvx ruff@0.14.0 check mk_manager tests
+      - name: Checar sintaxe do front
+        run: for f in mk_manager/frontend/js/*.js; do node --check "$f"; done
+      - name: Testes
+        run: uv run pytest -q
