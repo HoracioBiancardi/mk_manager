@@ -63,7 +63,7 @@ export function applyPrefsOnBoot() {
 }
 
 const THEME_KEY = "mk-crt-theme";
-const VALID_THEMES = new Set(["corporate", "corporate-light", "blau"]);
+const VALID_THEMES = new Set(["corporate", "corporate-light", "blau", "festa"]);
 
 
 export function getCrtTheme() {

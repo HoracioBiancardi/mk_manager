@@ -44,6 +44,7 @@ import "./diagram-builder.js";
 import "./table-builder.js";
 import "./format-code.js";
 import "./settings.js";
+import "./festa.js";
 
 // ── Conexão ───────────────────────────────────────────────────────────────────
 // Só o check inicial do boot — depois disso o badge é mantido em dia pelo
