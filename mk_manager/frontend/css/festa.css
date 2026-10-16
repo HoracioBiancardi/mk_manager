@@ -1,0 +1,322 @@
+/* =====================================================================
+   TEMA FESTA — cores do Corporativo escuro, animações exageradas (só do MK Manager).
+   Não é cópia do app_template: tokens + efeitos, tudo sob .theme-festa.
+   Quem pede menos movimento no sistema (prefers-reduced-motion) recebe
+   as cores do tema, mas nenhuma animação (bloco no fim do arquivo).
+   ===================================================================== */
+
+/* Cores = Corporativo escuro (corporate.css), copiadas aqui porque o tema
+   troca a classe do <body>. Só os efeitos abaixo são do Festa. */
+.theme-festa {
+  color-scheme: dark;
+
+  --bg:              #12141a;
+  --surface:         #1a1d24;
+  --surface-alt:     #21252e;
+  --surface-hover:   #2a2f3a;
+
+  --border:          #2d323d;
+  --border-muted:    #21252e;
+  --border-bright:   #3d4452;
+
+  --primary:         #5b8def;
+  --primary-hover:   #6f9bff;
+  --primary-dim:     rgba(91, 141, 239, 0.12);
+  --primary-glow:    rgba(91, 141, 239, 0.18);
+  --glow-ring:       0 0 0 3px rgba(91, 141, 239, 0.18);
+  --on-primary:      #0d1117;
+
+  --text:            #e4e6eb;
+  --text-muted:      #9aa0ac;
+  --text-subtle:     #6b7280;
+
+  --success:         #22c55e;
+  --warn:            #f59e0b;
+  --danger:          #ef4444;
+  --danger-dim:      rgba(239, 68, 68, 0.1);
+  --info:            #3b82f6;
+
+  --shadow-sm:       0 1px 3px rgba(0,0,0,.5);
+  --shadow-md:       0 4px 16px rgba(0,0,0,.55);
+  --shadow-lg:       0 8px 32px rgba(0,0,0,.65);
+  --veu:             rgba(1, 4, 9, .8);
+  --veu-login:       rgba(2, 6, 20, .85);
+  --terminal-accent: #5b8def;
+
+  --font:            'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --r-sm:            6px;
+  --r-md:            8px;
+  --r-lg:            12px;
+  --radius:          var(--r-md);
+
+  --serie-1: #3987e5; --serie-2: #d95926; --serie-3: #199e70; --serie-4: #c98500;
+  --serie-5: #d55181; --serie-6: #008300; --serie-7: #9085e9; --serie-8: #e66767;
+  --grade:           rgba(255, 255, 255, .07);
+  --eixo:            rgba(255, 255, 255, .16);
+
+  /* um brilho só, na cor de destaque, que atravessa barras e textos */
+  --festa-brilho: linear-gradient(90deg, var(--text) 0%, var(--text) 40%, var(--primary-hover) 50%, var(--text) 60%, var(--text) 100%);
+  --festa-faixa:  linear-gradient(90deg, transparent 0%, var(--border) 30%, var(--primary) 50%, var(--border) 70%, transparent 100%);
+  --festa-mola: cubic-bezier(.34, 1.8, .64, 1);
+}
+:root:has(> body.theme-festa) { color-scheme: dark; }
+
+/* ── Fundo vivo: as áreas vazias deixam ver a aurora, que aqui é mais
+   rápida e forte, com uma grade de pontos que desliza por cima. O editor
+   mantém o fundo opaco para o texto não brigar com o movimento. ────────── */
+.theme-festa .app-layout,
+.theme-festa .main-panel,
+.theme-festa .search-pane,
+.theme-festa .graph-pane,
+.theme-festa .list-pane,
+.theme-festa .archive-pane,
+.theme-festa .tags-pane,
+.theme-festa .kanban-pane { background: transparent; }
+.theme-festa .orb { opacity: .4; filter: blur(60px); animation-duration: 12s; }
+.theme-festa .orb-2 { animation-duration: 15s; }
+.theme-festa .orb-3 { animation-duration: 10s; }
+.theme-festa .orb-4 { animation-duration: 9s; }
+.theme-festa .aurora::before {
+  content: ''; position: absolute; inset: -40px;
+  background-image: radial-gradient(rgba(255, 255, 255, .07) 1px, transparent 1.5px);
+  background-size: 28px 28px;
+  animation: festaGrade 6s linear infinite;
+}
+
+/* ── Descanso de tela: depois de um tempo sem mexer (js/festa.js),
+   a aurora sobe por cima de tudo; qualquer tecla ou mouse a dispensa. ─ */
+.festa-descanso {
+  position: fixed; inset: 0; z-index: 9000; pointer-events: none; overflow: hidden;
+  background: rgba(10, 12, 16, .82);
+  opacity: 0; transition: opacity 1.2s ease;
+}
+.festa-descanso.ativo { opacity: 1; }
+.festa-descanso .orb { opacity: .6; filter: blur(50px); animation-duration: 8s; }
+.festa-descanso .orb-1 { width: 55vmax; height: 55vmax; }
+.festa-descanso .orb-2 { width: 45vmax; height: 45vmax; animation-duration: 10s; }
+.festa-descanso .orb-3 { width: 40vmax; height: 40vmax; animation-duration: 7s; }
+.festa-descanso .orb-4 { width: 30vmax; height: 30vmax; animation-duration: 6s; }
+.festa-descanso-texto {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  font-size: clamp(1.5rem, 4vw, 3rem); font-weight: 700; letter-spacing: .04em;
+  background: var(--festa-brilho); background-size: 200% auto;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: festaCorre 3s linear infinite, festaFlutua 6s ease-in-out infinite;
+}
+
+/* ── Topbar: faixa de luz correndo e marca que pula ────────────────── */
+.theme-festa .topbar::after {
+  height: 2px;
+  background: var(--festa-faixa);
+  background-size: 200% auto;
+  animation: festaCorre 2.5s linear infinite;
+}
+.theme-festa .brand-icon { animation: festaQuica 2.4s var(--festa-mola) infinite; }
+.theme-festa .brand-name {
+  background: var(--festa-brilho);
+  background-size: 200% auto;
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+  animation: festaCorre 3s linear infinite;
+}
+.theme-festa .brand:hover .brand-icon { animation: festaGiro .7s var(--festa-mola); }
+
+/* ── Botões: elásticos, com brilho e sacudida ao passar o mouse ────── */
+.theme-festa .btn,
+.theme-festa .tool-btn,
+.theme-festa .icon-btn,
+.theme-festa .view-btn,
+.theme-festa .filter-tab {
+  transition: transform .25s var(--festa-mola), box-shadow .25s, background .2s, border-color .2s;
+}
+.theme-festa .btn:hover:not(:disabled),
+.theme-festa .tool-btn:hover,
+.theme-festa .icon-btn:hover,
+.theme-festa .view-btn:hover,
+.theme-festa .filter-tab:hover {
+  transform: translateY(-2px) scale(1.08) rotate(-2deg);
+  box-shadow: 0 0 14px var(--primary-glow);
+}
+.theme-festa .btn:active:not(:disabled),
+.theme-festa .tool-btn:active,
+.theme-festa .icon-btn:active { transform: scale(.88); transition-duration: .08s; }
+.theme-festa .btn-primary {
+  background: linear-gradient(110deg, var(--primary) 40%, var(--primary-hover) 50%, var(--primary) 60%);
+  background-size: 200% auto;
+  border-color: transparent;
+  animation: festaCorre 3s linear infinite;
+}
+.theme-festa .btn-primary:hover:not(:disabled) { animation: festaCorre 1s linear infinite, festaSacode .45s ease-in-out; }
+
+/* ── Barra de atividades: ícones de gelatina; o ativo pulsa em neon ─ */
+.theme-festa .activity-btn .ms { display: inline-block; transition: transform .3s var(--festa-mola); }
+.theme-festa .activity-btn:hover .ms { animation: festaGelatina .7s ease both; }
+.theme-festa .activity-btn.active .ms { animation: festaPulsa 1.6s ease-in-out infinite; color: var(--primary); }
+.theme-festa .activity-btn.active { box-shadow: inset 3px 0 0 var(--primary), 0 0 18px var(--primary-glow); }
+
+/* ── Árvore e listas: itens deslizam e brilham ─────────────────────── */
+.theme-festa .tree-item,
+.theme-festa .file-item,
+.theme-festa .list-row,
+.theme-festa .archive-row { transition: transform .25s var(--festa-mola), background .2s, box-shadow .2s; }
+.theme-festa .tree-item:hover,
+.theme-festa .file-item:hover,
+.theme-festa .list-row:hover,
+.theme-festa .archive-row:hover { transform: translateX(6px); box-shadow: -3px 0 0 var(--primary); }
+.theme-festa .tree-item.active { border-left-color: var(--primary); box-shadow: 0 0 12px var(--primary-glow); }
+
+/* ── Kanban: cartões entram pulando; no hover o título balança ────────────── */
+.theme-festa .kanban-card,
+.theme-festa .calendar-task-card {
+  animation: festaEntra .55s ease-out backwards;
+  transition: border-color .2s, box-shadow .2s;
+}
+/* No hover o cartão não sai do lugar: a coluna corta o que passa da borda
+   e o botão de arquivar (canto superior direito) sumiria. O movimento fica
+   no título, e o destaque é uma borda acesa por dentro. */
+.theme-festa .kanban-card:hover,
+.theme-festa .calendar-task-card:hover { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary), inset 0 0 18px var(--primary-dim); }
+.theme-festa .kanban-card-title,
+.theme-festa .calendar-card-title { display: inline-block; transform-origin: left center; }
+.theme-festa .kanban-card:hover .kanban-card-title,
+.theme-festa .calendar-task-card:hover .calendar-card-title { animation: festaBalanca .5s ease-in-out; }
+.theme-festa .kanban-card:nth-child(2) { animation-delay: .05s; }
+.theme-festa .kanban-card:nth-child(3) { animation-delay: .1s; }
+.theme-festa .kanban-card:nth-child(4) { animation-delay: .15s; }
+.theme-festa .kanban-card:nth-child(n+5) { animation-delay: .2s; }
+.theme-festa .kanban-progress-bar {
+  background: linear-gradient(90deg, var(--primary) 40%, var(--primary-hover) 50%, var(--primary) 60%);
+  background-size: 200% auto;
+  animation: festaCorre 2s linear infinite;
+}
+
+/* ── Modais e menus: entram com mola ───────────────────────────────── */
+.theme-festa .overlay.open .modal { animation: festaBoing .6s var(--festa-mola) both; }
+.theme-festa .modal { border-top: 3px solid var(--primary); box-shadow: var(--shadow-lg), 0 0 30px var(--primary-glow); }
+.theme-festa .context-menu { animation: festaBoing .35s var(--festa-mola) both; }
+
+/* ── Toasts: chegam rodopiando e dão uma sacudida ──────────────────── */
+.theme-festa .toast { animation: festaToast .7s var(--festa-mola) both; box-shadow: 0 0 20px var(--primary-glow); }
+
+/* ── Tags e selos: balançam de leve, cada um no seu ritmo ──────────── */
+.theme-festa .ftag,
+.theme-festa .kanban-tag { display: inline-block; transition: transform .25s var(--festa-mola); }
+.theme-festa .ftag:hover,
+.theme-festa .kanban-tag:hover { transform: scale(1.2) rotate(-6deg); }
+
+/* ── Campos: o foco acende em neon ─────────────────────────────────── */
+.theme-festa .form-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-dim), 0 0 16px var(--primary-glow); }
+
+/* ── Seleção de texto na cor de destaque ───────────────────────────── */
+.theme-festa ::selection { background: var(--primary); color: var(--on-primary); }
+
+/* ── Bolha que estoura no clique (js/festa.js) ────────────────────────────── */
+.festa-bolha, .festa-onda, .festa-gota {
+  position: fixed; z-index: 9999; pointer-events: none;
+  border-radius: 50%; transform: translate(-50%, -50%);
+}
+/* a bolha incha rápido e some (o "pop") */
+.festa-bolha {
+  width: 26px; height: 26px;
+  background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, .55), var(--primary-dim) 60%, transparent 70%);
+  border: 1px solid var(--primary-hover);
+  animation: festaPop .28s ease-out forwards;
+}
+/* as ondas partem do ponto e se abrem até sumir */
+.festa-onda {
+  width: 12px; height: 12px;
+  border: 2px solid var(--primary);
+  box-shadow: 0 0 12px var(--primary-glow);
+  animation: festaOnda .75s cubic-bezier(.15, .7, .3, 1) .12s forwards;
+  opacity: 0;
+}
+.festa-onda--2 { animation-delay: .26s; animation-duration: .9s; }
+/* gotinhas que respingam para fora */
+.festa-gota {
+  width: 5px; height: 5px;
+  background: var(--primary-hover);
+  animation: festaGota .5s cubic-bezier(.2, .8, .3, 1) .2s forwards;
+  opacity: 0;
+}
+
+/* ── Keyframes ─────────────────────────────────────────────────────── */
+@keyframes festaCorre    { to { background-position: 200% center; } }
+@keyframes festaBalanca  { 0%, 100% { transform: none; } 30% { transform: rotate(-1.5deg) translateX(2px); } 65% { transform: rotate(1deg) translateX(-1px); } }
+@keyframes festaGrade    { to { transform: translate(28px, 28px); } }
+@keyframes festaFlutua   { 0%, 100% { margin-top: 0; } 50% { margin-top: -18px; } }
+@keyframes festaQuica {
+  0%, 60%, 100% { transform: translateY(0) rotate(0); }
+  20% { transform: translateY(-6px) rotate(-12deg); }
+  40% { transform: translateY(0) rotate(10deg) scale(1.1); }
+}
+@keyframes festaGiro     { from { transform: rotate(0) scale(1); } 50% { transform: rotate(200deg) scale(1.3); } to { transform: rotate(360deg) scale(1); } }
+@keyframes festaSacode {
+  0%, 100% { transform: translateY(-2px) scale(1.08) rotate(0); }
+  25% { transform: translateY(-2px) scale(1.08) rotate(-5deg); }
+  75% { transform: translateY(-2px) scale(1.08) rotate(5deg); }
+}
+@keyframes festaGelatina {
+  0%   { transform: scale(1, 1); }
+  30%  { transform: scale(1.35, .7); }
+  45%  { transform: scale(.75, 1.3); }
+  60%  { transform: scale(1.15, .88); }
+  75%  { transform: scale(.95, 1.06); }
+  100% { transform: scale(1, 1); }
+}
+@keyframes festaPulsa {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 transparent); }
+  50%      { transform: scale(1.18); filter: drop-shadow(0 0 6px var(--primary)); }
+}
+@keyframes festaEntra {
+  /* pulo vertical, sem passar de 100% de largura: nada vaza da coluna */
+  0%   { opacity: 0; transform: translateY(22px) scale(.85); }
+  60%  { opacity: 1; transform: translateY(-5px) scale(1); }
+  80%  { transform: translateY(2px); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes festaBoing {
+  0%   { opacity: 0; transform: scale(.4) rotate(-8deg); }
+  60%  { opacity: 1; transform: scale(1.06) rotate(2deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+@keyframes festaToast {
+  0%   { opacity: 0; transform: translateX(120%) rotate(25deg); }
+  60%  { opacity: 1; transform: translateX(-10px) rotate(-4deg); }
+  80%  { transform: translateX(4px) rotate(2deg); }
+  100% { transform: none; }
+}
+@keyframes festaPop {
+  0%   { transform: translate(-50%, -50%) scale(.3); opacity: .9; }
+  70%  { transform: translate(-50%, -50%) scale(1.25); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+}
+@keyframes festaOnda {
+  0%   { transform: translate(-50%, -50%) scale(1); opacity: .9; border-width: 3px; }
+  100% { transform: translate(-50%, -50%) scale(9); opacity: 0; border-width: .5px; }
+}
+@keyframes festaGota {
+  0%   { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(.2); opacity: 0; }
+}
+
+/* ── Menos movimento: mantém as cores, desliga toda animação ───────── */
+@media (prefers-reduced-motion: reduce) {
+  .theme-festa *,
+  .theme-festa *::before,
+  .theme-festa *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .theme-festa .btn:hover:not(:disabled),
+  .theme-festa .tool-btn:hover,
+  .theme-festa .icon-btn:hover,
+  .theme-festa .view-btn:hover,
+  .theme-festa .filter-tab:hover,
+  .theme-festa .tree-item:hover,
+  .theme-festa .file-item:hover,
+  .theme-festa .list-row:hover,
+  .theme-festa .archive-row:hover,
+  .theme-festa .ftag:hover,
+  .theme-festa .kanban-tag:hover { transform: none; }
+  .festa-bolha, .festa-onda, .festa-gota, .festa-descanso { display: none; }
+}
