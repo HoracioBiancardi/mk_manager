@@ -1,6 +1,6 @@
-// Tema Festa: cada clique solta uma chuva de emojis. Só age com o tema ativo
+// Tema Festa: cada clique solta uma explosão de faíscas na cor do tema. Só age com o tema ativo
 // e quando o sistema não pede menos movimento (prefers-reduced-motion).
-const EMOJIS = ["🎉", "✨", "💖", "⭐", "🌈", "🎊", "💥", "🦄"];
+const FAISCAS = ["✦", "✧", "•", "◆", "✶", "·"];
 const menosMovimento = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 function explodir(x, y) {
@@ -9,7 +9,7 @@ function explodir(x, y) {
     const el = document.createElement("span");
     el.className = "festa-particula";
     el.setAttribute("aria-hidden", "true");
-    el.textContent = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+    el.textContent = FAISCAS[Math.floor(Math.random() * FAISCAS.length)];
     const ang = (Math.PI * 2 * i) / qtd + Math.random() * 0.5;
     const dist = 50 + Math.random() * 70;
     el.style.left = x + "px";
