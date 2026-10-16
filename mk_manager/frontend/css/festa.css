@@ -165,19 +165,21 @@
 .theme-festa .archive-row:hover { transform: translateX(6px); box-shadow: -3px 0 0 var(--primary); }
 .theme-festa .tree-item.active { border-left-color: var(--primary); box-shadow: 0 0 12px var(--primary-glow); }
 
-/* ── Kanban: cartões entram pulando, balançam e flutuam ────────────── */
+/* ── Kanban: cartões entram pulando; no hover o título balança ────────────── */
 .theme-festa .kanban-card,
 .theme-festa .calendar-task-card {
-  /* backwards: depois de entrar, a animação solta o transform e o :hover volta a valer */
-  animation: festaEntra .5s var(--festa-mola) backwards;
-  transition: transform .3s var(--festa-mola), box-shadow .3s;
+  animation: festaEntra .55s ease-out backwards;
+  transition: border-color .2s, box-shadow .2s;
 }
-.theme-festa .kanban-card:nth-child(odd):hover,
-.theme-festa .calendar-task-card:nth-child(odd):hover { transform: rotate(-2.5deg) scale(1.04); }
-.theme-festa .kanban-card:nth-child(even):hover,
-.theme-festa .calendar-task-card:nth-child(even):hover { transform: rotate(2.5deg) scale(1.04); }
+/* No hover o cartão não sai do lugar: a coluna corta o que passa da borda
+   e o botão de arquivar (canto superior direito) sumiria. O movimento fica
+   no título, e o destaque é uma borda acesa por dentro. */
 .theme-festa .kanban-card:hover,
-.theme-festa .calendar-task-card:hover { box-shadow: 0 10px 28px rgba(0, 0, 0, .5), 0 0 0 1px var(--primary); }
+.theme-festa .calendar-task-card:hover { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary), inset 0 0 18px var(--primary-dim); }
+.theme-festa .kanban-card-title,
+.theme-festa .calendar-card-title { display: inline-block; transform-origin: left center; }
+.theme-festa .kanban-card:hover .kanban-card-title,
+.theme-festa .calendar-task-card:hover .calendar-card-title { animation: festaBalanca .5s ease-in-out; }
 .theme-festa .kanban-card:nth-child(2) { animation-delay: .05s; }
 .theme-festa .kanban-card:nth-child(3) { animation-delay: .1s; }
 .theme-festa .kanban-card:nth-child(4) { animation-delay: .15s; }
@@ -239,6 +241,7 @@
 
 /* ── Keyframes ─────────────────────────────────────────────────────── */
 @keyframes festaCorre    { to { background-position: 200% center; } }
+@keyframes festaBalanca  { 0%, 100% { transform: none; } 30% { transform: rotate(-1.5deg) translateX(2px); } 65% { transform: rotate(1deg) translateX(-1px); } }
 @keyframes festaGrade    { to { transform: translate(28px, 28px); } }
 @keyframes festaFlutua   { 0%, 100% { margin-top: 0; } 50% { margin-top: -18px; } }
 @keyframes festaQuica {
@@ -265,8 +268,11 @@
   50%      { transform: scale(1.18); filter: drop-shadow(0 0 6px var(--primary)); }
 }
 @keyframes festaEntra {
-  from { opacity: 0; transform: translateY(24px) scale(.7) rotate(-6deg); }
-  to   { opacity: 1; transform: none; }
+  /* pulo vertical, sem passar de 100% de largura: nada vaza da coluna */
+  0%   { opacity: 0; transform: translateY(22px) scale(.85); }
+  60%  { opacity: 1; transform: translateY(-5px) scale(1); }
+  80%  { transform: translateY(2px); }
+  100% { opacity: 1; transform: none; }
 }
 @keyframes festaBoing {
   0%   { opacity: 0; transform: scale(.4) rotate(-8deg); }
@@ -310,8 +316,6 @@
   .theme-festa .file-item:hover,
   .theme-festa .list-row:hover,
   .theme-festa .archive-row:hover,
-  .theme-festa .kanban-card:hover,
-  .theme-festa .calendar-task-card:hover,
   .theme-festa .ftag:hover,
   .theme-festa .kanban-tag:hover { transform: none; }
   .festa-bolha, .festa-onda, .festa-gota, .festa-descanso { display: none; }
