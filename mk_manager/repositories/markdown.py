@@ -31,6 +31,14 @@ def _coerce_str(value: Any) -> str:
         return value.isoformat()
     return str(value) if value is not None else ""
 
+def _coerce_order(value: Any) -> float | None:
+    if value is None or value == "" or isinstance(value, bool):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
 def _cleanup_empty_dirs(start: Path, stop_at: Path) -> None:
     current = start
     while current != stop_at:
@@ -245,6 +253,7 @@ class MarkdownFileRepository(AbstractFileRepository):
             archived_from=_coerce_str(meta.get("archived_from", "")),
             trashed_from=_coerce_str(meta.get("trashed_from", "")),
             due_date=_coerce_str(meta.get("due_date") or meta.get("due") or ""),
+            kanban_order=_coerce_order(meta.get("kanban_order")),
         )
 
     def _parse_non_md(self, path: Path) -> FileRecord:
@@ -290,6 +299,8 @@ class MarkdownFileRepository(AbstractFileRepository):
             "trashed_from": record.trashed_from,
             "due_date": record.due_date,
         }
+        if record.kanban_order is not None:
+            fm_data["kanban_order"] = record.kanban_order
         frontmatter = yaml.dump(
             fm_data, allow_unicode=True, default_flow_style=False
         ).strip()
@@ -385,6 +396,7 @@ class MarkdownFileRepository(AbstractFileRepository):
         status: str | None = None,
         status_changed_at: str | None = None,
         due_date: str | None = None,
+        kanban_order: float | None = None,
     ) -> FileRecord:
         old_path = self._require_path(file_id)
         existing = self._parse_cached(old_path)
@@ -436,6 +448,7 @@ class MarkdownFileRepository(AbstractFileRepository):
             status=status if status is not None else existing.status,
             status_changed_at=status_changed_at if status_changed_at is not None else existing.status_changed_at,
             due_date=due_date if due_date is not None else existing.due_date,
+            kanban_order=kanban_order if kanban_order is not None else existing.kanban_order,
         )
 
         new_path = self._build_path(new_id, new_folder)

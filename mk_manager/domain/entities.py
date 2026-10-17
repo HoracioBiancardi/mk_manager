@@ -24,6 +24,9 @@ class FileRecord:
     archived_from: str = field(default="")
     trashed_from: str = field(default="")
     due_date: str = field(default="")
+    # Posição do card dentro da coluna do Kanban (menor = mais acima). None = nunca
+    # reordenado; o board põe esses cards depois dos ordenados, por título.
+    kanban_order: float | None = field(default=None)
 
     @property
     def word_count(self) -> int:
