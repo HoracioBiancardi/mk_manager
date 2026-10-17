@@ -69,6 +69,9 @@ export function updateStatusVis(type) {
   if (el) el.style.display = type === "task" ? "contents" : "none";
   const datesEl = document.getElementById("task-dates-part");
   if (datesEl) datesEl.style.display = type === "task" ? "contents" : "none";
+  const linkMeta = document.getElementById("link-meta-part");
+  if (linkMeta) linkMeta.style.display = type === "other" ? "none" : "contents";
+  if (type === "other") document.getElementById("links-bar")?.setAttribute("hidden", "");
   const archiveBtn = document.getElementById("btn-archive-current");
   if (archiveBtn) archiveBtn.style.display = type === "task" ? "" : "none";
 }

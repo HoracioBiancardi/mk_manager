@@ -309,7 +309,27 @@
                 title="Alterado em">
             </div>
           </div>
+          <div id="link-meta-part" style="display:contents">
+            <div class="info-sep"></div>
+            <div class="info-group">
+              <span class="info-label" title="Nota de onde esta saiu (proposta → spec → task)">Origem</span>
+              <input type="text" id="origin-input" class="meta-input origin-input" list="note-titles-list"
+                placeholder="[[nota de origem]]" onfocus="fillLinkSuggestions()" onchange="onMetaChange()" autocomplete="off">
+            </div>
+            <div class="info-group">
+              <span class="info-label" title="Papel na cadeia (proposta, spec, runbook...). Vazio = nome da pasta">Papel</span>
+              <input type="text" id="role-input" class="meta-input role-input" list="role-list"
+                placeholder="pasta" onfocus="fillLinkSuggestions()" onchange="onMetaChange()" autocomplete="off">
+            </div>
+            <label class="info-group index-toggle" title="Nota-índice: a ordem dos links dela vira a trilha anterior · próximo">
+              <input type="checkbox" id="index-input" onchange="onMetaChange()">
+              <span class="info-label">Índice</span>
+            </label>
+          </div>
+          <datalist id="note-titles-list"></datalist>
+          <datalist id="role-list"></datalist>
         </div>
+        <div id="links-bar" class="links-bar" hidden></div>
         <div class="editor-body">
           <div id="editor-pane" class="editor-pane" style="position: relative;">
             <div class="md-toolbar">

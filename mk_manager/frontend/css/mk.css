@@ -3104,3 +3104,71 @@ input[type=number] {
 .panel-header-actions { display: flex; gap: 2px; }
 .panel-header-actions .icon-btn { padding: 3px; }
 .panel-header-actions .icon-btn .ms { font-size: 18px; }
+
+/* ── Ligações da nota: cadeia de origem, trilha do índice, Cita / Citada por ── */
+
+.origin-input { width: 170px; }
+.role-input   { width: 90px; }
+.index-toggle { cursor: pointer; }
+.index-toggle input { margin: 0; accent-color: var(--primary); }
+
+.links-bar {
+  display: flex; flex-direction: column; gap: .25rem;
+  padding: .3rem .875rem; border-bottom: 1px solid var(--border);
+  background: var(--surface); flex-shrink: 0; font-size: .72rem;
+}
+.links-bar[hidden] { display: none; }
+body.zen-mode .links-bar { display: none; }
+
+.lk-row { display: flex; align-items: center; gap: .3rem; flex-wrap: wrap; }
+.lk-actions { justify-content: space-between; }
+.lk-label {
+  font-size: .62rem; color: var(--text-subtle); font-weight: 600;
+  text-transform: uppercase; letter-spacing: .06em; margin-right: .1rem;
+}
+.lk-row .lk-label:not(:first-child) { margin-left: .6rem; }
+.lk-sep { font-size: 14px; color: var(--text-subtle); }
+
+.lk-chip {
+  display: inline-flex; align-items: center; gap: .25rem;
+  padding: .1rem .4rem; border-radius: var(--r-sm);
+  border: 1px solid var(--border); background: var(--bg); color: var(--text-muted);
+  cursor: pointer; max-width: 280px; transition: border-color var(--t), color var(--t);
+}
+.lk-chip:hover { border-color: var(--primary); color: var(--text); }
+.lk-chip.current { cursor: default; border-color: var(--primary); color: var(--text); background: var(--primary-dim); }
+.lk-chip.missing { cursor: default; border-style: dashed; color: var(--text-subtle); }
+.lk-chip .ms { font-size: 14px; }
+.lk-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lk-role {
+  font-size: .6rem; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--primary); font-weight: 600;
+}
+.lk-status { font-size: .62rem; padding: 0 .3rem; border-radius: 3px; background: var(--surface-alt); color: var(--text-muted); }
+.lk-st-done { color: var(--success); }
+.lk-st-development, .lk-st-review { color: var(--warn); }
+
+.lk-trail { justify-content: center; gap: .5rem; }
+.lk-nav {
+  display: inline-flex; align-items: center; gap: .1rem; min-width: 120px;
+  background: none; border: none; color: var(--text-muted); cursor: pointer;
+  font: inherit; font-size: .72rem; padding: .1rem .3rem; border-radius: var(--r-sm);
+}
+.lk-nav:first-child { justify-content: flex-end; }
+.lk-nav:hover { color: var(--text); background: var(--surface-hover); }
+.lk-nav.disabled { cursor: default; }
+.lk-nav .ms { font-size: 16px; }
+
+.lk-refs summary { cursor: pointer; color: var(--text-muted); list-style: revert; }
+.lk-refs[open] summary { margin-bottom: .25rem; }
+.lk-refs .lk-row + .lk-row { margin-top: .2rem; }
+.lk-actions .btn .ms { font-size: 15px; margin-right: .2rem; }
+
+.lk-derive { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; padding: .2rem 0; }
+.lk-derive[hidden] { display: none; }
+.lk-derive input.meta-input, .lk-derive select.meta-input { border-bottom-color: var(--border); }
+.lk-derive #lk-derive-title { width: 220px; }
+.lk-hint { color: var(--text-subtle); font-size: .66rem; }
+
+/* Grafo: setas mostram quem cita quem; tracejado = origem (proposta → spec → task). */
+.graph-edge-origin { stroke-dasharray: 5,3; }

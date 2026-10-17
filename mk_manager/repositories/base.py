@@ -28,6 +28,9 @@ class AbstractFileRepository(ABC):
         status: str = "",
         status_changed_at: str = "",
         due_date: str = "",
+        origin: str = "",
+        role: str = "",
+        is_index: bool = False,
     ) -> FileRecord: ...
 
     @abstractmethod
@@ -44,6 +47,9 @@ class AbstractFileRepository(ABC):
         status_changed_at: str | None = None,
         due_date: str | None = None,
         kanban_order: float | None = None,
+        origin: str | None = None,
+        role: str | None = None,
+        is_index: bool | None = None,
     ) -> FileRecord: ...
 
     @abstractmethod

@@ -187,13 +187,31 @@ function drawGraph() {
     .force("center", d3.forceCenter(width / 2, height / 2))
     .force("collide", d3.forceCollide().radius((d) => radiusFor(d) + 8));
 
+  // Seta na ponta = a nota de destino é citada (ou é a origem) pela de partida.
+  svg
+    .append("defs")
+    .selectAll("marker")
+    .data(["link", "origin"])
+    .join("marker")
+    .attr("id", (k) => `graph-arrow-${k}`)
+    .attr("viewBox", "0 -4 8 8")
+    .attr("refX", 8)
+    .attr("markerWidth", 7)
+    .attr("markerHeight", 7)
+    .attr("orient", "auto")
+    .append("path")
+    .attr("d", "M0,-4L8,0L0,4")
+    .attr("fill", (k) => (k === "origin" ? "#5b8def" : "#4b5563"));
+
   const link = g
     .append("g")
-    .attr("stroke", "#30363d")
     .attr("stroke-width", 1.2)
     .selectAll("line")
     .data(visibleEdges)
-    .join("line");
+    .join("line")
+    .attr("class", (d) => (d.kind === "origin" ? "graph-edge-origin" : null))
+    .attr("stroke", (d) => (d.kind === "origin" ? "#5b8def" : "#30363d"))
+    .attr("marker-end", (d) => `url(#graph-arrow-${d.kind === "origin" ? "origin" : "link"})`);
 
   const node = g
     .append("g")
@@ -242,11 +260,19 @@ function drawGraph() {
   node.append("title").text((d) => d.title);
 
   simulation.on("tick", () => {
+    // A linha para na borda do círculo de destino, para a seta aparecer.
+    const tip = (d) => {
+      const dx = d.target.x - d.source.x;
+      const dy = d.target.y - d.source.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const r = radiusFor(d.target) + 2;
+      return [d.target.x - (dx / len) * r, d.target.y - (dy / len) * r];
+    };
     link
       .attr("x1", (d) => d.source.x)
       .attr("y1", (d) => d.source.y)
-      .attr("x2", (d) => d.target.x)
-      .attr("y2", (d) => d.target.y);
+      .attr("x2", (d) => tip(d)[0])
+      .attr("y2", (d) => tip(d)[1]);
     node.attr("transform", (d) => `translate(${d.x},${d.y})`);
   });
 

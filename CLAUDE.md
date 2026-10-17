@@ -33,6 +33,8 @@ uv run pytest -v
 - **`log_buffer_service.py`**: Console circular de logs em memória (estilo CLI/Web), com `LogBufferHandler` anexado ao logger raiz para captura automática de `logging.getLogger(__name__)` de qualquer módulo.
 - **`notification_service.py`**: Notificador de Webhooks (Teams, Discord, Slack).
 - **`file_service.py`**: Gestão completa dos arquivos `.md` (Kanban, tags `#tag`, wikilinks `[[WikiLink]]`, snippets com `<mark>`).
+- **`links.py`** (ligações entre notas): link por título, nome do arquivo ou `[texto](caminho.md)`; frontmatter `origin` (cadeia proposta → spec → task), `role` (papel; vazio = nome da pasta) e `index: true` (a ordem dos links nas listas/tabelas vira a trilha anterior · próximo). Renomear/mover corrige os links e origens nas outras notas. `GET /api/links/{id}`; painel em `js/links.js`.
+- **Frontmatter desconhecido é preservado** (`FileRecord.extra`) e o arquivo só é renomeado quando o título muda.
 
 ### Rotas de sistema (paridade com o app_template, só backend — sem UI própria)
 - `GET /api/system/health`, `/metrics`, `/logs`, `POST /logs/clear` — expõe `log_buffer_service`.
