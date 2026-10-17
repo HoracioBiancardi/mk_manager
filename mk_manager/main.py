@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -9,9 +10,16 @@ from mk_manager.config import get_settings
 from mk_manager.routers import auth, files, search, stats, tags, links, assets, settings as settings_router, system, vault, tasks
 from mk_manager.services.log_buffer_service import log_buffer_service
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    settings_router.load_saved_paths()
+    yield
+
+
 def create_app() -> FastAPI:
     s = get_settings()
     app = FastAPI(
+        lifespan=lifespan,
         title="MK Manager V2",
         debug=s.debug,
         docs_url="/docs" if s.debug else None,

@@ -34,6 +34,7 @@ uv run pytest -v
 - **`notification_service.py`**: Notificador de Webhooks (Teams, Discord, Slack).
 - **`file_service.py`**: Gestão completa dos arquivos `.md` (Kanban, tags `#tag`, wikilinks `[[WikiLink]]`, snippets com `<mark>`).
 - **`links.py`** (ligações entre notas): link por título, nome do arquivo ou `[texto](caminho.md)`; frontmatter `origin` (cadeia proposta → spec → task), `role` (papel; vazio = nome da pasta) e `index: true` (a ordem dos links da tabela, ou das listas se não houver tabela, vira a trilha anterior · próximo). Renomear/mover corrige os links e origens nas outras notas. `GET /api/links/{id}`; painel em `js/links.js`. A tela **Ligações** (`GET /api/links/map`, `js/links-map.js`) substituiu o Grafo: índices com a ordem de leitura e cadeias com o progresso das tasks; nota solta (pessoal) não aparece.
+- **Ajustes → pasta de notas/anexos** fica salvo no banco (`app_kv_store`, chave `paths`) e volta na subida do app; `MK_NOTES_DIR`/`MK_ASSETS_DIR` (env ou `.env`) ganham do salvo.
 - **Frontmatter desconhecido é preservado** (`FileRecord.extra`) e o arquivo só é renomeado quando o título muda.
 
 ### Rotas de sistema (paridade com o app_template, só backend — sem UI própria)
