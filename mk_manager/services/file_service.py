@@ -223,16 +223,23 @@ class FileService:
         if request.status is not None and request.status != existing.status:
             status_changed_at = datetime.now().strftime("%Y-%m-%dT%H:%M")
 
+        # Reordenar um card no Kanban não é edição da nota: mantém o "modificado em",
+        # senão arrastar um card renumera a coluna e bagunça a ordem por recentes.
+        only_reorder = request.kanban_order is not None and not request.model_dump(
+            exclude_none=True, exclude={"kanban_order"}
+        )
+
         return self._repo.update(
             file_id,
             title=request.title,
             tags=request.tags,
             content=request.content,
-            modified=_utc_now(),
+            modified=existing.modified if only_reorder else _utc_now(),
             folder=request.folder,
             status=request.status,
             status_changed_at=status_changed_at,
             due_date=request.due_date,
+            kanban_order=request.kanban_order,
         )
 
     def rename_tag(self, old_tag: str, new_tag: str) -> int:

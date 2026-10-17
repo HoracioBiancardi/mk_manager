@@ -43,6 +43,7 @@ class AbstractFileRepository(ABC):
         status: str | None = None,
         status_changed_at: str | None = None,
         due_date: str | None = None,
+        kanban_order: float | None = None,
     ) -> FileRecord: ...
 
     @abstractmethod

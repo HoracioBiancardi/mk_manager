@@ -20,6 +20,7 @@ class FileMetaResponse(BaseModel):
     archived_from: str = ""
     trashed_from: str = ""
     due_date: str = ""
+    kanban_order: float | None = None
 
     model_config = {"from_attributes": True}
 
@@ -52,6 +53,7 @@ class FileUpdateRequest(BaseModel):
     status: str | None = Field(default=None, max_length=100)
     status_changed_at: str | None = Field(default=None, max_length=100)
     due_date: str | None = Field(default=None, max_length=100)
+    kanban_order: float | None = Field(default=None, allow_inf_nan=False, description="Posição do card na coluna do Kanban")
 
     @field_validator("tags")
     @classmethod

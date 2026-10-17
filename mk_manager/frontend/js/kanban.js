@@ -79,17 +79,58 @@ export function toggleKanbanCardExpand(id, event) {
   renderKanban();
 }
 
+// ── Ordem dos cards ───────────────────────────────────────────────────────────
+// Cada task guarda `kanban_order` no frontmatter (menor = mais acima). Cards que
+// nunca foram arrastados não têm ordem e ficam depois dos ordenados, por título.
+const ORDER_STEP = 1000;
+
+function hasOrder(f) {
+  return typeof f.kanban_order === "number" && Number.isFinite(f.kanban_order);
+}
+
+function compareKanbanCards(a, b) {
+  const ao = hasOrder(a), bo = hasOrder(b);
+  if (ao && bo && a.kanban_order !== b.kanban_order) return a.kanban_order - b.kanban_order;
+  if (ao !== bo) return ao ? -1 : 1;
+  return (a.title || "").localeCompare(b.title || "", "pt-BR", { sensitivity: "base" });
+}
+
+// Calcula as mudanças de ordem para soltar `id` na coluna `status`, na posição
+// `index` (contada sem o próprio card). Devolve [{id, kanban_order}]: só o card
+// arrastado quando cabe entre os vizinhos; a coluna inteira renumerada quando o
+// vizinho de cima não tem ordem ou o intervalo entre eles se esgotou.
+export function planKanbanReorder(files, id, status, index) {
+  const col = files
+    .filter((f) => f.type === "task" && f.id !== id && (f.status || "") === status)
+    .sort(compareKanbanCards);
+  const i = Math.max(0, Math.min(index, col.length));
+  const prev = col[i - 1];
+  const next = col[i];
+
+  if (!prev || hasOrder(prev)) {
+    const lo = prev ? prev.kanban_order : null;
+    const hi = next && hasOrder(next) ? next.kanban_order : null;
+    let order;
+    if (lo === null && hi === null) order = ORDER_STEP;
+    else if (lo === null) order = hi - ORDER_STEP;
+    else if (hi === null) order = lo + ORDER_STEP;
+    else order = (lo + hi) / 2;
+    const fits = (lo === null || order > lo) && (hi === null || order < hi);
+    if (fits) return [{ id, kanban_order: order }];
+  }
+
+  const ids = col.map((f) => f.id);
+  ids.splice(i, 0, id);
+  return ids
+    .map((cid, n) => ({ id: cid, kanban_order: (n + 1) * ORDER_STEP }))
+    .filter((c) => c.id === id || files.find((f) => f.id === c.id)?.kanban_order !== c.kanban_order);
+}
+
 // ── Renderização do board ──────────────────────────────────────────────────────
 export function renderKanban() {
   const board = document.getElementById("kanban-board");
   if (!board) return;
-  const tasks = st.files
-    .filter((f) => f.type === "task")
-    .sort((a, b) =>
-      (a.title || "").localeCompare(b.title || "", "pt-BR", {
-        sensitivity: "base",
-      }),
-    );
+  const tasks = st.files.filter((f) => f.type === "task").sort(compareKanbanCards);
 
   const cols = st.kanbanColumns.map((col) => {
     const colTasks = tasks.filter((f) => (f.status || "") === col.key);
@@ -136,6 +177,7 @@ export function renderKanban() {
         onclick="onKanbanCardClick('${f.id}')"
         ondblclick="openKanbanCardEditor(event,'${f.id}')"
         ondragstart="onKanbanCardDragStart(event,'${f.id}')"
+        ondragend="onKanbanCardDragEnd(event)"
         title="Clique: edição rápida · Duplo-clique: abrir no editor">
         <button class="kanban-card-archive-btn" title="Arquivar" onclick="archiveTaskFromKanban(event,'${f.id}')">📦</button>
         <div class="kanban-card-title">${esc(f.title || "Sem título")}</div>
@@ -187,26 +229,9 @@ export async function openFileFromKanban(id) {
 }
 
 // ── Mover status via drag & drop ───────────────────────────────────────────────
-export async function moveTaskStatus(id, status) {
+export async function moveTaskStatus(id, status, extra = {}) {
   try {
-    const r = await apiFetch(`/files/${id}`, {
-      method: "PUT",
-      body: JSON.stringify({ status }),
-    });
-    const updated = await r.json();
-    const idx = st.files.findIndex((f) => f.id === id);
-    if (idx !== -1) st.files[idx] = { ...updated };
-    if (st.activeId === id) {
-      st.activeStatus = updated.status || "";
-      updateStatusSelect();
-      const sel = document.getElementById("status-select");
-      if (sel) sel.value = updated.status || "";
-      updateRetroStatusLabel();
-
-      // Sincroniza o input de data do editor ativo se a tarefa estiver aberta
-      const statusChangedEl = document.getElementById("status-changed-at");
-      if (statusChangedEl) statusChangedEl.value = updated.status_changed_at || "";
-    }
+    await _putKanbanCard(id, { status, ...extra });
     renderKanban();
     refreshListIfActive();
   } catch (e) {
@@ -214,8 +239,81 @@ export async function moveTaskStatus(id, status) {
   }
 }
 
+async function _putKanbanCard(id, body) {
+  const r = await apiFetch(`/files/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+  const updated = await r.json();
+  const idx = st.files.findIndex((f) => f.id === id);
+  if (idx !== -1) st.files[idx] = { ...updated };
+  if (body.status !== undefined && st.activeId === id) {
+    st.activeStatus = updated.status || "";
+    updateStatusSelect();
+    const sel = document.getElementById("status-select");
+    if (sel) sel.value = updated.status || "";
+    updateRetroStatusLabel();
+
+    // Sincroniza o input de data do editor ativo se a tarefa estiver aberta
+    const statusChangedEl = document.getElementById("status-changed-at");
+    if (statusChangedEl) statusChangedEl.value = updated.status_changed_at || "";
+  }
+}
+
+// Solta o card na coluna `status`, na posição `index`: muda o status (se mudou)
+// e grava a nova ordem — do card e, se preciso, dos vizinhos renumerados.
+async function dropKanbanCard(id, status, index) {
+  const card = st.files.find((f) => f.id === id);
+  if (!card) return;
+  const oldStatus = card.status || "";
+  const statusChanged = oldStatus !== status;
+  if (!statusChanged) {
+    const current = st.files
+      .filter((f) => f.type === "task" && (f.status || "") === status)
+      .sort(compareKanbanCards)
+      .findIndex((f) => f.id === id);
+    if (current === index) return;
+  }
+  const plan = planKanbanReorder(st.files, id, status, index);
+
+  // Mostra a nova posição na hora; o servidor confirma em seguida.
+  const before = new Map(plan.map((c) => [c.id, st.files.find((f) => f.id === c.id)?.kanban_order]));
+  for (const c of plan) {
+    const f = st.files.find((x) => x.id === c.id);
+    if (f) f.kanban_order = c.kanban_order;
+  }
+  card.status = status;
+  renderKanban();
+
+  const results = await Promise.allSettled(
+    plan.map((c) =>
+      _putKanbanCard(
+        c.id,
+        c.id === id && statusChanged
+          ? { status, kanban_order: c.kanban_order }
+          : { kanban_order: c.kanban_order },
+      ),
+    ),
+  );
+  const failed = results.findIndex((r) => r.status === "rejected");
+  if (failed !== -1) {
+    results.forEach((r, n) => {
+      if (r.status !== "rejected") return;
+      const f = st.files.find((x) => x.id === plan[n].id);
+      if (!f) return;
+      f.kanban_order = before.get(f.id);
+      if (f.id === id) f.status = oldStatus;
+    });
+    renderKanban();
+    toast("Erro ao mover task: " + results[failed].reason.message, "error");
+  }
+  if (statusChanged) refreshListIfActive();
+}
+
 // ── Drag & drop dos cards ──────────────────────────────────────────────────────
 let _kanbanDraggingId = null;
+
+let _dropIndicator = null;
 
 export function onKanbanCardDragStart(e, id) {
   _kanbanDraggingId = id;
@@ -223,15 +321,52 @@ export function onKanbanCardDragStart(e, id) {
   e.currentTarget.classList.add("dragging");
 }
 
+export function onKanbanCardDragEnd(e) {
+  e.currentTarget.classList.remove("dragging");
+  _removeDropIndicator();
+  document
+    .querySelectorAll(".kanban-col.drag-over")
+    .forEach((c) => c.classList.remove("drag-over"));
+}
+
+// Posição de inserção = quantos cards (fora o arrastado) têm o meio acima do mouse.
+function _dropTarget(colEl, clientY) {
+  const cards = [...colEl.querySelectorAll(".kanban-card:not(.dragging)")];
+  const index = cards.findIndex((c) => {
+    const r = c.getBoundingClientRect();
+    return clientY < r.top + r.height / 2;
+  });
+  return index === -1 ? { index: cards.length, before: null } : { index, before: cards[index] };
+}
+
+function _removeDropIndicator() {
+  _dropIndicator?.remove();
+  _dropIndicator = null;
+}
+
 export function onKanbanColDragOver(e) {
   e.preventDefault();
   e.dataTransfer.dropEffect = "move";
-  e.currentTarget.classList.add("drag-over");
+  const col = e.currentTarget;
+  col.classList.add("drag-over");
+  const list = col.querySelector(".kanban-cards");
+  if (!list || !_kanbanDraggingId) return;
+  if (!_dropIndicator) {
+    _dropIndicator = document.createElement("div");
+    _dropIndicator.className = "kanban-drop-indicator";
+  }
+  const { before } = _dropTarget(col, e.clientY);
+  if (before) {
+    if (_dropIndicator.nextSibling !== before) list.insertBefore(_dropIndicator, before);
+  } else if (list.lastChild !== _dropIndicator) {
+    list.appendChild(_dropIndicator);
+  }
 }
 
 export function onKanbanColDragLeave(e) {
   if (!e.currentTarget.contains(e.relatedTarget)) {
     e.currentTarget.classList.remove("drag-over");
+    if (_dropIndicator && e.currentTarget.contains(_dropIndicator)) _removeDropIndicator();
   }
 }
 
@@ -240,7 +375,9 @@ export function onKanbanColDrop(e, status) {
   e.currentTarget.classList.remove("drag-over");
   const id = _kanbanDraggingId;
   _kanbanDraggingId = null;
-  if (id) moveTaskStatus(id, status);
+  const { index } = _dropTarget(e.currentTarget, e.clientY);
+  _removeDropIndicator();
+  if (id) dropKanbanCard(id, status, index);
 }
 
 // ── Gerenciar colunas ──────────────────────────────────────────────────────────
@@ -418,6 +555,7 @@ Object.assign(window, {
   moveTaskStatus,
   toggleKanbanCardExpand,
   onKanbanCardDragStart,
+  onKanbanCardDragEnd,
   onKanbanColDragOver,
   onKanbanColDragLeave,
   onKanbanColDrop,
