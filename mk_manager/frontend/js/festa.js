@@ -36,43 +36,115 @@ document.addEventListener("pointerdown", (e) => {
   estourarBolha(e.clientX, e.clientY);
 });
 
-// Descanso de tela: depois de DESCANSO_MS sem mouse nem teclado, a aurora
-// sobe por cima do app. Qualquer movimento a dispensa na hora.
-const DESCANSO_MS = 2 * 60 * 1000;
-let timerDescanso = null;
-let descanso = null;
+// ── Kanban ─────────────────────────────────────────────────────────────────
+// O kanban.js redesenha o board inteiro (innerHTML) a cada mudança. Aqui um
+// MutationObserver olha cada redesenho, compara com o anterior e anima só o
+// que mudou: o cartão que caiu, a barra que subiu, a tarefa que terminou.
+const festaAtiva = () => document.body.classList.contains("theme-festa") && !menosMovimento.matches;
 
-function criarDescanso() {
-  const el = document.createElement("div");
-  el.className = "festa-descanso";
-  el.setAttribute("aria-hidden", "true");
-  for (let i = 1; i <= 4; i++) {
-    const orb = document.createElement("div");
-    orb.className = "orb orb-" + i;
-    el.appendChild(orb);
+let arrastando = null;              // id do cartão em arrasto
+let anterior = null;                // Map id → { pct, status } do último desenho
+
+function lerBoard(board) {
+  const cols = [...board.querySelectorAll(".kanban-col")];
+  const ultima = cols.length ? cols[cols.length - 1].dataset.status : null;
+  const mapa = new Map();
+  for (const card of board.querySelectorAll(".kanban-card[data-id]")) {
+    const barra = card.querySelector(".kanban-progress-bar");
+    mapa.set(card.dataset.id, {
+      card,
+      barra,
+      pct: barra ? parseFloat(barra.style.width) : -1,
+      status: card.closest(".kanban-col")?.dataset.status ?? "",
+    });
   }
-  const texto = document.createElement("div");
-  texto.className = "festa-descanso-texto";
-  texto.textContent = "MK Manager";
-  el.appendChild(texto);
-  document.body.appendChild(el);
-  return el;
+  return { mapa, ultima };
 }
 
-function mostrarDescanso() {
-  if (!document.body.classList.contains("theme-festa") || menosMovimento.matches) return;
-  descanso = descanso || criarDescanso();
-  // um frame depois, para a transição de opacidade rodar
-  requestAnimationFrame(() => descanso.classList.add("ativo"));
+// Animações em curso por cartão. Um redesenho logo depois do drop (o
+// servidor confirmando) troca o elemento; aqui a classe volta no novo.
+const marcas = new Map(); // id → { classe, ate }
+
+function marcar(card, classe, ms) {
+  marcas.set(card.dataset.id + "|" + classe, { id: card.dataset.id, classe, ate: performance.now() + ms });
+  card.classList.add(classe);
+  setTimeout(() => {
+    document.querySelector(`.kanban-card[data-id="${CSS.escape(card.dataset.id)}"]`)?.classList.remove(classe);
+  }, ms);
 }
 
-function acordar() {
-  if (descanso) descanso.classList.remove("ativo");
-  clearTimeout(timerDescanso);
-  timerDescanso = setTimeout(mostrarDescanso, DESCANSO_MS);
+function reaplicarMarcas(mapa) {
+  const agora = performance.now();
+  for (const [chave, m] of marcas) {
+    if (m.ate <= agora) { marcas.delete(chave); continue; }
+    mapa.get(m.id)?.card.classList.add(m.classe);
+  }
 }
 
-["pointermove", "pointerdown", "keydown", "wheel", "touchstart"].forEach((ev) =>
-  document.addEventListener(ev, acordar, { passive: true, capture: true })
-);
-acordar();
+function comemorar(card) {
+  marcar(card, "festa-vitoria", 900);
+  const r = card.getBoundingClientRect();
+  const pontos = [[.5, .3], [.2, .6], [.8, .6]];
+  pontos.forEach(([fx, fy], i) =>
+    setTimeout(() => estourarBolha(r.left + r.width * fx, r.top + r.height * fy), i * 140),
+  );
+}
+
+function aoRedesenhar(board) {
+  const { mapa, ultima } = lerBoard(board);
+  if (!festaAtiva()) { anterior = mapa; return; }
+  reaplicarMarcas(mapa);
+
+  if (anterior) {
+    for (const [id, agora] of mapa) {
+      const antes = anterior.get(id);
+      if (!antes) continue;
+      // a barra parte da largura antiga e sobe com mola até a nova
+      if (agora.barra && antes.pct >= 0 && antes.pct !== agora.pct) {
+        const alvo = agora.barra.style.width;
+        agora.barra.style.width = antes.pct + "%";
+        agora.barra.classList.add("festa-sobe");
+        requestAnimationFrame(() => requestAnimationFrame(() => { agora.barra.style.width = alvo; }));
+      }
+
+      const terminou = (agora.pct === 100 && antes.pct >= 0 && antes.pct < 100) ||
+        (ultima !== null && agora.status === ultima && antes.status !== ultima);
+      if (terminou) comemorar(agora.card);
+    }
+  }
+
+  if (arrastando && mapa.has(arrastando)) {
+    const card = mapa.get(arrastando).card;
+    marcar(card, "festa-caiu", 600);
+    arrastando = null;
+  }
+  anterior = mapa;
+}
+
+function observarKanban() {
+  const board = document.getElementById("kanban-board");
+  if (!board) return;
+  new MutationObserver(() => aoRedesenhar(board)).observe(board, { childList: true });
+
+  // o board aparece (a tela do Kanban foi aberta): as barras enchem do zero
+  let largura = 0;
+  new ResizeObserver(([e]) => {
+    const agora = e.contentRect.width;
+    if (agora > 0 && largura === 0 && festaAtiva()) {
+      board.classList.remove("festa-enche");
+      void board.offsetWidth; // reinicia a animação
+      board.classList.add("festa-enche");
+      // só nesta abertura: redesenhos seguintes não devem encher de novo
+      setTimeout(() => board.classList.remove("festa-enche"), 1200);
+    }
+    largura = agora;
+  }).observe(board);
+  board.addEventListener("dragstart", (e) => {
+    arrastando = e.target.closest?.(".kanban-card")?.dataset.id || null;
+  });
+  // arrasto cancelado (soltou fora): não há queda para animar
+  board.addEventListener("dragend", () => setTimeout(() => { arrastando = null; }, 400));
+}
+
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", observarKanban);
+else observarKanban();
