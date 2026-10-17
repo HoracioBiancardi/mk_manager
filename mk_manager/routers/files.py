@@ -40,6 +40,9 @@ def _to_meta(record: FileRecord) -> FileMetaResponse:
         trashed_from=record.trashed_from,
         due_date=record.due_date,
         kanban_order=record.kanban_order,
+        origin=record.origin,
+        role=record.role,
+        is_index=record.is_index,
     )
 
 def _to_detail(record: FileRecord) -> FileDetailResponse:
@@ -62,6 +65,9 @@ def _to_detail(record: FileRecord) -> FileDetailResponse:
         trashed_from=record.trashed_from,
         due_date=record.due_date,
         kanban_order=record.kanban_order,
+        origin=record.origin,
+        role=record.role,
+        is_index=record.is_index,
         content=record.content,
     )
 

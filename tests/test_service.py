@@ -62,24 +62,6 @@ See https://example.com/#section (ignored).
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].record.id, created.id)
 
-    def test_service_graph(self):
-        self.service.create_file(
-            FileCreateRequest(
-                title="Note A",
-                content="Link to [[Note B]] and [[Phantom Note]].",
-            )
-        )
-        self.service.create_file(
-            FileCreateRequest(
-                title="Note B",
-                content="Link back to [[Note A]].",
-            )
-        )
-
-        graph = self.service.build_graph()
-        self.assertEqual(len(graph.nodes), 3)  # Note A, Note B, Phantom Note
-        self.assertEqual(len(graph.edges), 2)
-
     def test_due_date_and_snippet_highlight(self):
         created = self.service.create_file(
             FileCreateRequest(

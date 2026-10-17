@@ -21,6 +21,9 @@ class FileMetaResponse(BaseModel):
     trashed_from: str = ""
     due_date: str = ""
     kanban_order: float | None = None
+    origin: str = ""
+    role: str = ""
+    is_index: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -36,6 +39,9 @@ class FileCreateRequest(BaseModel):
     status: str = Field(default="", description="Kanban status", max_length=100)
     status_changed_at: str = Field(default="", description="Timestamp of status change", max_length=100)
     due_date: str = Field(default="", description="Due date YYYY-MM-DD", max_length=100)
+    origin: str = Field(default="", description="Nota de origem ([[Título]] ou nome do arquivo)", max_length=500)
+    role: str = Field(default="", description="Papel na cadeia (proposta, spec, runbook...)", max_length=100)
+    is_index: bool = Field(default=False, description="Nota-índice: define a trilha das notas que cita")
 
     @field_validator("tags")
     @classmethod
@@ -54,6 +60,9 @@ class FileUpdateRequest(BaseModel):
     status_changed_at: str | None = Field(default=None, max_length=100)
     due_date: str | None = Field(default=None, max_length=100)
     kanban_order: float | None = Field(default=None, allow_inf_nan=False, description="Posição do card na coluna do Kanban")
+    origin: str | None = Field(default=None, max_length=500)
+    role: str | None = Field(default=None, max_length=100)
+    is_index: bool | None = Field(default=None)
     # `modified` que o cliente leu: se a nota mudou desde então, o servidor responde 409
     # em vez de sobrescrever (dois usuários ou duas abas na mesma nota).
     expected_modified: str | None = Field(default=None, max_length=100)
@@ -93,20 +102,44 @@ class ArchiveBatchResponse(BaseModel):
 class SearchResultResponse(FileMetaResponse):
     snippet: str
 
-class GraphNode(BaseModel):
+class LinkRef(BaseModel):
     id: str
     title: str
     type: str
-    tags: list[str]
     folder: str
+    status: str = ""
+    # Papel exibido na cadeia: o campo `role` ou, se vazio, a última parte da pasta.
+    role: str = ""
 
-class GraphEdge(BaseModel):
-    source: str
-    target: str
+class TrailInfo(BaseModel):
+    index: LinkRef
+    position: int
+    total: int
+    prev: LinkRef | None = None
+    next: LinkRef | None = None
 
-class GraphResponse(BaseModel):
-    nodes: list[GraphNode]
-    edges: list[GraphEdge]
+class LinksResponse(BaseModel):
+    outgoing: list[LinkRef]
+    missing: list[str]
+    backlinks: list[LinkRef]
+    ancestors: list[LinkRef]
+    children: list[LinkRef]
+    trails: list[TrailInfo]
+
+class MapNode(BaseModel):
+    note: LinkRef
+    children: list["MapNode"] = []
+    # Tasks nesta nota e abaixo dela na cadeia (ela mesma, se for task).
+    tasks_total: int = 0
+    tasks_done: int = 0
+
+class MapIndex(BaseModel):
+    index: LinkRef
+    steps: list[MapNode]
+
+class MapResponse(BaseModel):
+    chains: list[MapNode]
+    indexes: list[MapIndex]
 
 class StatsResponse(BaseModel):
     total: int

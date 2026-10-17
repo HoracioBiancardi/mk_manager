@@ -8,12 +8,22 @@ from mk_manager.domain.entities import FileRecord, SearchResult
 from mk_manager.models.schemas import (
     FileCreateRequest,
     FileUpdateRequest,
-    GraphEdge,
-    GraphNode,
-    GraphResponse,
+    LinkRef,
+    LinksResponse,
+    MapIndex,
+    MapNode,
+    MapResponse,
     StatsResponse,
+    TrailInfo,
 )
 from mk_manager.repositories.base import AbstractFileRepository
+from mk_manager.services.links import (
+    LinkResolver,
+    extract_index_steps,
+    extract_note_links,
+    rewrite_links,
+    rewrite_origin,
+)
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -83,6 +93,19 @@ def _build_snippet(content: str, query: str, radius: int = 120) -> str:
     if end < len(content):
         chunk += "…"
     return chunk
+
+def _link_ref(record: FileRecord) -> LinkRef:
+    # Sem `role`, o papel é o nome da pasta; task não herda (o ícone já diz que é task).
+    folder_role = record.folder.rsplit("/", 1)[-1] if record.folder and record.type != "task" else ""
+    role = record.role or folder_role
+    return LinkRef(
+        id=record.id,
+        title=record.title or record.id,
+        type=record.type,
+        folder=record.folder,
+        status=record.status,
+        role=role,
+    )
 
 class FileConflictError(Exception):
     """A nota mudou depois que o cliente a leu (`expected_modified` não confere)."""
@@ -162,41 +185,150 @@ class FileService:
             size_bytes=self._repo.total_size_bytes(),
         )
 
-    def build_graph(self) -> GraphResponse:
-        records = self._repo.list_all()
-        id_by_title: dict[str, str] = {}
-        for r in records:
-            id_by_title.setdefault((r.title or r.id).strip().lower(), r.id)
+    def build_map(self) -> MapResponse:
+        """Página de ligações: as cadeias de origem (proposta → spec → task) e os índices.
 
-        nodes = [
-            GraphNode(id=r.id, title=r.title or r.id, type=r.type, tags=r.tags, folder=r.folder)
-            for r in records
-        ]
-        phantom_ids: dict[str, str] = {}
-        edges: list[GraphEdge] = []
-        seen_edges: set[tuple[str, str]] = set()
+        Só entra o que está ligado: nota sem origem e sem derivadas (nota pessoal solta)
+        fica de fora. Cada nó traz quantas tasks há nele e abaixo dele, e quantas concluídas.
+        """
+        resolver = LinkResolver(self._repo.list_all())
+        parent_of: dict[str, str] = {}
+        children_of: dict[str, list[FileRecord]] = {}
+        for r in resolver.records:
+            parent = resolver.resolve_origin(r)
+            if parent is not None:
+                parent_of[r.id] = parent.id
+                children_of.setdefault(parent.id, []).append(r)
 
-        for r in records:
-            for target_title in extract_wikilink_targets(r.content):
-                key = target_title.lower()
-                target_id = id_by_title.get(key)
-                if target_id is None:
-                    target_id = phantom_ids.get(key)
-                    if target_id is None:
-                        target_id = f"phantom:{key}"
-                        phantom_ids[key] = target_id
-                        nodes.append(
-                            GraphNode(id=target_id, title=target_title, type="phantom", tags=[], folder="")
-                        )
-                if target_id == r.id:
-                    continue
-                edge_key = tuple(sorted((r.id, target_id)))
-                if edge_key in seen_edges:
-                    continue
-                seen_edges.add(edge_key)
-                edges.append(GraphEdge(source=r.id, target=target_id))
+        def node(record: FileRecord, seen: frozenset[str]) -> MapNode:
+            kids = sorted(children_of.get(record.id, []), key=lambda r: (r.type == "task", (r.title or r.id).lower()))
+            child_nodes = [node(k, seen | {k.id}) for k in kids if k.id not in seen]
+            own_task = record.type == "task"
+            return MapNode(
+                note=_link_ref(record),
+                children=child_nodes,
+                tasks_total=int(own_task) + sum(c.tasks_total for c in child_nodes),
+                tasks_done=int(own_task and record.status == "done") + sum(c.tasks_done for c in child_nodes),
+            )
 
-        return GraphResponse(nodes=nodes, edges=edges)
+        by_id = {r.id: r for r in resolver.records}
+        roots = [r for r in resolver.records if r.id in children_of and r.id not in parent_of]
+        # Cadeia que só tem ciclo (A → B → A) não tem raiz: entra pela primeira nota.
+        reached: set[str] = set()
+
+        def mark(rid: str) -> None:
+            if rid in reached:
+                return
+            reached.add(rid)
+            for k in children_of.get(rid, []):
+                mark(k.id)
+
+        for r in roots:
+            mark(r.id)
+        for rid in children_of:
+            if rid not in reached:
+                roots.append(by_id[rid])
+                mark(rid)
+
+        roots.sort(key=lambda r: (r.folder.lower(), (r.title or r.id).lower()))
+        chains = [node(r, frozenset({r.id})) for r in roots]
+
+        indexes: list[MapIndex] = []
+        for r in sorted((r for r in resolver.records if r.is_index), key=lambda r: (r.title or r.id).lower()):
+            steps: list[FileRecord] = []
+            for link in extract_index_steps(r.content):
+                hit = resolver.resolve(link, r.folder)
+                if hit is not None and hit.id != r.id and all(hit.id != s.id for s in steps):
+                    steps.append(hit)
+            # Um passo não repete, como derivada, outro passo do mesmo índice (02 → 03 já é o passo 3).
+            step_ids = frozenset(s.id for s in steps)
+            indexes.append(MapIndex(index=_link_ref(r), steps=[node(s, step_ids) for s in steps]))
+
+        return MapResponse(chains=chains, indexes=indexes)
+
+    def get_links(self, file_id: str) -> LinksResponse:
+        """Tudo o que liga a nota às outras: citações, cadeia de origem e trilhas de índice."""
+        current = self._repo.get_by_id(file_id)
+        resolver = LinkResolver(self._repo.list_all())
+
+        outgoing: list[FileRecord] = []
+        missing: list[str] = []
+        for link in extract_note_links(current.content):
+            hit = resolver.resolve(link, current.folder)
+            if hit is None:
+                missing.append(link.target)
+            elif hit.id != current.id and hit not in outgoing:
+                outgoing.append(hit)
+
+        backlinks: list[FileRecord] = []
+        children: list[FileRecord] = []
+        trails: list[TrailInfo] = []
+        for r in resolver.records:
+            if r.id == current.id:
+                continue
+            parent = resolver.resolve_origin(r)
+            if parent is not None and parent.id == current.id:
+                children.append(r)
+            targets = [resolver.resolve(link, r.folder) for link in extract_note_links(r.content)]
+            if any(t is not None and t.id == current.id for t in targets):
+                backlinks.append(r)
+            if r.is_index:
+                steps = [resolver.resolve(link, r.folder) for link in extract_index_steps(r.content)]
+                if any(t is not None and t.id == current.id for t in steps):
+                    trails.append(self._trail(r, steps, current))
+
+        ancestors: list[FileRecord] = []
+        node, seen = current, {current.id}
+        while (parent := resolver.resolve_origin(node)) is not None and parent.id not in seen:
+            ancestors.insert(0, parent)
+            seen.add(parent.id)
+            node = parent
+
+        children.sort(key=lambda r: (r.type != "task", (r.title or r.id).lower()))
+        return LinksResponse(
+            outgoing=[_link_ref(r) for r in outgoing],
+            missing=missing,
+            backlinks=[_link_ref(r) for r in backlinks],
+            ancestors=[_link_ref(r) for r in ancestors],
+            children=[_link_ref(r) for r in children],
+            trails=trails,
+        )
+
+    @staticmethod
+    def _trail(index: FileRecord, targets: list[FileRecord | None], current: FileRecord) -> TrailInfo:
+        steps: list[FileRecord] = []
+        for t in targets:
+            if t is not None and t.id != index.id and all(t.id != s.id for s in steps):
+                steps.append(t)
+        pos = next(i for i, s in enumerate(steps) if s.id == current.id)
+        return TrailInfo(
+            index=_link_ref(index),
+            position=pos + 1,
+            total=len(steps),
+            prev=_link_ref(steps[pos - 1]) if pos > 0 else None,
+            next=_link_ref(steps[pos + 1]) if pos + 1 < len(steps) else None,
+        )
+
+    def _update_links_to(self, old: FileRecord, new: FileRecord) -> None:
+        """Depois de renomear/mover `old`, corrige os links e as origens que apontavam para ela."""
+        for r in self._repo.list_all(include_archived=True):
+            if r.type == "other":
+                continue
+            folder = new.folder if r.id == new.id else r.folder
+            content = rewrite_links(r.content, folder, old, new)
+            origin = rewrite_origin(r.origin, old, new)
+            if content == r.content and origin == r.origin:
+                continue
+            self._repo.update(
+                r.id,
+                title=None,
+                tags=None,
+                content=content,
+                modified=r.modified,
+                folder=None,
+                status=None,
+                origin=origin,
+            )
 
     def create_file(self, request: FileCreateRequest) -> FileRecord:
         now = _utc_now()
@@ -216,6 +348,9 @@ class FileService:
             status=request.status,
             status_changed_at=status_changed_at,
             due_date=request.due_date,
+            origin=request.origin,
+            role=request.role,
+            is_index=request.is_index,
         )
 
     def update_file(self, file_id: str, request: FileUpdateRequest) -> FileRecord:
@@ -235,7 +370,7 @@ class FileService:
             exclude_none=True, exclude={"kanban_order", "expected_modified"}
         )
 
-        return self._repo.update(
+        updated = self._repo.update(
             file_id,
             title=request.title,
             tags=request.tags,
@@ -246,7 +381,14 @@ class FileService:
             status_changed_at=status_changed_at,
             due_date=request.due_date,
             kanban_order=request.kanban_order,
+            origin=request.origin,
+            role=request.role,
+            is_index=request.is_index,
         )
+        if (updated.title, updated.filename) != (existing.title, existing.filename):
+            self._update_links_to(existing, updated)
+            updated = self._repo.get_by_id(updated.id)
+        return updated
 
     def rename_tag(self, old_tag: str, new_tag: str) -> int:
         updated_count = 0

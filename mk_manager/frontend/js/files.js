@@ -17,10 +17,11 @@ import {
 } from "./editor.js";
 import { updateStatusSelect, renderKanban } from "./kanban.js";
 import { setMainView } from "./views.js";
-import { refreshGraphIfActive } from "./graph.js";
+import { refreshLinksMapIfActive } from "./links-map.js";
 import { refreshListIfActive } from "./list.js";
 import { refreshArchiveIfActive } from "./archive.js";
 import { getDefaultView } from "./prefs.js";
+import { refreshLinksBar, resolveNote } from "./links.js";
 
 // ── Storage info ───────────────────────────────────────────────────────────────
 async function updateStorageInfo() {
@@ -46,7 +47,7 @@ export async function loadFiles() {
     st.searchResults = null;
     renderSidebar();
     updateStorageInfo();
-    refreshGraphIfActive();
+    refreshLinksMapIfActive();
     refreshListIfActive();
   } catch (e) {
     toast("Erro ao carregar arquivos: " + e.message, "error");
@@ -82,6 +83,9 @@ export async function saveFile() {
     document.getElementById("status-select")?.value ?? st.activeStatus;
   const statusChangedAt = document.getElementById("status-changed-at")?.value ?? "";
   const dueDate = document.getElementById("due-date-input")?.value?.trim() ?? "";
+  const origin = document.getElementById("origin-input")?.value?.trim() ?? "";
+  const role = document.getElementById("role-input")?.value?.trim() ?? "";
+  const isIndex = document.getElementById("index-input")?.checked ?? false;
   try {
     const prevId = st.activeId;
     const r = await apiFetch(`/files/${prevId}`, {
@@ -94,13 +98,21 @@ export async function saveFile() {
         status,
         status_changed_at: statusChangedAt,
         due_date: dueDate,
+        origin,
+        role,
+        is_index: isIndex,
         ...(st.activeModified ? { expected_modified: st.activeModified } : {}),
       }),
     });
     const updated = await r.json();
     st.activeModified = updated.modified || null;
     const idx = st.files.findIndex((f) => f.id === prevId);
+    const before = idx !== -1 ? st.files[idx] : null;
     if (idx !== -1) st.files[idx] = { ...updated };
+    // Renomear/mover corrige os links nas outras notas no servidor: recarrega a lista.
+    if (before && (before.title !== updated.title || before.filename !== updated.filename)) {
+      loadFiles();
+    }
 
     // Sincroniza o input de data na tela com o retorno da API
     const statusChangedEl = document.getElementById("status-changed-at");
@@ -117,7 +129,8 @@ export async function saveFile() {
     renderSidebar();
     setSaveStatus("saved");
     updateStorageInfo();
-    refreshGraphIfActive();
+    refreshLinksBar();
+    refreshLinksMapIfActive();
     refreshListIfActive();
   } catch (e) {
     if (e.status === 409) return resolveSaveConflict();
@@ -173,6 +186,9 @@ export async function openFile(id) {
     if (statusChangedEl) statusChangedEl.value = file.status_changed_at || "";
     const dueDateEl = document.getElementById("due-date-input");
     if (dueDateEl) dueDateEl.value = file.due_date || "";
+    document.getElementById("origin-input").value = file.origin || "";
+    document.getElementById("role-input").value = file.role || "";
+    document.getElementById("index-input").checked = !!file.is_index;
 
     const badge = document.getElementById("type-badge");
     if (file.type === "other") {
@@ -214,6 +230,7 @@ export async function openFile(id) {
     renderTags(st.activeTags);
     renderSidebar();
     showEditorPanel();
+    refreshLinksBar();
     const defaultView = getDefaultView();
     st.view = defaultView;
     setView(defaultView);
@@ -246,7 +263,7 @@ export async function newFile(type, folder = "", title = "") {
     const file = await r.json();
     st.files.unshift(file);
     renderSidebar();
-    refreshGraphIfActive();
+    refreshLinksMapIfActive();
     refreshListIfActive();
     await openFile(file.id);
     if (title) document.getElementById("md-editor").focus();
@@ -258,11 +275,10 @@ export async function newFile(type, folder = "", title = "") {
   }
 }
 
-// Usado por links internos [[Nota]] (preview) e por cliques em nós "fantasma"
-// no grafo — resolve por título e abre, ou oferece criar a nota na hora.
+// Usado por links internos [[Nota]] no preview — resolve pelo título ou nome do
+// arquivo e abre, ou oferece criar a nota na hora.
 export async function openOrCreateByTitle(title) {
-  const key = title.trim().toLowerCase();
-  const match = st.files.find((f) => (f.title || f.id).trim().toLowerCase() === key);
+  const match = resolveNote(title);
   if (match) {
     await openFile(match.id);
     return;
@@ -284,7 +300,7 @@ export async function deleteFile(id) {
     }
     renderSidebar();
     updateStorageInfo();
-    refreshGraphIfActive();
+    refreshLinksMapIfActive();
     refreshListIfActive();
     refreshArchiveIfActive();
     toast("Arquivo excluído.", "success");
@@ -305,7 +321,7 @@ export async function archiveFile(id) {
     renderSidebar();
     updateStorageInfo();
     renderKanban();
-    refreshGraphIfActive();
+    refreshLinksMapIfActive();
     refreshListIfActive();
     refreshArchiveIfActive();
     toast("Arquivado. Restaure na tela Arquivo se precisar.", "success");
@@ -327,7 +343,7 @@ export async function unarchiveFile(id) {
     st.files.unshift(restored);
     renderSidebar();
     updateStorageInfo();
-    refreshGraphIfActive();
+    refreshLinksMapIfActive();
     refreshListIfActive();
     toast("Restaurado.", "success");
   } catch (e) {
@@ -352,7 +368,7 @@ export async function moveFileToFolder(fileId, folderPath) {
       if (folderInput) folderInput.value = updated.folder || "";
     }
     renderSidebar();
-    refreshGraphIfActive();
+    refreshLinksMapIfActive();
     refreshListIfActive();
     toast(`Movido para "${folderPath}".`, "success");
   } catch (e) {
@@ -451,7 +467,7 @@ export async function confirmRenameFile(id, newTitle) {
       if (updated.id !== id) st.activeId = updated.id;
     }
     renderSidebar();
-    refreshGraphIfActive();
+    refreshLinksMapIfActive();
     refreshListIfActive();
     toast("Renomeado com sucesso.", "success");
   } catch (e) {

@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 import uvicorn
 from mk_manager.auth_middleware import AuthMiddleware, SecurityHeadersMiddleware
 from mk_manager.config import get_settings
-from mk_manager.routers import auth, files, search, stats, tags, graph, assets, settings as settings_router, system, vault, tasks
+from mk_manager.routers import auth, files, search, stats, tags, links, assets, settings as settings_router, system, vault, tasks
 from mk_manager.services.log_buffer_service import log_buffer_service
 
 def create_app() -> FastAPI:
@@ -32,7 +32,7 @@ def create_app() -> FastAPI:
     app.include_router(search.router)
     app.include_router(stats.router)
     app.include_router(tags.router)
-    app.include_router(graph.router)
+    app.include_router(links.router)
     app.include_router(assets.router)
     app.include_router(settings_router.router)
     app.include_router(system.router)

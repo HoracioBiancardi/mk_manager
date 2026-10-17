@@ -6,6 +6,7 @@ import { onEditorInput, jumpToSourceLine, replaceRange } from "./editor.js";
 import { openDiagramBuilder } from "./diagram-builder.js";
 import { openTableBuilder } from "./table-builder.js";
 import { closeKanbanQEdit } from "./kanban.js";
+import { resolveNote } from "./links.js";
 
 // ── Links internos [[Nota]] / [[Nota|Apelido]] ─────────────────────────────────
 const WIKILINK_RE = /^\[\[([^[\]|#]+)(?:#[^[\]|]*)?(?:\|([^[\]]+))?\]\]/;
@@ -47,6 +48,13 @@ marked.use({
         return `<a href="${esc(hrefStr)}" class="asset-link"${titleAttr} target="_blank" rel="noopener noreferrer">${label}</a>`;
       }
 
+      // [texto](outra-nota.md): link para nota, relativo à pasta da nota aberta.
+      const notePath = !isExternal && !isAsset && !/^[a-z][a-z0-9+.-]*:|^[/#]/i.test(hrefStr)
+        ? decodeURIComponent(hrefStr.split("#")[0]) : "";
+      if (notePath.toLowerCase().endsWith(".md")) {
+        return `<a href="#" class="wikilink" data-path="${esc(notePath)}"${titleAttr}>${text}</a>`;
+      }
+
       const target = isExternal ? ' target="_blank" rel="noopener noreferrer"' : "";
       // javascript:/data:/vbscript: passam pelo esc() e executam no clique: só esquemas seguros.
       if (/^\s*(javascript|data|vbscript):/i.test(hrefStr)) return text;
@@ -55,23 +63,19 @@ marked.use({
   },
 });
 
-function findFileByTitle(target) {
-  const key = target.trim().toLowerCase();
-  return st.files.find((f) => (f.title || f.id).trim().toLowerCase() === key);
-}
-
-async function onWikilinkClick(e, target, insideKanbanModal) {
-  e.preventDefault();
-  if (insideKanbanModal) closeKanbanQEdit();
-  await window.openOrCreateByTitle?.(target);
-}
-
-export function wireWikilinks(container, { insideKanbanModal = false } = {}) {
+export function wireWikilinks(container, { insideKanbanModal = false, folder = st.activeFolder } = {}) {
   container.querySelectorAll("a.wikilink").forEach((a) => {
+    const path = a.dataset.path;
     const target = a.dataset.target || a.textContent;
-    const found = findFileByTitle(target);
+    const found = path ? resolveNote(path, { kind: "md", fromFolder: folder }) : resolveNote(target);
     if (!found) a.classList.add("phantom");
-    a.onclick = (e) => onWikilinkClick(e, target, insideKanbanModal);
+    a.onclick = async (e) => {
+      e.preventDefault();
+      if (insideKanbanModal) closeKanbanQEdit();
+      if (found) await window.openFile?.(found.id);
+      else if (path) toast(`Nota não encontrada: ${path}`, "error");
+      else await window.openOrCreateByTitle?.(target);
+    };
   });
 }
 

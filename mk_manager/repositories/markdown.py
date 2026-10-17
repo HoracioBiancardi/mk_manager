@@ -18,6 +18,13 @@ from mk_manager.utils.security import PathTraversalError, is_contained, sanitize
 __all__ = ["MarkdownFileRepository", "PathTraversalError"]
 
 _FRONTMATTER_RE: re.Pattern[str] = re.compile(r"^---\n(.*?)\n---\n?", re.DOTALL)
+# Chaves que o app lê (inclusive as antigas, migradas para status_changed_at/due_date).
+# O resto do frontmatter vai para FileRecord.extra e volta igual ao salvar.
+_KNOWN_KEYS = frozenset({
+    "id", "title", "type", "tags", "created", "modified", "folder", "status",
+    "status_changed_at", "date_conclusion", "date_execution", "date_planning",
+    "archived_from", "trashed_from", "due_date", "due", "kanban_order", "origin", "role", "index",
+})
 
 def _slugify(text: str) -> str:
     text = unicodedata.normalize("NFD", text)
@@ -222,6 +229,8 @@ class MarkdownFileRepository(AbstractFileRepository):
                 meta = yaml.safe_load(match.group(1)) or {}
             except yaml.YAMLError:
                 meta = {}
+            if not isinstance(meta, dict):
+                meta = {}
             content = text[match.end():]
         else:
             content = text
@@ -254,6 +263,10 @@ class MarkdownFileRepository(AbstractFileRepository):
             trashed_from=_coerce_str(meta.get("trashed_from", "")),
             due_date=_coerce_str(meta.get("due_date") or meta.get("due") or ""),
             kanban_order=_coerce_order(meta.get("kanban_order")),
+            origin=_coerce_str(meta.get("origin", "")),
+            role=_coerce_str(meta.get("role", "")),
+            is_index=meta.get("index") is True,
+            extra={k: v for k, v in meta.items() if k not in _KNOWN_KEYS},
         )
 
     def _parse_non_md(self, path: Path) -> FileRecord:
@@ -301,6 +314,14 @@ class MarkdownFileRepository(AbstractFileRepository):
         }
         if record.kanban_order is not None:
             fm_data["kanban_order"] = record.kanban_order
+        if record.origin:
+            fm_data["origin"] = record.origin
+        if record.role:
+            fm_data["role"] = record.role
+        if record.is_index:
+            fm_data["index"] = True
+        for key, value in record.extra.items():
+            fm_data.setdefault(key, value)
         frontmatter = yaml.dump(
             fm_data, allow_unicode=True, default_flow_style=False
         ).strip()
@@ -361,6 +382,9 @@ class MarkdownFileRepository(AbstractFileRepository):
         status: str = "",
         status_changed_at: str = "",
         due_date: str = "",
+        origin: str = "",
+        role: str = "",
+        is_index: bool = False,
     ) -> FileRecord:
         folder = self._sanitize_folder(folder)
         actual_id = self._unique_id(file_id)
@@ -378,6 +402,9 @@ class MarkdownFileRepository(AbstractFileRepository):
             status=status,
             status_changed_at=status_changed_at,
             due_date=due_date,
+            origin=origin,
+            role=role,
+            is_index=is_index,
         )
         path = self._build_path(actual_id, folder)
         self._write(path, record)
@@ -397,6 +424,9 @@ class MarkdownFileRepository(AbstractFileRepository):
         status_changed_at: str | None = None,
         due_date: str | None = None,
         kanban_order: float | None = None,
+        origin: str | None = None,
+        role: str | None = None,
+        is_index: bool | None = None,
     ) -> FileRecord:
         old_path = self._require_path(file_id)
         existing = self._parse_cached(old_path)
@@ -427,7 +457,9 @@ class MarkdownFileRepository(AbstractFileRepository):
             self._remember(new_path, updated)
             return updated
 
-        desired = _slugify(new_title) if new_title else ""
+        # O nome do arquivo só acompanha o título quando o título muda: salvar uma nota cujo
+        # arquivo tem outro nome (ex.: 00-leia-primeiro.md) não a renomeia por baixo.
+        desired = _slugify(new_title) if new_title and new_title != existing.title else ""
         if desired and desired != file_id:
             new_id = self._unique_id(desired, file_id)
         else:
@@ -449,6 +481,10 @@ class MarkdownFileRepository(AbstractFileRepository):
             status_changed_at=status_changed_at if status_changed_at is not None else existing.status_changed_at,
             due_date=due_date if due_date is not None else existing.due_date,
             kanban_order=kanban_order if kanban_order is not None else existing.kanban_order,
+            origin=origin if origin is not None else existing.origin,
+            role=role if role is not None else existing.role,
+            is_index=is_index if is_index is not None else existing.is_index,
+            extra=existing.extra,
         )
 
         new_path = self._build_path(new_id, new_folder)

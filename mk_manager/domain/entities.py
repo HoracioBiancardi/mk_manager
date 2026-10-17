@@ -27,6 +27,14 @@ class FileRecord:
     # Posição do card dentro da coluna do Kanban (menor = mais acima). None = nunca
     # reordenado; o board põe esses cards depois dos ordenados, por título.
     kanban_order: float | None = field(default=None)
+    # Nota de onde esta saiu (proposta → spec → task), como no [[link]]: título ou nome do arquivo.
+    origin: str = field(default="")
+    # Papel da nota na cadeia ("proposta", "spec", "runbook"...). Vazio = usa o nome da pasta.
+    role: str = field(default="")
+    # Nota-índice: a ordem dos links dela vira a trilha "anterior · próximo" das notas citadas.
+    is_index: bool = field(default=False)
+    # Campos do frontmatter que o app não conhece: guardados para não sumirem ao salvar.
+    extra: dict = field(default_factory=dict, repr=False)
 
     @property
     def word_count(self) -> int:
