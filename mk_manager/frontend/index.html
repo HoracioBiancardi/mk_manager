@@ -192,7 +192,7 @@
       <button class="activity-btn" data-panel="search" onclick="switchPanel('search')" title="Buscar"><span class="ms" aria-hidden="true">search</span><span class="activity-label">Buscar</span></button>
       <button class="activity-btn" data-panel="tags" onclick="switchPanel('tags')" title="Tags"><span class="ms" aria-hidden="true">sell</span><span class="activity-label">Tags</span></button>
       <button class="activity-btn" data-panel="kanban" onclick="switchPanel('kanban')" title="Kanban"><span class="ms" aria-hidden="true">view_kanban</span><span class="activity-label">Kanban</span></button>
-      <button class="activity-btn" data-panel="graph" onclick="switchPanel('graph')" title="Grafo"><span class="ms" aria-hidden="true">hub</span><span class="activity-label">Grafo</span></button>
+      <button class="activity-btn" data-panel="links" onclick="switchPanel('links')" title="Ligações: cadeias proposta → spec → task e índices"><span class="ms" aria-hidden="true">account_tree</span><span class="activity-label">Ligações</span></button>
       <button class="activity-btn" data-panel="list" onclick="switchPanel('list')" title="Lista"><span class="ms" aria-hidden="true">list</span><span class="activity-label">Lista</span></button>
       <button class="activity-btn" data-panel="archive" onclick="switchPanel('archive')" title="Arquivo"><span class="ms" aria-hidden="true">inventory_2</span><span class="activity-label">Arquivo</span></button>
       <button class="activity-btn" data-panel="calendar" onclick="switchPanel('calendar')" title="Calendário / Prazos"><span class="ms" aria-hidden="true">calendar_month</span><span class="activity-label">Agenda</span></button>
@@ -430,29 +430,19 @@
         <div id="search-results" class="search-results"></div>
       </div>
 
-      <!-- Grafo (tela cheia — nós = notas, arestas = [[links]]) -->
-      <div id="graph-pane" class="graph-pane">
+      <!-- Ligações (tela cheia — cadeias proposta → spec → task e índices de leitura) -->
+      <div id="links-pane" class="links-pane">
         <div class="pane-header">
-          <span class="pane-title">Grafo</span>
-          <div class="panel-filters">
-            <button class="filter-tab active" data-filter="all" onclick="setGraphFilter('all')">Todos</button>
-            <button class="filter-tab" data-filter="note" onclick="setGraphFilter('note')">Notas</button>
-            <button class="filter-tab" data-filter="task" onclick="setGraphFilter('task')">Tasks</button>
-          </div>
-          <select id="graph-tag-filter" class="graph-select" onchange="setGraphTagFilter(this.value)"
-            title="Filtrar por tag">
-            <option value="">Todas as tags</option>
-          </select>
-          <select id="graph-folder-filter" class="graph-select" onchange="setGraphFolderFilter(this.value)"
-            title="Filtrar por pasta">
+          <span class="pane-title">Ligações</span>
+          <input id="links-map-search" type="text" class="tag-search-input" placeholder="Filtrar por título…"
+            oninput="setLinksMapSearch(this.value)" autocomplete="off">
+          <select id="links-map-folder" class="graph-select" onchange="setLinksMapFolder(this.value)" title="Filtrar por pasta">
             <option value="">Todas as pastas</option>
           </select>
-          <button class="btn btn-ghost btn-sm active" id="graph-orphans-btn" onclick="toggleGraphOrphans()"
-            title="Mostrar/esconder notas sem nenhum link">Sem conexão</button>
+          <button class="btn btn-ghost btn-sm" id="links-map-open-btn" onclick="toggleLinksMapOpenOnly()"
+            title="Mostrar só as cadeias que ainda têm task aberta">Só com tasks abertas</button>
         </div>
-        <div id="graph-container" class="graph-container">
-          <div class="radar-sweep" id="radar-sweep"></div>
-        </div>
+        <div id="links-map" class="links-map"></div>
       </div>
 
       <!-- Lista (tela cheia — tabela densa estilo ClickUp, notas + tasks) -->

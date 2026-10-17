@@ -86,7 +86,7 @@ export const DEFAULT_ACTIVITY_BAR_ORDER = [
   "search",
   "tags",
   "kanban",
-  "graph",
+  "links",
   "list",
   "calendar",
   "archive",
@@ -99,7 +99,7 @@ export const ACTIVITY_BAR_LABELS = {
   search: "🔍 Busca",
   tags: "🏷️ Tags",
   kanban: "📋 Kanban",
-  graph: "🌐 Grafo",
+  links: "🔗 Ligações",
   list: "📑 Lista",
   calendar: "📅 Calendário",
   archive: "📦 Arquivo",
@@ -111,8 +111,10 @@ export function getActivityBarOrder() {
   try {
     const saved = localStorage.getItem(ACTIVITY_BAR_ORDER_KEY);
     if (saved) {
-      const parsed = JSON.parse(saved);
+      let parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
+        // Telas que deixaram de existir (ex.: o antigo Grafo) saem da ordem salva.
+        parsed = parsed.filter((id) => DEFAULT_ACTIVITY_BAR_ORDER.includes(id));
         const set = new Set(parsed);
         DEFAULT_ACTIVITY_BAR_ORDER.forEach((item) => {
           if (!set.has(item)) parsed.push(item);

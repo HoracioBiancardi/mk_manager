@@ -723,17 +723,44 @@ body.zen-mode .editor-info-bar {
 
 .search-empty strong { color: var(--text-muted); }
 
-/* ── Grafo de notas (tela cheia) ─────────────────────────────────────── */
+/* ── Página Ligações (tela cheia): cadeias de origem e índices ─────── */
 
-.graph-pane { flex: 1; display: none; min-height: 0; overflow: hidden; background: var(--bg); flex-direction: column; }
+.links-pane { flex: 1; display: none; min-height: 0; overflow: hidden; background: var(--bg); flex-direction: column; }
+.links-pane .pane-header { flex-wrap: wrap; gap: .5rem; }
+.links-pane .tag-search-input { max-width: 220px; }
+#links-map-open-btn.active { background: var(--primary-dim); color: var(--primary); }
 
-.graph-pane .pane-header { flex-wrap: wrap; }
+.links-map { flex: 1; min-height: 0; overflow: auto; padding: 1rem 1.25rem 2rem; }
+.lm-section + .lm-section { margin-top: 1.5rem; }
+.lm-h { font-size: .8rem; font-weight: 600; color: var(--text); margin: 0 0 .6rem; }
+.lm-h span { font-weight: 400; color: var(--text-subtle); margin-left: .4rem; }
+.lm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: .75rem; align-items: start; }
+.lm-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: .6rem .7rem; }
+.lm-card-head {
+  display: flex; align-items: center; gap: .35rem; cursor: pointer;
+  font-size: .8rem; font-weight: 600; color: var(--text); padding: .1rem .2rem .4rem;
+  border-bottom: 1px solid var(--border-muted); margin-bottom: .35rem;
+}
+.lm-card-head:hover { color: var(--primary); }
+.lm-card-head .ms, .lm-row .ms { font-size: 16px; color: var(--text-subtle); }
 
-.graph-pane .panel-filters { flex: 0 0 auto; }
+.lm-row {
+  display: flex; align-items: center; gap: .35rem; cursor: pointer;
+  padding: .22rem .35rem; border-radius: var(--r-sm); font-size: .76rem; color: var(--text-muted);
+}
+.lm-row:hover { background: var(--surface-hover); color: var(--text); }
+.lm-row.match .lm-title { color: var(--text); font-weight: 600; }
+.lm-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.lm-children { margin-left: .85rem; padding-left: .55rem; border-left: 1px solid var(--border); }
+.lm-steps { margin: 0; padding-left: 1.3rem; color: var(--text-subtle); font-size: .72rem; }
+.lm-steps > li { padding-left: .1rem; }
+.lm-steps > li::marker { font-variant-numeric: tabular-nums; }
 
-.graph-pane .panel-filters .filter-tab { flex: 0 0 auto; padding-left: .75rem; padding-right: .75rem; }
-
-#graph-orphans-btn.active { background: var(--primary-dim); color: var(--primary); border-color: rgba(16,185,129,.3); }
+.lm-progress { display: inline-flex; align-items: center; gap: .3rem; font-size: .66rem; color: var(--text-subtle); flex-shrink: 0; }
+.lm-bar { width: 42px; height: 4px; border-radius: 2px; background: var(--surface-alt); overflow: hidden; }
+.lm-bar > span { display: block; height: 100%; background: var(--success); }
+.lk-st-none { color: var(--text-subtle); }
+.lm-empty { color: var(--text-subtle); font-size: .78rem; padding: .5rem 0; line-height: 1.6; }
 
 .graph-select {
   flex: 0 0 auto; background: var(--surface-alt); border: 1px solid var(--border);
@@ -744,21 +771,6 @@ body.zen-mode .editor-info-bar {
 .graph-select:hover { background: var(--surface-hover); }
 
 .graph-select:focus { border-color: var(--primary); }
-
-.graph-container { flex: 1; min-height: 0; position: relative; }
-
-.graph-container svg { display: block; cursor: grab; }
-
-.graph-container svg:active { cursor: grabbing; }
-
-.graph-node { cursor: pointer; }
-
-.graph-node.phantom text { fill: var(--text-subtle) !important; font-style: italic; }
-
-.graph-loading {
-  height: 100%; display: flex; align-items: center; justify-content: center;
-  color: var(--text-subtle); font-size: .85rem;
-}
 
 /* ── Tela de lista (tela cheia — tabela densa estilo ClickUp) ──────────── */
 
@@ -2391,36 +2403,6 @@ body.theme-white select option {
   min-width: 170px !important;
 }
 
-/* ── Grafo estilo Radar Pip-Boy ─────────────────────────────────────────── */
-
-.graph-container {
-  position: relative;
-  background-image:
-    radial-gradient(circle, transparent 35%, rgba(0, 0, 0, 0.6) 100%),
-    repeating-radial-gradient(circle, transparent, transparent 30px, var(--primary-dim) 31px, transparent 32px) !important;
-  overflow: hidden;
-}
-
-.graph-container::before {
-  content: "";
-  position: absolute;
-  top: 50%; left: 0; right: 0; height: 1px;
-  background: var(--primary-dim);
-  opacity: 0.25;
-  pointer-events: none;
-  z-index: 1;
-}
-
-.graph-container::after {
-  content: "";
-  position: absolute;
-  left: 50%; top: 0; bottom: 0; width: 1px;
-  background: var(--primary-dim);
-  opacity: 0.25;
-  pointer-events: none;
-  z-index: 1;
-}
-
 /* ── Progresso de Tasks na Sidebar ───────────────────────────────────────── */
 
 .tree-progress {
@@ -3170,5 +3152,3 @@ body.zen-mode .links-bar { display: none; }
 .lk-derive #lk-derive-title { width: 220px; }
 .lk-hint { color: var(--text-subtle); font-size: .66rem; }
 
-/* Grafo: setas mostram quem cita quem; tracejado = origem (proposta → spec → task). */
-.graph-edge-origin { stroke-dasharray: 5,3; }

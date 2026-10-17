@@ -17,7 +17,7 @@ import {
 } from "./editor.js";
 import { updateStatusSelect, renderKanban } from "./kanban.js";
 import { setMainView } from "./views.js";
-import { refreshGraphIfActive } from "./graph.js";
+import { refreshLinksMapIfActive } from "./links-map.js";
 import { refreshListIfActive } from "./list.js";
 import { refreshArchiveIfActive } from "./archive.js";
 import { getDefaultView } from "./prefs.js";
@@ -47,7 +47,7 @@ export async function loadFiles() {
     st.searchResults = null;
     renderSidebar();
     updateStorageInfo();
-    refreshGraphIfActive();
+    refreshLinksMapIfActive();
     refreshListIfActive();
   } catch (e) {
     toast("Erro ao carregar arquivos: " + e.message, "error");
@@ -130,7 +130,7 @@ export async function saveFile() {
     setSaveStatus("saved");
     updateStorageInfo();
     refreshLinksBar();
-    refreshGraphIfActive();
+    refreshLinksMapIfActive();
     refreshListIfActive();
   } catch (e) {
     if (e.status === 409) return resolveSaveConflict();
@@ -263,7 +263,7 @@ export async function newFile(type, folder = "", title = "") {
     const file = await r.json();
     st.files.unshift(file);
     renderSidebar();
-    refreshGraphIfActive();
+    refreshLinksMapIfActive();
     refreshListIfActive();
     await openFile(file.id);
     if (title) document.getElementById("md-editor").focus();
@@ -275,8 +275,8 @@ export async function newFile(type, folder = "", title = "") {
   }
 }
 
-// Usado por links internos [[Nota]] (preview) e por cliques em nós "fantasma"
-// no grafo — resolve por título e abre, ou oferece criar a nota na hora.
+// Usado por links internos [[Nota]] no preview — resolve pelo título ou nome do
+// arquivo e abre, ou oferece criar a nota na hora.
 export async function openOrCreateByTitle(title) {
   const match = resolveNote(title);
   if (match) {
@@ -300,7 +300,7 @@ export async function deleteFile(id) {
     }
     renderSidebar();
     updateStorageInfo();
-    refreshGraphIfActive();
+    refreshLinksMapIfActive();
     refreshListIfActive();
     refreshArchiveIfActive();
     toast("Arquivo excluído.", "success");
@@ -321,7 +321,7 @@ export async function archiveFile(id) {
     renderSidebar();
     updateStorageInfo();
     renderKanban();
-    refreshGraphIfActive();
+    refreshLinksMapIfActive();
     refreshListIfActive();
     refreshArchiveIfActive();
     toast("Arquivado. Restaure na tela Arquivo se precisar.", "success");
@@ -343,7 +343,7 @@ export async function unarchiveFile(id) {
     st.files.unshift(restored);
     renderSidebar();
     updateStorageInfo();
-    refreshGraphIfActive();
+    refreshLinksMapIfActive();
     refreshListIfActive();
     toast("Restaurado.", "success");
   } catch (e) {
@@ -368,7 +368,7 @@ export async function moveFileToFolder(fileId, folderPath) {
       if (folderInput) folderInput.value = updated.folder || "";
     }
     renderSidebar();
-    refreshGraphIfActive();
+    refreshLinksMapIfActive();
     refreshListIfActive();
     toast(`Movido para "${folderPath}".`, "success");
   } catch (e) {
@@ -467,7 +467,7 @@ export async function confirmRenameFile(id, newTitle) {
       if (updated.id !== id) st.activeId = updated.id;
     }
     renderSidebar();
-    refreshGraphIfActive();
+    refreshLinksMapIfActive();
     refreshListIfActive();
     toast("Renomeado com sucesso.", "success");
   } catch (e) {

@@ -121,7 +121,7 @@ export async function refreshLinksBar() {
     return;
   }
   if (seq !== _seq) return; // outra nota foi aberta enquanto esperava
-  const selfRef = { ...self, role: self.role || (self.folder || "").split("/").pop() };
+  const selfRef = { ...self, role: self.role || (self.type === "task" ? "" : (self.folder || "").split("/").pop()) };
   bar.innerHTML =
     renderChain(data, selfRef) +
     renderTrails(data) +

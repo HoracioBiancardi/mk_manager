@@ -5,7 +5,7 @@ import { st } from "./state.js";
 import { setView, showEditorPanel, showEmptyPanel } from "./editor.js";
 import { renderKanban, resetKanbanUiState } from "./kanban.js";
 import { renderTagsPanel, renderSearchResults, hideFileTooltip } from "./sidebar.js";
-import { renderGraph } from "./graph.js";
+import { renderLinksMap } from "./links-map.js";
 import { renderList } from "./list.js";
 import { renderArchivePane } from "./archive.js";
 import { renderTrashView } from "./trash.js";
@@ -17,7 +17,7 @@ const PANES = {
   kanban: "kanban-pane",
   tags: "tags-pane",
   search: "search-pane",
-  graph: "graph-pane",
+  links: "links-pane",
   list: "list-pane",
   archive: "archive-pane",
   trash: "trash-pane",
@@ -68,8 +68,8 @@ export function setMainView(view) {
       } else if (view === "search") {
         renderSearchResults();
         setTimeout(() => document.getElementById("search-input")?.focus(), 60);
-      } else if (view === "graph") {
-        renderGraph();
+      } else if (view === "links") {
+        renderLinksMap();
       } else if (view === "list") {
         renderList();
       } else if (view === "archive") {

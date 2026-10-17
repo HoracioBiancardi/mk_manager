@@ -114,13 +114,31 @@ class TestLinks(unittest.TestCase):
         self.service.update_file(nota.id, FileUpdateRequest(content="novo"))
         self.assertIn("autor: Horacio", path.read_text("utf-8"))
 
-    def test_graph_marks_origin_edges(self):
-        self._new("Pai", content="Gerou [[Filho]]")
-        self._new("Filho", origin="Pai", content="[[Inexistente]]")
-        graph = self.service.build_graph()
-        kinds = {(e.source, e.target): e.kind for e in graph.edges}
-        self.assertEqual(kinds[("filho", "pai")], "origin")
-        self.assertEqual(kinds[("filho", "phantom:inexistente")], "link")
+    def test_map_lists_chains_with_task_progress_and_indexes(self):
+        self._new("Proposta", folder="proposta")
+        self._new("Spec", folder="spec", origin="Proposta")
+        self.service.create_file(FileCreateRequest(title="T1", type="task", origin="Spec", status="done"))
+        self.service.create_file(FileCreateRequest(title="T2", type="task", origin="Spec"))
+        self._new("Solta")  # nota pessoal: sem origem nem derivadas, fica fora
+        self._new("Indice", is_index=True, content="1. [[Proposta]]\n2. [[Spec]]\n3. [[Solta]]")
+        mapa = self.service.build_map()
+
+        self.assertEqual([c.note.title for c in mapa.chains], ["Proposta"])
+        raiz = mapa.chains[0]
+        self.assertEqual((raiz.tasks_total, raiz.tasks_done), (2, 1))
+        self.assertEqual([t.note.title for t in raiz.children[0].children], ["T1", "T2"])
+        passos = mapa.indexes[0].steps
+        self.assertEqual([s.note.title for s in passos], ["Proposta", "Spec", "Solta"])
+        self.assertEqual(passos[0].children, [])  # Spec já é o passo 2: não repete embaixo da Proposta
+        self.assertEqual(passos[1].tasks_total, 2)
+
+    def test_map_handles_origin_cycle(self):
+        self._new("A", origin="B")
+        self._new("B", origin="A")
+        mapa = self.service.build_map()
+        self.assertEqual(len(mapa.chains), 1)
+        self.assertEqual(len(mapa.chains[0].children), 1)
+        self.assertEqual(mapa.chains[0].children[0].children, [])
 
 
 if __name__ == "__main__":

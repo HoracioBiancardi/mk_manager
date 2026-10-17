@@ -8,11 +8,11 @@ from mk_manager.domain.entities import FileRecord, SearchResult
 from mk_manager.models.schemas import (
     FileCreateRequest,
     FileUpdateRequest,
-    GraphEdge,
-    GraphNode,
-    GraphResponse,
     LinkRef,
     LinksResponse,
+    MapIndex,
+    MapNode,
+    MapResponse,
     StatsResponse,
     TrailInfo,
 )
@@ -95,7 +95,9 @@ def _build_snippet(content: str, query: str, radius: int = 120) -> str:
     return chunk
 
 def _link_ref(record: FileRecord) -> LinkRef:
-    role = record.role or (record.folder.rsplit("/", 1)[-1] if record.folder else "")
+    # Sem `role`, o papel é o nome da pasta; task não herda (o ícone já diz que é task).
+    folder_role = record.folder.rsplit("/", 1)[-1] if record.folder and record.type != "task" else ""
+    role = record.role or folder_role
     return LinkRef(
         id=record.id,
         title=record.title or record.id,
@@ -183,46 +185,66 @@ class FileService:
             size_bytes=self._repo.total_size_bytes(),
         )
 
-    def build_graph(self) -> GraphResponse:
-        records = self._repo.list_all()
-        resolver = LinkResolver(records)
+    def build_map(self) -> MapResponse:
+        """Página de ligações: as cadeias de origem (proposta → spec → task) e os índices.
 
-        nodes = [
-            GraphNode(id=r.id, title=r.title or r.id, type=r.type, tags=r.tags, folder=r.folder)
-            for r in records
-        ]
-        phantom_ids: dict[str, str] = {}
-        edges: dict[tuple[str, str], GraphEdge] = {}
-
-        def add_edge(source: str, target: str, kind: str) -> None:
-            if source == target:
-                return
-            edge_key = tuple(sorted((source, target)))
-            # Um par de notas vira uma aresta só; a de origem vence a de citação.
-            if edge_key in edges and not (kind == "origin" and edges[edge_key].kind != "origin"):
-                return
-            edges[edge_key] = GraphEdge(source=source, target=target, kind=kind)
-
+        Só entra o que está ligado: nota sem origem e sem derivadas (nota pessoal solta)
+        fica de fora. Cada nó traz quantas tasks há nele e abaixo dele, e quantas concluídas.
+        """
+        resolver = LinkResolver(self._repo.list_all())
+        parent_of: dict[str, str] = {}
+        children_of: dict[str, list[FileRecord]] = {}
         for r in resolver.records:
             parent = resolver.resolve_origin(r)
             if parent is not None:
-                add_edge(r.id, parent.id, "origin")
-            for link in extract_note_links(r.content):
-                hit = resolver.resolve(link, r.folder)
-                if hit is not None:
-                    add_edge(r.id, hit.id, "link")
-                    continue
-                if link.kind != "wiki":
-                    continue
-                key = link.target.lower()
-                target_id = phantom_ids.get(key)
-                if target_id is None:
-                    target_id = f"phantom:{key}"
-                    phantom_ids[key] = target_id
-                    nodes.append(GraphNode(id=target_id, title=link.target, type="phantom", tags=[], folder=""))
-                add_edge(r.id, target_id, "link")
+                parent_of[r.id] = parent.id
+                children_of.setdefault(parent.id, []).append(r)
 
-        return GraphResponse(nodes=nodes, edges=list(edges.values()))
+        def node(record: FileRecord, seen: frozenset[str]) -> MapNode:
+            kids = sorted(children_of.get(record.id, []), key=lambda r: (r.type == "task", (r.title or r.id).lower()))
+            child_nodes = [node(k, seen | {k.id}) for k in kids if k.id not in seen]
+            own_task = record.type == "task"
+            return MapNode(
+                note=_link_ref(record),
+                children=child_nodes,
+                tasks_total=int(own_task) + sum(c.tasks_total for c in child_nodes),
+                tasks_done=int(own_task and record.status == "done") + sum(c.tasks_done for c in child_nodes),
+            )
+
+        by_id = {r.id: r for r in resolver.records}
+        roots = [r for r in resolver.records if r.id in children_of and r.id not in parent_of]
+        # Cadeia que só tem ciclo (A → B → A) não tem raiz: entra pela primeira nota.
+        reached: set[str] = set()
+
+        def mark(rid: str) -> None:
+            if rid in reached:
+                return
+            reached.add(rid)
+            for k in children_of.get(rid, []):
+                mark(k.id)
+
+        for r in roots:
+            mark(r.id)
+        for rid in children_of:
+            if rid not in reached:
+                roots.append(by_id[rid])
+                mark(rid)
+
+        roots.sort(key=lambda r: (r.folder.lower(), (r.title or r.id).lower()))
+        chains = [node(r, frozenset({r.id})) for r in roots]
+
+        indexes: list[MapIndex] = []
+        for r in sorted((r for r in resolver.records if r.is_index), key=lambda r: (r.title or r.id).lower()):
+            steps: list[FileRecord] = []
+            for link in extract_index_steps(r.content):
+                hit = resolver.resolve(link, r.folder)
+                if hit is not None and hit.id != r.id and all(hit.id != s.id for s in steps):
+                    steps.append(hit)
+            # Um passo não repete, como derivada, outro passo do mesmo índice (02 → 03 já é o passo 3).
+            step_ids = frozenset(s.id for s in steps)
+            indexes.append(MapIndex(index=_link_ref(r), steps=[node(s, step_ids) for s in steps]))
+
+        return MapResponse(chains=chains, indexes=indexes)
 
     def get_links(self, file_id: str) -> LinksResponse:
         """Tudo o que liga a nota às outras: citações, cadeia de origem e trilhas de índice."""

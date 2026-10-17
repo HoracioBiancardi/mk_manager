@@ -102,19 +102,6 @@ class ArchiveBatchResponse(BaseModel):
 class SearchResultResponse(FileMetaResponse):
     snippet: str
 
-class GraphNode(BaseModel):
-    id: str
-    title: str
-    type: str
-    tags: list[str]
-    folder: str
-
-class GraphEdge(BaseModel):
-    source: str
-    target: str
-    # "link" = citação no texto; "origin" = esta nota saiu da outra (proposta → spec → task).
-    kind: str = "link"
-
 class LinkRef(BaseModel):
     id: str
     title: str
@@ -139,9 +126,20 @@ class LinksResponse(BaseModel):
     children: list[LinkRef]
     trails: list[TrailInfo]
 
-class GraphResponse(BaseModel):
-    nodes: list[GraphNode]
-    edges: list[GraphEdge]
+class MapNode(BaseModel):
+    note: LinkRef
+    children: list["MapNode"] = []
+    # Tasks nesta nota e abaixo dela na cadeia (ela mesma, se for task).
+    tasks_total: int = 0
+    tasks_done: int = 0
+
+class MapIndex(BaseModel):
+    index: LinkRef
+    steps: list[MapNode]
+
+class MapResponse(BaseModel):
+    chains: list[MapNode]
+    indexes: list[MapIndex]
 
 class StatsResponse(BaseModel):
     total: int
