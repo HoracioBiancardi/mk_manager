@@ -15,7 +15,7 @@ from mk_manager.models.schemas import (
     FolderListResponse,
     FolderRenameRequest,
 )
-from mk_manager.services.file_service import FileService, extract_inline_tags
+from mk_manager.services.file_service import FileConflictError, FileService, extract_inline_tags
 
 router = APIRouter(prefix="/api/files", tags=["files"])
 
@@ -101,7 +101,10 @@ def rename_folder(
     body: FolderRenameRequest,
     service: FileService = Depends(get_file_service),
 ) -> FolderChangeResponse:
-    count = service.rename_folder(body.old_path, body.new_path)
+    try:
+        count = service.rename_folder(body.old_path, body.new_path)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
     return FolderChangeResponse(updated_count=count)
 
 @router.delete("/folder", response_model=FolderChangeResponse)
@@ -109,7 +112,10 @@ def delete_folder(
     path: Annotated[str, Query()],
     service: FileService = Depends(get_file_service),
 ) -> FolderChangeResponse:
-    count = service.delete_folder(path)
+    try:
+        count = service.delete_folder(path)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
     return FolderChangeResponse(updated_count=count)
 
 @router.get("/archived", response_model=list[FileMetaResponse])
@@ -152,6 +158,8 @@ def update_file(
         return _to_detail(service.update_file(unquote(file_id), body))
     except FileNotFoundError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"File '{file_id}' not found.")
+    except FileConflictError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A nota foi alterada em outro lugar.") from e
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 

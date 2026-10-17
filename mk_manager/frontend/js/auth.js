@@ -221,10 +221,12 @@ export async function initAuth(ready) {
       $("#login-pass").value = ""; $("#setup-confirm").value = "";
       if (setupMode) applyLoginMode(true);
       loginMsg("");
-      showApp(r.user);
+      // Com troca obrigatória o servidor só libera a troca de senha: o app abre depois do novo login.
       if (r.user.must_change_password) {
         openPasswordModal(r.user.username);
         pwMsg("Sua senha foi definida pelo administrador. Troque-a agora.");
+      } else {
+        showApp(r.user);
       }
     } catch (err) {
       loginMsg(err.message, "erro");
@@ -253,7 +255,13 @@ export async function initAuth(ready) {
   try {
     const me = await api("/auth/me");
     $("#login-form").classList.remove("login-pendente");
-    showApp(me);
+    if (me.must_change_password) {
+      showLogin();
+      openPasswordModal(me.username);
+      pwMsg("Sua senha foi definida pelo administrador. Troque-a agora.");
+    } else {
+      showApp(me);
+    }
   } catch {
     try { applyLoginMode((await api("/auth/status")).configured); } catch { /* sem API: fica no login */ }
     $("#login-form").classList.remove("login-pendente");

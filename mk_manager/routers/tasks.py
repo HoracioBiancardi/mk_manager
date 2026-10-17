@@ -1,15 +1,17 @@
 import asyncio
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+from mk_manager.services.auth_service import require_admin
 from mk_manager.services.task_runner_service import task_runner_service
 from mk_manager.services.log_buffer_service import log_buffer_service
 
-router = APIRouter(prefix="/api/tasks", tags=["Tasks"])
+# Rotas de demonstração do template (sem UI): só admin, e com limites para não virar loop sem fim.
+router = APIRouter(prefix="/api/tasks", tags=["Tasks"], dependencies=[Depends(require_admin)])
 
 class StartTaskRequest(BaseModel):
-    name: str = "Tarefa de Demonstração"
-    steps: int = 5
-    delay: float = 0.5
+    name: str = Field("Tarefa de Demonstração", max_length=200)
+    steps: int = Field(5, ge=1, le=100)
+    delay: float = Field(0.5, ge=0.0, le=10.0)
 
 async def _demo_async_work(task_id: str, steps: int, delay: float):
     for i in range(1, steps + 1):

@@ -1,8 +1,8 @@
 import re
 from pathlib import Path
-from typing import Any, Union
+from typing import Any
 from urllib.parse import unquote, quote
-from fastapi import APIRouter, HTTPException, Request, Depends, status, File, UploadFile
+from fastapi import APIRouter, HTTPException, Request, Depends, File, UploadFile
 from fastapi.responses import FileResponse
 from mk_manager.config import get_settings
 from mk_manager.dependencies import get_file_service
@@ -66,70 +66,85 @@ def get_available_filename(assets_dir: Path, original_name: str, content: bytes)
             pass
         counter += 1
 
+_ASSET_URL_PREFIX = r"(?:/api)?/assets/"
+# Tipos que o navegador executa quando abertos direto (script em SVG/HTML): a resposta sai
+# com CSP sandbox, que roda o arquivo numa origem opaca, sem acesso à sessão do app.
+# PDF fica de fora: o visualizador do Chrome não abre em documento sandboxed.
+_ACTIVE_EXTENSIONS = {".svg", ".html", ".htm", ".xhtml", ".xml"}
+_ACTIVE_CSP = "sandbox; default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'"
+_UPLOAD_CHUNK = 1024 * 1024
+
+
+def _asset_reference_pattern(real_name: str) -> re.Pattern[str]:
+    """Links/imagens markdown e `<img>` cujo destino é exatamente este asset.
+
+    Ancora no destino inteiro: apagar `a.png` não pode mexer em `data.png` nem em `a.png.bak`.
+    """
+    names = "|".join(re.escape(n) for n in sorted({real_name, quote(real_name)}, key=len, reverse=True))
+    target = _ASSET_URL_PREFIX + "(?:" + names + ")"
+    markdown_link = r"!?\[[^\]\n]*\]\(\s*<?" + target + r'>?(?:\s+"[^"\n]*")?\s*\)'
+    html_img = r"<img\b[^>\n]*\bsrc=[\"']" + target + r"[\"'][^>\n]*>"
+    return re.compile(markdown_link + "|" + html_img, re.IGNORECASE)
+
+
 def find_asset_usage(real_name: str, service: FileService) -> list[dict[str, str]]:
-    quoted_name = quote(real_name)
-    search_terms = {real_name, quoted_name}
-
-    all_files = service.list_files(include_archived=True)
+    pattern = _asset_reference_pattern(real_name)
     usage: list[dict[str, str]] = []
-
-    for f in all_files:
-        content = f.content or ""
-        if any(term in content for term in search_terms):
+    for f in service.list_files(include_archived=True):
+        if pattern.search(f.content or ""):
             usage.append({
                 "id": f.id,
                 "title": f.title or f.id,
                 "filename": f.filename or ""
             })
-
     return usage
 
 def cleanup_asset_references(real_name: str, service: FileService) -> list[str]:
-    quoted_name = quote(real_name)
-    search_terms = {real_name, quoted_name}
-
-    all_files = service.list_files(include_archived=True)
+    """Remove só os links para o asset; o resto da linha fica. Linha que vira vazia sai."""
+    pattern = _asset_reference_pattern(real_name)
     affected_titles: list[str] = []
 
-    for f in all_files:
+    for f in service.list_files(include_archived=True):
         content = f.content or ""
-        if not any(term in content for term in search_terms):
+        if not pattern.search(content):
             continue
 
-        lines = content.split("\n")
         new_lines = []
-        modified = False
+        for line in content.split("\n"):
+            cleaned = pattern.sub("", line)
+            if cleaned != line and not cleaned.strip():
+                continue
+            new_lines.append(cleaned)
 
-        for line in lines:
-            if any(term in line for term in search_terms):
-                modified = True
-                line_stripped = line.strip()
-                if line_stripped.startswith("!") or line_stripped.startswith("[") or re.match(r"^(!?\[.*?\]\(.*?\))", line_stripped):
-                    continue
-                for term in search_terms:
-                    pattern = re.compile(r"!\[.*?\]\([^)]*" + re.escape(term) + r"[^)]*\)|\[.*?\]\([^)]*" + re.escape(term) + r"[^)]*\)")
-                    line = pattern.sub("", line)
-                if line.strip():
-                    new_lines.append(line)
-            else:
-                new_lines.append(line)
-
-        if modified:
-            new_content = "\n".join(new_lines)
-            service.update_file(
-                f.id,
-                FileUpdateRequest(
-                    title=None,
-                    tags=None,
-                    content=new_content,
-                    folder=None,
-                    status=None,
-                    due_date=None,
-                ),
-            )
-            affected_titles.append(f.title or f.id)
+        service.update_file(
+            f.id,
+            FileUpdateRequest(
+                title=None,
+                tags=None,
+                content="\n".join(new_lines),
+                folder=None,
+                status=None,
+                due_date=None,
+            ),
+        )
+        affected_titles.append(f.title or f.id)
 
     return affected_titles
+
+
+async def _read_limited(chunks) -> bytes:
+    """Lê em blocos e para em MAX_UPLOAD_SIZE_BYTES, sem carregar um arquivo gigante inteiro."""
+    data = bytearray()
+    async for chunk in chunks:
+        data.extend(chunk)
+        if len(data) > MAX_UPLOAD_SIZE_BYTES:
+            raise HTTPException(status_code=413, detail="File too large")
+    return bytes(data)
+
+
+async def _iter_upload(upload: UploadFile):
+    while chunk := await upload.read(_UPLOAD_CHUNK):
+        yield chunk
 
 async def upload_asset(file_or_req: Any, folder: str = "") -> dict[str, str]:
     """Helper interno e exportado para testes."""
@@ -154,10 +169,10 @@ async def upload_asset(file_or_req: Any, folder: str = "") -> dict[str, str]:
         declared_size = getattr(file_or_req, "size", None)
         if declared_size is not None and declared_size > MAX_UPLOAD_SIZE_BYTES:
             raise HTTPException(status_code=413, detail="File too large")
-        content = await file_or_req.read()
+        content = await _read_limited(_iter_upload(file_or_req))
     elif isinstance(file_or_req, Request):
         original_filename = unquote(file_or_req.headers.get("x-filename", "file"))
-        content = await file_or_req.body()
+        content = await _read_limited(file_or_req.stream())
     else:
         original_filename = getattr(file_or_req, "filename", "file")
         content = await file_or_req.read() if hasattr(file_or_req, "read") else b""
@@ -210,7 +225,8 @@ def check_asset_usage(
     asset_name: str,
     service: FileService = Depends(get_file_service)
 ) -> dict[str, Any]:
-    real_name = unquote(asset_name)
+    # O Starlette já decodifica o path; um segundo unquote quebrava nomes com "%".
+    real_name = asset_name
     usage = find_asset_usage(real_name, service)
     return {"asset_name": real_name, "affected_files": usage}
 
@@ -219,13 +235,15 @@ def check_asset_usage(
 def get_asset(asset_name: str):
     settings = get_settings()
     assets_dir = settings.resolved_assets_dir()
-    real_name = unquote(asset_name)
-    file_path = _resolve_safe_asset_path(assets_dir, real_name)
+    file_path = _resolve_safe_asset_path(assets_dir, asset_name)
 
     if not file_path.is_file():
         raise HTTPException(status_code=404, detail="Asset not found")
 
-    return FileResponse(file_path)
+    headers = {}
+    if file_path.suffix.lower() in _ACTIVE_EXTENSIONS:
+        headers["Content-Security-Policy"] = _ACTIVE_CSP
+    return FileResponse(file_path, headers=headers)
 
 @router.delete("/api/assets/{asset_name:path}")
 @router.delete("/assets/{asset_name:path}")
@@ -235,12 +253,14 @@ def delete_asset(
 ) -> dict[str, Any]:
     settings = get_settings()
     assets_dir = settings.resolved_assets_dir()
-    real_name = unquote(asset_name)
+    real_name = asset_name
     file_path = _resolve_safe_asset_path(assets_dir, real_name)
 
-    affected = cleanup_asset_references(real_name, service)
+    # Confere antes de mexer nas notas: um nome inexistente não pode reescrever conteúdo.
+    if not file_path.is_file():
+        raise HTTPException(status_code=404, detail="Asset not found")
 
-    if file_path.is_file():
-        file_path.unlink()
+    affected = cleanup_asset_references(real_name, service)
+    file_path.unlink()
 
     return {"status": "deleted", "asset_name": real_name, "affected_files": affected}

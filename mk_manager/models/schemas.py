@@ -52,6 +52,9 @@ class FileUpdateRequest(BaseModel):
     status: str | None = Field(default=None, max_length=100)
     status_changed_at: str | None = Field(default=None, max_length=100)
     due_date: str | None = Field(default=None, max_length=100)
+    # `modified` que o cliente leu: se a nota mudou desde então, o servidor responde 409
+    # em vez de sobrescrever (dois usuários ou duas abas na mesma nota).
+    expected_modified: str | None = Field(default=None, max_length=100)
 
     @field_validator("tags")
     @classmethod

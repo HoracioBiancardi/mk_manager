@@ -1,10 +1,13 @@
 from pathlib import Path
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from mk_manager.config import get_settings
 from mk_manager.dependencies import reset_repository_cache
 from mk_manager.models.schemas import BrowseResponse, DirEntry, SettingsResponse, SettingsUpdateRequest
+from mk_manager.services.auth_service import require_admin
 
-router = APIRouter(prefix="/api/settings", tags=["settings"])
+# Só admin: trocar a pasta de notas faz as rotas de arquivos operarem em qualquer lugar do
+# disco, e /browse lista o sistema de arquivos inteiro.
+router = APIRouter(prefix="/api/settings", tags=["settings"], dependencies=[Depends(require_admin)])
 
 @router.get("/", response_model=SettingsResponse)
 def get_settings_handler() -> SettingsResponse:

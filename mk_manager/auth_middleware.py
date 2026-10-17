@@ -6,6 +6,8 @@
   origem (`Sec-Fetch-Site`) — outra porta do mesmo host é o mesmo "site", então o
   `SameSite=Strict` do cookie sozinho não barra. Uploads (`multipart/form-data`) de assets
   passam pela checagem de origem.
+- Sessão com troca de senha pendente (senha definida pelo admin) só alcança `/api/auth/me` e
+  `/api/auth/logout`; a troca em si é pública. Antes isso só era cobrado pelo front.
 - A sessão validada fica em `request.state.session`.
 """
 
@@ -20,6 +22,7 @@ _PROTECTED = ("/api/", "/assets/")
 _STATE_CHANGING = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 _SAME_ORIGIN = frozenset({"same-origin", "none"})
 _JSON_OR_UPLOAD = ("application/json", "multipart/form-data")
+_ALLOWED_WHILE_MUST_CHANGE = frozenset({"/api/auth/me", "/api/auth/logout"})
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
@@ -40,6 +43,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
         sessao = get_auth_service().get_session(request.cookies.get(SESSION_COOKIE))
         if sessao is None:
             return JSONResponse({"detail": "Sessão inválida ou expirada. Entre novamente."}, 401)
+        if sessao.get("must_change_password") and path not in _ALLOWED_WHILE_MUST_CHANGE:
+            return JSONResponse({"detail": "Troque a senha definida pelo administrador antes de continuar."}, 403)
         request.state.session = sessao
         return await call_next(request)
 
