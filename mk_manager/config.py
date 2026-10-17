@@ -22,6 +22,8 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+# Campos vindos de variável de ambiente ou .env (ganham dos Ajustes salvos no banco).
+ENV_FIELDS = frozenset(settings.model_fields_set)
 
 def get_settings() -> Settings:
     return settings

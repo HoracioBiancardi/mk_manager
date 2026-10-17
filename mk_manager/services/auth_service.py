@@ -71,6 +71,11 @@ class AuthService:
         # um nome válido (não dá para descobrir quais usuários existem medindo a resposta).
         self._dummy = {"salt": secrets.token_hex(16), "iterations": iterations, "hash": ""}
 
+    @property
+    def db(self) -> DatabaseService:
+        """Banco do app (data/mk_manager.db), também usado para guardar os Ajustes."""
+        return self._db
+
     # ── Usuários ─────────────────────────────────────────────────
     @staticmethod
     def normalize(username: str) -> str:

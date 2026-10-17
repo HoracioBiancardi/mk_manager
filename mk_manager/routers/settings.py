@@ -1,13 +1,44 @@
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
+from mk_manager import config
 from mk_manager.config import get_settings
 from mk_manager.dependencies import reset_repository_cache
 from mk_manager.models.schemas import BrowseResponse, DirEntry, SettingsResponse, SettingsUpdateRequest
-from mk_manager.services.auth_service import require_admin
+from mk_manager.services.auth_service import get_auth_service, require_admin
 
 # Só admin: trocar a pasta de notas faz as rotas de arquivos operarem em qualquer lugar do
 # disco, e /browse lista o sistema de arquivos inteiro.
 router = APIRouter(prefix="/api/settings", tags=["settings"], dependencies=[Depends(require_admin)])
+
+# As pastas escolhidas em Ajustes ficam no banco do app; sem isso, ao reiniciar o app
+# voltava para ./notes (a pasta padrão) e a tela mostrava outras notas.
+_PATHS_KEY = "paths"
+
+
+def load_saved_paths() -> None:
+    """Na subida do app, volta as pastas salvas em Ajustes.
+
+    MK_NOTES_DIR / MK_ASSETS_DIR (variável ou .env) ganham do que foi salvo.
+    """
+    s = get_settings()
+    saved = get_auth_service().db.get_key(_PATHS_KEY) or {}
+    if not isinstance(saved, dict):
+        return
+    notes = saved.get("notes_dir") or ""
+    if notes and "notes_dir" not in config.ENV_FIELDS and Path(notes).is_dir():
+        s.notes_dir = Path(notes)
+    assets = saved.get("assets_dir") or ""
+    if assets and "assets_dir" not in config.ENV_FIELDS and Path(assets).is_dir():
+        s.assets_dir = Path(assets)
+    reset_repository_cache()
+
+
+def _save_paths() -> None:
+    s = get_settings()
+    get_auth_service().db.set_key(
+        _PATHS_KEY, {"notes_dir": str(s.notes_dir), "assets_dir": str(s.assets_dir or "")}
+    )
+
 
 @router.get("/", response_model=SettingsResponse)
 def get_settings_handler() -> SettingsResponse:
@@ -45,6 +76,7 @@ def update_settings_handler(body: SettingsUpdateRequest) -> SettingsResponse:
             except Exception as e:
                 raise HTTPException(status_code=400, detail=f"Caminho de anexos inválido: {e}") from e
 
+    _save_paths()
     reset_repository_cache()
     return get_settings_handler()
 
