@@ -70,17 +70,22 @@ def extract_note_links(content: str) -> list[NoteLink]:
     return ordered
 
 
-_STEP_LINE_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)]|\|)\s?.*$", re.MULTILINE)
+_TABLE_LINE_RE = re.compile(r"^\s*\|.*$", re.MULTILINE)
+_LIST_LINE_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s.*$", re.MULTILINE)
 
 
 def extract_index_steps(content: str) -> list[NoteLink]:
-    """Passos da trilha de um índice: os links das listas e tabelas, na ordem.
+    """Passos da trilha de um índice: os links das tabelas, na ordem; sem tabela, os das listas.
 
-    Links soltos no texto (ex.: uma citação no parágrafo de abertura) não viram passo.
-    Um índice sem lista nem tabela usa todos os links.
+    A tabela ganha da lista porque o índice costuma ser a tabela, e a lista é o resumo
+    que cita os mesmos documentos fora de ordem. Links soltos no texto (ex.: uma citação
+    no parágrafo de abertura) não viram passo. Sem tabela nem lista, usa todos os links.
     """
-    steps = extract_note_links("\n".join(m.group(0) for m in _STEP_LINE_RE.finditer(content)))
-    return steps or extract_note_links(content)
+    for line_re in (_TABLE_LINE_RE, _LIST_LINE_RE):
+        steps = extract_note_links("\n".join(m.group(0) for m in line_re.finditer(content)))
+        if steps:
+            return steps
+    return extract_note_links(content)
 
 
 def origin_target(origin: str) -> str:

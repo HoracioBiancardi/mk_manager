@@ -77,7 +77,7 @@ function render() {
   el.innerHTML = `
     <section class="lm-section">
       <h3 class="lm-h">Índices <span>ordem de leitura</span></h3>
-      ${indexCards ? `<div class="lm-grid">${indexCards}</div>` : empty("Nenhum índice. Marque uma nota como <strong>Índice</strong> no editor: a ordem dos links das listas e tabelas dela vira a trilha.")}
+      ${indexCards ? `<div class="lm-grid">${indexCards}</div>` : empty("Nenhum índice. Marque uma nota como <strong>Índice</strong> no editor: a ordem dos links da tabela dela (sem tabela, das listas) vira a trilha.")}
     </section>
     <section class="lm-section">
       <h3 class="lm-h">Cadeias <span>de onde cada nota e task saiu</span></h3>

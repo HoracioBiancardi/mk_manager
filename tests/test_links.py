@@ -68,12 +68,16 @@ class TestLinks(unittest.TestCase):
             self._new(t)
         self._new("Indice", content="1. [[Um]]\n2. [[Dois]]\n3. [[Tres]]", is_index=True)
         self._new("Comum", content="[[Dois]] [[Um]]")  # não é índice: não vira trilha
-        self._new("Indice com texto", is_index=True, content="Antes, leia [[Tres]].\n\n| # | Doc |\n|---|---|\n| 1 | [[Um]] |\n| 2 | [[Dois]] |")
+        self._new(
+            "Indice com texto",
+            is_index=True,
+            content="Antes, leia [[Tres]].\n\n1. Resumo: ver [[Dois]].\n\n| # | Doc |\n|---|---|\n| 1 | [[Um]] |\n| 2 | [[Dois]] |",
+        )
         trails = {t.index.title: t for t in self.service.get_links("dois").trails}
         self.assertEqual(set(trails), {"Indice", "Indice com texto"})
         self.assertEqual((trails["Indice"].position, trails["Indice"].total), (2, 3))
         self.assertEqual((trails["Indice"].prev.title, trails["Indice"].next.title), ("Um", "Tres"))
-        # Link no parágrafo não é passo: a trilha da tabela tem só Um → Dois.
+        # Link no parágrafo ou no resumo em lista não é passo: com tabela, a trilha é só Um → Dois.
         self.assertEqual((trails["Indice com texto"].position, trails["Indice com texto"].total), (2, 2))
         self.assertEqual([t.index.title for t in self.service.get_links("tres").trails], ["Indice"])
 
