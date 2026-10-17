@@ -105,7 +105,7 @@ export async function deleteProjectAsset(assetName) {
     let promptMsg = `Deseja excluir o asset "${assetName}" do projeto?`;
     if (affected.length > 0) {
       const names = affected.map(a => a.title).join("\n• ");
-      promptMsg = `⚠️ ATENÇÃO: Este asset está sendo utilizado em ${affected.length} nota(s)/task(s):\n\n• ${names}\n\nAo excluir, o arquivo será apagado do disco e as linhas/referências a ele serão removidas dessas notas. Confirmar exclusão?`;
+      promptMsg = `⚠️ ATENÇÃO: Este asset está sendo utilizado em ${affected.length} nota(s)/task(s):\n\n• ${names}\n\nAo excluir, o arquivo será apagado do disco e os links para ele serão removidos dessas notas. Confirmar exclusão?`;
     }
 
     if (!confirm(promptMsg)) return;

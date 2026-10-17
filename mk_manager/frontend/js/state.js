@@ -7,6 +7,7 @@ export const st = {
   activeTags: [],
   activeFolder: "",
   activeStatus: "",
+  activeModified: null, // `modified` da versão aberta: o servidor recusa (409) se a nota mudou
   filter: "all",
   search: "",
   view: "split",

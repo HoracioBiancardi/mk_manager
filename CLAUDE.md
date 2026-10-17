@@ -74,3 +74,12 @@ Decisões da 2ª rodada (2026-09-29):
   `curl -sL URL | openssl dgst -sha384 -binary | openssl base64 -A`.
 - **Lockout reserva a tentativa antes do hash** (`auth_service.verify_password`, sob `threading.Lock`).
 - Pendente: CSP (194 handlers `onclick=` inline a migrar para `data-*`, como no app_template).
+
+Decisões da 3ª rodada (2026-10-16):
+- **Pastas**: mover/excluir passa por `MarkdownFileRepository.validate_folder_move` (recusa "", "..",
+  reservadas e mover para dentro de si) e nunca usa `rmtree`: o que sobra é movido, só `rmdir` em vazias.
+- **Rotas de admin**: `/api/settings/*` (pasta de notas, `/browse`), `/api/system/metrics|logs`,
+  `/api/vault/*` e `/api/tasks/*` exigem `require_admin`.
+- **Anexos**: SVG/HTML saem com `CSP: sandbox`; a limpeza de referências casa o destino exato do link.
+- **Troca obrigatória de senha** cobrada no `AuthMiddleware` (só `/auth/me` e `/auth/logout`).
+- **Gravação** atômica (temporário + `os.replace`) e `expected_modified` no PUT da nota → 409 se mudou.

@@ -247,6 +247,7 @@ async function _putKanbanCard(id, body) {
   const updated = await r.json();
   const idx = st.files.findIndex((f) => f.id === id);
   if (idx !== -1) st.files[idx] = { ...updated };
+  if (st.activeId === id) st.activeModified = updated.modified || null; // mudança desta aba: não é conflito
   if (body.status !== undefined && st.activeId === id) {
     st.activeStatus = updated.status || "";
     updateStatusSelect();

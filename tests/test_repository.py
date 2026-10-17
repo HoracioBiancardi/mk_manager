@@ -4,7 +4,6 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
-from mk_manager.domain.entities import FileRecord
 from mk_manager.repositories.markdown import MarkdownFileRepository, PathTraversalError
 
 
@@ -69,7 +68,7 @@ class TestMarkdownFileRepository(unittest.TestCase):
 
 
     def test_repository_trash_and_untrash(self):
-        created = self.repo.create(
+        self.repo.create(
             file_id="del-1",
             title="To Delete",
             file_type="note",

@@ -68,12 +68,12 @@ export async function openSettingsModal() {
   document.getElementById("settings-theme").value = getCrtTheme();
 
   try {
-    const [settingsRes, statsRes] = await Promise.all([
-      apiFetch("/settings"),
-      apiFetch("/stats"),
-    ]);
-    const settingsData = await settingsRes.json();
-    const stats = await statsRes.json();
+    const stats = await (await apiFetch("/stats")).json();
+    document.getElementById("settings-storage-info").textContent =
+      `${stats.total} arquivo(s) · ${stats.notes} notas · ${stats.tasks} tasks · ${(stats.size_bytes / 1024).toFixed(1)} KB`;
+    // Pastas e servidor só para admin (o backend responde 403 aos demais).
+    if (!isAdminView()) return;
+    const settingsData = await (await apiFetch("/settings")).json();
 
     document.getElementById("settings-notes-dir").value = settingsData.notes_dir;
     _assetsDirWasDefault = settingsData.assets_dir_is_default;
@@ -85,8 +85,6 @@ export async function openSettingsModal() {
       `Padrão: ${settingsData.assets_dir}`;
     document.getElementById("settings-server-info").textContent =
       `${settingsData.host}:${settingsData.port} (mude via .env / MK_HOST, MK_PORT — requer reiniciar o servidor)`;
-    document.getElementById("settings-storage-info").textContent =
-      `${stats.total} arquivo(s) · ${stats.notes} notas · ${stats.tasks} tasks · ${(stats.size_bytes / 1024).toFixed(1)} KB`;
   } catch (e) {
     document.getElementById("settings-notes-dir").value = "";
     toast("Erro ao carregar configurações: " + e.message, "error");
@@ -183,7 +181,18 @@ export function folderBrowserSelect() {
   document.getElementById("folder-browser").style.display = "none";
 }
 
+function isAdminView() {
+  return !document.getElementById("settings-admin-dirs").hidden;
+}
+
 export async function saveSettings() {
+  if (!isAdminView()) {
+    setDefaultView(document.getElementById("settings-default-view").value);
+    setEditorFontSize(parseInt(document.getElementById("settings-font-size").value, 10));
+    toast("Configurações salvas!", "success");
+    closeSettingsModal();
+    return;
+  }
   const input = document.getElementById("settings-notes-dir");
   const notesDir = input.value.trim();
   if (!notesDir) {

@@ -84,6 +84,10 @@ def _build_snippet(content: str, query: str, radius: int = 120) -> str:
         chunk += "…"
     return chunk
 
+class FileConflictError(Exception):
+    """A nota mudou depois que o cliente a leu (`expected_modified` não confere)."""
+
+
 class FileService:
     def __init__(self, repository: AbstractFileRepository) -> None:
         self._repo = repository
@@ -216,6 +220,8 @@ class FileService:
 
     def update_file(self, file_id: str, request: FileUpdateRequest) -> FileRecord:
         existing = self._repo.get_by_id(file_id)
+        if request.expected_modified is not None and request.expected_modified != existing.modified:
+            raise FileConflictError(f"File '{file_id}' was modified elsewhere.")
 
         status_changed_at = (
             request.status_changed_at if request.status_changed_at is not None else existing.status_changed_at
@@ -226,7 +232,7 @@ class FileService:
         # Reordenar um card no Kanban não é edição da nota: mantém o "modificado em",
         # senão arrastar um card renumera a coluna e bagunça a ordem por recentes.
         only_reorder = request.kanban_order is not None and not request.model_dump(
-            exclude_none=True, exclude={"kanban_order"}
+            exclude_none=True, exclude={"kanban_order", "expected_modified"}
         )
 
         return self._repo.update(
@@ -263,8 +269,8 @@ class FileService:
         return updated_count
 
     def rename_folder(self, old_folder: str, new_folder: str) -> int:
-        old_folder = old_folder.strip("/")
-        new_folder = new_folder.strip("/")
+        # Valida antes de mover qualquer nota: "" ou ".." aqui já apagaram a pasta de notas inteira.
+        old_folder, new_folder = self._repo.validate_folder_move(old_folder, new_folder)
         updated_count = 0
         for record in self._repo.list_all():
             if record.folder != old_folder and not record.folder.startswith(old_folder + "/"):
@@ -285,7 +291,7 @@ class FileService:
         return updated_count
 
     def delete_folder(self, folder: str) -> int:
-        folder = folder.strip("/")
+        folder = (folder or "").strip("/")
         parent = folder.rsplit("/", 1)[0] if "/" in folder else ""
         return self.rename_folder(folder, parent)
 

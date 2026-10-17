@@ -54,6 +54,9 @@ class FileUpdateRequest(BaseModel):
     status_changed_at: str | None = Field(default=None, max_length=100)
     due_date: str | None = Field(default=None, max_length=100)
     kanban_order: float | None = Field(default=None, allow_inf_nan=False, description="Posição do card na coluna do Kanban")
+    # `modified` que o cliente leu: se a nota mudou desde então, o servidor responde 409
+    # em vez de sobrescrever (dois usuários ou duas abas na mesma nota).
+    expected_modified: str | None = Field(default=None, max_length=100)
 
     @field_validator("tags")
     @classmethod

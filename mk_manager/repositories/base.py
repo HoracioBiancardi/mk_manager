@@ -80,4 +80,8 @@ class AbstractFileRepository(ABC):
     def create_folder(self, folder: str) -> None: ...
 
     @abstractmethod
+    def validate_folder_move(self, old_folder: str, new_folder: str) -> tuple[str, str]:
+        """Valida e normaliza (origem, destino); levanta ValueError se o movimento não é permitido."""
+
+    @abstractmethod
     def move_folder(self, old_folder: str, new_folder: str) -> None: ...

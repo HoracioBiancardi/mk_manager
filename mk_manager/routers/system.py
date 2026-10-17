@@ -1,8 +1,9 @@
 import sys
 import time
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from typing import Optional
 from mk_manager.config import get_settings
+from mk_manager.services.auth_service import require_admin
 from mk_manager.services.log_buffer_service import log_buffer_service
 
 router = APIRouter(prefix="/api/system", tags=["System"])
@@ -11,7 +12,6 @@ START_TIME = time.time()
 
 @router.get("/health")
 def health_check():
-    s = get_settings()
     return {
         "status": "ok",
         "app": "MK Manager V2",
@@ -19,7 +19,7 @@ def health_check():
         "python_version": sys.version.split()[0]
     }
 
-@router.get("/metrics")
+@router.get("/metrics", dependencies=[Depends(require_admin)])
 def get_metrics():
     s = get_settings()
     log_buffer_service.info("Métricas do sistema consultadas", source="system_router")
@@ -31,7 +31,7 @@ def get_metrics():
         "port": s.port,
     }
 
-@router.get("/logs")
+@router.get("/logs", dependencies=[Depends(require_admin)])
 def get_system_logs(
     limit: int = Query(50, ge=1, le=500),
     level: Optional[str] = None,
@@ -41,7 +41,7 @@ def get_system_logs(
         "logs": log_buffer_service.get_logs(limit=limit, level=level, search=search)
     }
 
-@router.post("/logs/clear")
+@router.post("/logs/clear", dependencies=[Depends(require_admin)])
 def clear_system_logs():
     log_buffer_service.clear()
     log_buffer_service.info("Buffer de logs limpo", source="system_router")
