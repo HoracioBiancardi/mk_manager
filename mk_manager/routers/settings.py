@@ -5,6 +5,7 @@ from mk_manager.config import get_settings
 from mk_manager.dependencies import reset_repository_cache
 from mk_manager.models.schemas import BrowseResponse, DirEntry, SettingsResponse, SettingsUpdateRequest
 from mk_manager.services.auth_service import get_auth_service, require_admin
+from mk_manager.services.git_sync_service import git_sync_service, is_git_repo
 
 # Só admin: trocar a pasta de notas faz as rotas de arquivos operarem em qualquer lugar do
 # disco, e /browse lista o sistema de arquivos inteiro.
@@ -52,6 +53,8 @@ def get_settings_handler() -> SettingsResponse:
         assets_dir_is_default=is_def,
         host=s.host,
         port=s.port,
+        git_sync=git_sync_service.enabled,
+        notes_dir_is_git=is_git_repo(n_dir),
     )
 
 @router.put("/", response_model=SettingsResponse)
@@ -62,6 +65,13 @@ def update_settings_handler(body: SettingsUpdateRequest) -> SettingsResponse:
         new_notes.mkdir(parents=True, exist_ok=True)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Caminho de notas inválido: {e}") from e
+
+    git_sync = git_sync_service.enabled if body.git_sync is None else body.git_sync
+    if git_sync and not is_git_repo(new_notes):
+        raise HTTPException(
+            status_code=400,
+            detail=f"A pasta de notas não é um repositório git ({new_notes}). Desmarque a opção ou escolha a pasta do clone.",
+        )
 
     s.notes_dir = new_notes
     if body.assets_dir is not None:
@@ -78,6 +88,10 @@ def update_settings_handler(body: SettingsUpdateRequest) -> SettingsResponse:
 
     _save_paths()
     reset_repository_cache()
+    if git_sync != git_sync_service.enabled:
+        git_sync_service.set_enabled(get_auth_service().db, git_sync)
+    if git_sync:
+        git_sync_service.notify_change()  # puxa o remoto (e sobe o pendente) logo após ligar/trocar
     return get_settings_handler()
 
 @router.get("/browse", response_model=BrowseResponse)

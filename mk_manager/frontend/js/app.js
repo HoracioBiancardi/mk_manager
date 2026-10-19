@@ -37,6 +37,7 @@ import { closeSettingsModal, closeActivityOrderModal } from "./settings.js";
 import { openQuickOpen, closeQuickOpen } from "./quickopen.js";
 import { applyPrefsOnBoot } from "./prefs.js";
 import { initAuth } from "./auth.js";
+import { startGitStatusPolling } from "./git-sync.js";
 import "./views.js";
 import "./export.js";
 import "./search-filter.js";
@@ -111,6 +112,7 @@ document.addEventListener("keydown", (e) => {
     const ok = await checkConn();
     if (ok) {
       await loadFiles();
+      startGitStatusPolling();
     } else {
       toast("API offline. Inicie o servidor: uv run mk-manager", "error");
     }
