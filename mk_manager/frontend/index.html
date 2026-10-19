@@ -177,6 +177,7 @@
         <span><kbd>Ctrl+S</kbd> salvar</span>
       </div>
       <span id="user-badge" class="user-badge" title="Usuário logado"></span>
+      <button id="git-badge" class="git-badge" type="button" hidden onclick="onGitBadgeClick()"><span class="ms" aria-hidden="true">sync</span><span class="git-badge-text">git</span></button>
       <span id="conn-badge" class="conn-badge">offline</span>
       <button class="btn btn-ghost btn-sm btn-sair" id="btn-logout" type="button" title="Sair (encerrar a sessão)"><span class="ms" aria-hidden="true">logout</span>Sair</button>
     </div>
@@ -624,6 +625,12 @@
                 pasta</button>
             </div>
           </div>
+        </div>
+        <div class="form-group">
+          <label class="checkbox-label"><input type="checkbox" id="settings-git-sync"> A pasta de notas é um repositório git: sincronizar ao salvar</label>
+          <div class="form-hint">Cada gravação vira commit e sobe para o remoto (pull antes do push); o app também puxa o
+            remoto ao abrir e a cada 5 min. Se o sync falhar, a nota continua salva aqui e o erro aparece no selo
+            <b>git</b> da barra de cima. <span id="settings-git-hint"></span></div>
         </div>
         <div class="form-group">
           <label class="form-label" for="settings-assets-dir">Pasta dos assets (imagens, PDFs…)</label>

@@ -153,10 +153,13 @@ class SettingsResponse(BaseModel):
     assets_dir_is_default: bool
     host: str
     port: int
+    git_sync: bool = False  # commit + push da pasta de notas a cada gravação
+    notes_dir_is_git: bool = False
 
 class SettingsUpdateRequest(BaseModel):
     notes_dir: str
     assets_dir: str | None = None
+    git_sync: bool | None = None  # None = mantém como está
 
 class DirEntry(BaseModel):
     name: str

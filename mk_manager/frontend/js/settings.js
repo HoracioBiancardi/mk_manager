@@ -3,6 +3,7 @@
 import { esc, toast } from "./utils.js";
 import { apiFetch } from "./api.js";
 import { loadFiles } from "./files.js";
+import { refreshGitStatus } from "./git-sync.js";
 import { applyEditorFontSize, getDefaultView, getEditorFontSize, setDefaultView, setEditorFontSize, getCrtTheme, setCrtTheme, getActivityBarOrder, moveActivityBarItem, resetActivityBarOrder, ACTIVITY_BAR_LABELS } from "./prefs.js";
 
 let _assetsDirLoaded = "";
@@ -76,6 +77,7 @@ export async function openSettingsModal() {
     const settingsData = await (await apiFetch("/settings")).json();
 
     document.getElementById("settings-notes-dir").value = settingsData.notes_dir;
+    renderGitSync(settingsData);
     _assetsDirWasDefault = settingsData.assets_dir_is_default;
     _assetsDirLoaded = settingsData.assets_dir;
     document.getElementById("settings-assets-dir").value = _assetsDirWasDefault
@@ -181,6 +183,12 @@ export function folderBrowserSelect() {
   document.getElementById("folder-browser").style.display = "none";
 }
 
+function renderGitSync(data) {
+  document.getElementById("settings-git-sync").checked = data.git_sync;
+  document.getElementById("settings-git-hint").textContent = data.notes_dir_is_git
+    ? "" : "A pasta atual não é um repositório git.";
+}
+
 function isAdminView() {
   return !document.getElementById("settings-admin-dirs").hidden;
 }
@@ -218,11 +226,14 @@ export async function saveSettings() {
       method: "PUT",
       body: JSON.stringify({
         notes_dir: notesDir,
+        git_sync: document.getElementById("settings-git-sync").checked,
         ...(assetsDir !== undefined ? { assets_dir: assetsDir } : {}),
       }),
     });
     const updated = await r.json();
     input.value = updated.notes_dir;
+    renderGitSync(updated);
+    refreshGitStatus();
     _assetsDirWasDefault = updated.assets_dir_is_default;
     _assetsDirLoaded = updated.assets_dir;
     document.getElementById("settings-assets-dir").value = _assetsDirWasDefault

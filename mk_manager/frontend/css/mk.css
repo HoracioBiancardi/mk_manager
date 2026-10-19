@@ -3152,3 +3152,17 @@ body.zen-mode .links-bar { display: none; }
 .lk-derive #lk-derive-title { width: 220px; }
 .lk-hint { color: var(--text-subtle); font-size: .66rem; }
 
+
+/* ── Selo do git sync (barra de cima) ───────────────────────────── */
+.git-badge {
+  font-size: .7rem; padding: .2rem .55rem; border-radius: 5px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: .3rem; font-family: inherit;
+  background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success);
+  border: 1px solid color-mix(in srgb, var(--success) 25%, transparent);
+}
+.git-badge[hidden] { display: none; }
+.git-badge .ms { font-size: .9rem; }
+.git-badge.pending, .git-badge.syncing { background: color-mix(in srgb, var(--warn) 12%, transparent); color: var(--warn); border-color: color-mix(in srgb, var(--warn) 25%, transparent); }
+.git-badge.syncing .ms { animation: git-spin 1s linear infinite; }
+.git-badge.error { background: var(--danger-dim); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 25%, transparent); }
+@keyframes git-spin { to { transform: rotate(-360deg); } }
