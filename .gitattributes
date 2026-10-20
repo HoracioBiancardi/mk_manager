@@ -1,0 +1,3 @@
+# Bibliotecas de terceiros: bytes idênticos ao pacote (o git no Windows não converte LF→CRLF)
+mk_manager/frontend/vendor/*.js -text
+mk_manager/frontend/vendor/*.css -text

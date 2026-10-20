@@ -83,8 +83,9 @@ Decisões da 2ª rodada (2026-09-29):
   compartilhadas entre usuários, e o `marked` repassa HTML cru (`<img onerror>`). Vale para o
   preview e para a exportação (janela `about:blank` herda a origem). Links `javascript:` viram texto.
 - **Bibliotecas em `frontend/vendor/`** (antes CDN: rede corporativa bloqueava e o app abria em branco),
-  com o mesmo `integrity` (SRI) no `index.html`. Ao trocar versão, ver `vendor/README.md`
-  (`npm pack` + `openssl dgst -sha384 -binary arquivo | openssl base64 -A`).
+  **sem `integrity`**: o git no Windows converte LF→CRLF, o hash muda e o navegador recusava os
+  arquivos (o login nem aparecia). `.gitattributes` marca a pasta como `-text`, e o boot não quebra se
+  `marked`/`mermaid` faltarem. Ao trocar versão, ver `vendor/README.md`.
 - **Lockout reserva a tentativa antes do hash** (`auth_service.verify_password`, sob `threading.Lock`).
 - Pendente: CSP (194 handlers `onclick=` inline a migrar para `data-*`, como no app_template).
 

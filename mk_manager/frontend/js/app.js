@@ -67,7 +67,8 @@ initSidebarActions({ moveFileToFolder, confirmRenameFile, renameFolder, deleteFo
 initKanban({ openFile, archiveFile });
 
 // ── Init ───────────────────────────────────────────────────────────────────────
-marked.use({ breaks: true, gfm: true });
+if (window.marked) marked.use({ breaks: true, gfm: true });
+else setTimeout(() => toast("Não foi possível carregar as bibliotecas do preview (pasta vendor). Recarregue a página.", "error", 10000), 1500);
 
 setSaveCallback(saveFile);
 

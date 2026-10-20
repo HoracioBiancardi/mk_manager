@@ -11,7 +11,7 @@ import { resolveNote } from "./links.js";
 // ── Links internos [[Nota]] / [[Nota|Apelido]] ─────────────────────────────────
 const WIKILINK_RE = /^\[\[([^[\]|#]+)(?:#[^[\]|]*)?(?:\|([^[\]]+))?\]\]/;
 
-marked.use({
+if (window.marked) marked.use({
   extensions: [
     {
       name: "wikilink",

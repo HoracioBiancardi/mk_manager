@@ -23,15 +23,18 @@
 
   <!-- marked deve ser carregado antes do módulo ES (scripts regulares são síncronos).
        Bibliotecas servidas de /static/vendor/ (rede corporativa bloqueia CDN e o app ficava em
-       branco); o integrity (SRI) é o mesmo de quando vinham da CDN — ver vendor/README.md.
+       branco). Sem integrity: são servidas pelo próprio app (quem trocasse o arquivo trocaria o
+       index.html também) e o git no Windows converte LF→CRLF, o que mudava o hash e o navegador
+       recusava as bibliotecas — o login nem aparecia. Ver vendor/README.md.
        DOMPurify limpa o HTML do preview (notas são compartilhadas entre usuários). -->
-  <script src="/static/vendor/marked.min.js" integrity="sha384-odPBjvtXVM/5hOYIr3A1dB+flh0c3wAT3bSesIOqEGmyUA4JoKf/YTWy0XKOYAY7"></script>
-  <script src="/static/vendor/purify.min.js" integrity="sha384-a7SzOxErzJ3ZpQz0zJ32d67dSitNzPcbfybc/ykU9KJhMgZkwqfSxlhhdJRS+XGL"></script>
-  <link rel="stylesheet" href="/static/vendor/highlight-github-dark.min.css" integrity="sha384-wH75j6z1lH97ZOpMOInqhgKzFkAInZPPSPlZpYKYTOqsaizPvhQZmAtLcPKXpLyH">
-  <script src="/static/vendor/highlight.min.js" integrity="sha384-F/bZzf7p3Joyp5psL90p/p89AZJsndkSoGwRpXcZhleCWhd8SnRuoYo4d0yirjJp"></script>
-  <script src="/static/vendor/mermaid.min.js" integrity="sha384-N3QqR/7q+xm3BGX+CBbNI8AUmRRqcsDzToy+0z1NLDI0QmTKW8zvwLvqulJgk3dP"></script>
+  <script src="/static/vendor/marked.min.js"></script>
+  <script src="/static/vendor/purify.min.js"></script>
+  <link rel="stylesheet" href="/static/vendor/highlight-github-dark.min.css">
+  <script src="/static/vendor/highlight.min.js"></script>
+  <script src="/static/vendor/mermaid.min.js"></script>
   <script>
-    mermaid.initialize({
+    // Sem as bibliotecas o app ainda precisa abrir (login e notas); o preview avisa o que falta.
+    if (window.mermaid) mermaid.initialize({
       startOnLoad: false,
       theme: 'dark',
       themeVariables: {
@@ -59,7 +62,7 @@
       },
     });
 
-    marked.use({
+    if (window.marked) marked.use({
       renderer: (() => {
         const r = new marked.Renderer();
         r.code = (code, lang) => {
@@ -760,7 +763,7 @@
   <input type="file" id="asset-file-input" style="display:none" multiple onchange="onAssetFiles(this.files)">
 
   <!-- html2canvas: captura de código/tabela como PNG -->
-  <script src="/static/vendor/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" defer></script>
+  <script src="/static/vendor/html2canvas.min.js" defer></script>
 
   <!-- Módulo principal (deferred automaticamente, marked já está carregado) -->
   <script type="module" src="/static/js/trash.js"></script>
