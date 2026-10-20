@@ -5,9 +5,8 @@
 import { st } from "./state.js";
 import { esc, toast, timeAgo } from "./utils.js";
 import { apiFetch } from "./api.js";
-import { unarchiveFile } from "./files.js";
+import { unarchiveFile, deleteFile } from "./files.js";
 import { renderMarkdown } from "./preview.js";
-import { openDeleteModal } from "./delete-modal.js";
 
 let _archivedFiles = [];
 
@@ -44,11 +43,9 @@ function drawArchiveList() {
       const progress = f.type === "task" && f.task_total > 0
         ? `<span class="tree-progress" title="Progresso da task: ${f.task_done} concluídas de ${f.task_total}">[${f.task_done}/${f.task_total}]</span>`
         : "";
-      const origin = f.archived_from
-        ? `<span class="archive-row-origin" title="Pasta original">📁 ${esc(f.archived_from)}</span>`
-        : `<span class="archive-row-origin" title="Pasta original">📁 Raiz</span>`;
+      const origin = `<span class="archive-row-origin" title="Pasta original"><span class="ms" aria-hidden="true">folder</span>${esc(f.archived_from || "Raiz")}</span>`;
       return `<div class="archive-row" data-id="${f.id}" onclick="openArchiveDetail('${f.id}')">
-        <span class="type-badge ${f.type}">${f.type === "task" ? "Task" : "Note"}</span>
+        <span class="type-badge ${f.type}">${f.type === "task" ? "Task" : "Nota"}</span>
         <span class="archive-row-title">${esc(f.title || "Sem título")}</span>
         ${progress}
         ${origin}
@@ -56,8 +53,8 @@ function drawArchiveList() {
         ${tags}
         <span class="archive-row-date" title="${esc(f.modified)}">${timeAgo(f.modified)}</span>
         <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); restoreArchivedFile('${f.id}')">Restaurar</button>
-        <button class="icon-btn del" title="Excluir definitivamente"
-          onclick="event.stopPropagation(); openDeleteModal('${f.id}','${esc(f.title || "Sem título")}','${esc(f.filename)}')">✕</button>
+        <button class="icon-btn del" title="Mover para a lixeira" aria-label="Mover para a lixeira"
+          onclick="event.stopPropagation(); deleteFile('${f.id}')"><span class="ms" aria-hidden="true">delete</span></button>
       </div>`;
     })
     .join("");
@@ -107,9 +104,9 @@ function buildDetailMetaHtml(f) {
     : "";
   return `
     <div class="archive-detail-meta-row">
-      <span class="type-badge ${f.type}">${f.type === "task" ? "Task" : "Note"}</span>
+      <span class="type-badge ${f.type}">${f.type === "task" ? "Task" : "Nota"}</span>
       ${progress}
-      <span class="archive-row-origin" title="Pasta original">📁 ${esc(f.archived_from || "Raiz")}</span>
+      <span class="archive-row-origin" title="Pasta original"><span class="ms" aria-hidden="true">folder</span>${esc(f.archived_from || "Raiz")}</span>
       <span class="archive-row-words">${f.word_count} palavra${f.word_count === 1 ? "" : "s"}</span>
       <span class="archive-row-date">Arquivado ${timeAgo(f.modified)}</span>
     </div>
@@ -135,10 +132,10 @@ export async function restoreFromArchiveDetail() {
 }
 
 export function deleteFromArchiveDetail() {
-  if (!_detailId || !_detailMeta) return;
-  const { id, title, filename } = _detailMeta;
+  if (!_detailId) return;
+  const id = _detailId;
   closeArchiveDetail();
-  openDeleteModal(id, title || "Sem título", filename);
+  deleteFile(id);
 }
 
 // ── Expor ao DOM (necessário para event handlers inline) ──────────────────────

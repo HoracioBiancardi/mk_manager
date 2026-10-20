@@ -156,7 +156,7 @@ async function loadFolderBrowser(path) {
     list.innerHTML = data.dirs.length
       ? data.dirs
           .map(
-            (d) => `<div class="folder-browser-item" data-path="${esc(d.path)}">📁 ${esc(d.name)}</div>`,
+            (d) => `<div class="folder-browser-item" data-path="${esc(d.path)}"><span class="ms" aria-hidden="true">folder</span>${esc(d.name)}</div>`,
           )
           .join("")
       : `<div class="folder-browser-empty">Nenhuma subpasta aqui.</div>`;

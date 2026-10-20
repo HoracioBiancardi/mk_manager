@@ -1,7 +1,7 @@
 // Responsabilidade: visualização e gestão da Lixeira (restaurar / expurgar)
 
 import { st } from "./state.js";
-import { esc, toast } from "./utils.js";
+import { esc, toast, confirmDialog, formatDate } from "./utils.js";
 import { apiFetch } from "./api.js";
 import { loadFiles } from "./files.js";
 
@@ -17,7 +17,7 @@ export async function renderTrashView() {
     if (!trashedFiles || trashedFiles.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
-          <div class="empty-state-icon">🗑️</div>
+          <div class="empty-state-icon"><span class="ms" aria-hidden="true">delete</span></div>
           <div class="empty-state-title">A Lixeira está vazia</div>
           <div class="empty-state-desc">Arquivos excluídos serão movidos para cá antes da exclusão permanente.</div>
         </div>
@@ -28,22 +28,22 @@ export async function renderTrashView() {
     container.innerHTML = `
       <div class="trash-header">
         <span><strong>${trashedFiles.length}</strong> arquivo(s) na lixeira</span>
-        <button class="btn btn-danger btn-sm" type="button" onclick="purgeAllTrash()">🔥 Esvaziar Lixeira</button>
+        <button class="btn btn-danger btn-sm" type="button" onclick="purgeAllTrash()"><span class="ms" aria-hidden="true">delete_forever</span>Esvaziar lixeira</button>
       </div>
       <div class="trash-grid">
         ${trashedFiles.map(f => `
           <div class="trash-card">
             <div class="trash-card-header">
-              <span class="type-badge ${f.type}">${f.type === "task" ? "Task" : "Note"}</span>
+              <span class="type-badge ${f.type}">${f.type === "task" ? "Task" : "Nota"}</span>
               <strong class="trash-card-title">${esc(f.title || f.id)}</strong>
             </div>
             <div class="trash-card-meta">
               <span>Origem: <code>${esc(f.trashed_from || "/")}</code></span>
-              <span>Modificado: ${new Date(f.modified).toLocaleDateString("pt-BR")}</span>
+              <span>Modificado: ${formatDate(f.modified)}</span>
             </div>
             <div class="trash-card-actions">
-              <button class="btn btn-ghost btn-sm" type="button" onclick="restoreTrashFile('${esc(f.id)}')">↩ Restaurar</button>
-              <button class="btn btn-danger btn-sm" type="button" onclick="purgeSingleFile('${esc(f.id)}')">🗑 Excluir</button>
+              <button class="btn btn-ghost btn-sm" type="button" onclick="restoreTrashFile('${esc(f.id)}')"><span class="ms" aria-hidden="true">restore_from_trash</span>Restaurar</button>
+              <button class="btn btn-danger btn-sm" type="button" onclick="purgeSingleFile('${esc(f.id)}')"><span class="ms" aria-hidden="true">delete_forever</span>Excluir de vez</button>
             </div>
           </div>
         `).join("")}
@@ -67,7 +67,7 @@ export async function restoreTrashFile(id) {
 }
 
 export async function purgeSingleFile(id) {
-  if (!confirm("Excluir este arquivo permanentemente? Esta ação não pode ser desfeita.")) return;
+  if (!(await confirmDialog("Excluir de vez?", "O arquivo é apagado do disco. Não dá para desfazer.", { confirmLabel: "Excluir de vez", danger: true }))) return;
   try {
     await apiFetch(`/files/${encodeURIComponent(id)}/purge`, { method: "DELETE" });
     toast("Arquivo excluído permanentemente.", "info");
@@ -79,7 +79,7 @@ export async function purgeSingleFile(id) {
 }
 
 export async function purgeAllTrash() {
-  if (!confirm("Esvaziar toda a lixeira permanentemente? Todos os arquivos serão perdidos.")) return;
+  if (!(await confirmDialog("Esvaziar a lixeira?", "Todos os arquivos da lixeira são apagados do disco. Não dá para desfazer.", { confirmLabel: "Esvaziar", danger: true }))) return;
   try {
     await apiFetch("/files/trash/purge", { method: "DELETE" });
     toast("Lixeira esvaziada.", "info");

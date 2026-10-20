@@ -40,7 +40,7 @@ function renderMatches(matches) {
     ? _matches
         .map(
           (f, i) => `<div class="quickopen-item${i === 0 ? " active" : ""}" onclick="selectQuickOpen(${i})">
-            <span class="quickopen-type ${f.type}">${f.type === "task" ? "☑" : "📝"}</span>
+            <span class="quickopen-type ${f.type} ms" aria-hidden="true">${f.type === "task" ? "task_alt" : "description"}</span>
             <div class="quickopen-main">
               <div class="quickopen-title-row">
                 <span class="quickopen-title">${esc(f.title || "Sem título")}</span>
@@ -73,9 +73,9 @@ function renderCreatePrompt(create) {
   _matches = [{ __create: true, type: create.type, title: create.title }];
   _activeIndex = 0;
   const label = create.type === "task" ? "task" : "nota";
-  const icon = create.type === "task" ? "☑" : "📝";
+  const icon = create.type === "task" ? "add_task" : "note_add";
   list().innerHTML = `<div class="quickopen-item active" onclick="selectQuickOpen(0)">
-    <span class="quickopen-type ${create.type}">${icon}</span>
+    <span class="quickopen-type ${create.type} ms" aria-hidden="true">${icon}</span>
     <div class="quickopen-main">
       <div class="quickopen-title-row">
         <span class="quickopen-title">Criar ${label} "${esc(create.title)}"</span>

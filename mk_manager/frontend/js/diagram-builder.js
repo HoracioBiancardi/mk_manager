@@ -7,7 +7,7 @@
 // modal, definindo só o necessário para o canvas de nós/setas.
 
 import { ins, onEditorInput, replaceRange } from "./editor.js";
-import { toast } from "./utils.js";
+import { toast, promptDialog } from "./utils.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -528,10 +528,10 @@ function makeEdgeElement(edge) {
       applyEdgeTypeVisual(edge);
     }, 220);
   });
-  g.addEventListener("dblclick", (e) => {
+  g.addEventListener("dblclick", async (e) => {
     e.stopPropagation();
     if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
-    const next = prompt("Texto da seta (vazio remove o rótulo):", edge.label || "");
+    const next = await promptDialog("Texto da seta", "Vazio remove o rótulo.", edge.label || "", { confirmLabel: "Aplicar" });
     if (next === null) return;
     const trimmed = next.trim();
     if (trimmed !== edge.label) pushHistory();

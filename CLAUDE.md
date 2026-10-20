@@ -37,6 +37,14 @@ uv run pytest -v
 - **Ajustes → pasta de notas/anexos** fica salvo no banco (`app_kv_store`, chave `paths`) e volta na subida do app; `MK_NOTES_DIR`/`MK_ASSETS_DIR` (env ou `.env`) ganham do salvo.
 - **Ajustes → "é repositório git"** (`git_sync_service.py`, chave `git_sync` no banco): toda gravação em `/api/files`, `/api/tags`, `/api/assets` e `/assets/` agenda commit → `pull --rebase --autostash` → push (agrupado 10 s após a última gravação); puxa também ao subir e a cada 5 min. Falha vira selo **git** vermelho na barra de cima (`GET /api/sync/status`, `POST /api/sync/now`), sem afetar a gravação local; conflito aborta o rebase e pede resolução manual.
 - **Frontmatter desconhecido é preservado** (`FileRecord.extra`) e o arquivo só é renomeado quando o título muda.
+- **Colunas do Kanban no servidor** (`routers/kanban.py`, chave `kanban_columns` no banco), iguais para todos;
+  o `localStorage` é só cache. Task com status sem coluna vai para a coluna **Sem coluna** e o select de
+  status mostra o valor como "(sem coluna)" — sem isso o próximo salvamento apagava o status.
+- **Interface** (repaginada de 2026-10-20): ícones só Material Symbols (sem emoji); confirmações e pedidos
+  de texto por `confirmDialog`/`promptDialog` (`js/utils.js`), nunca `confirm()`/`prompt()`; arquivar e
+  mandar para a lixeira não perguntam, mostram toast com **Desfazer** (`toastUndo`); datas por
+  `formatDate`/`dueInfo` (pt-BR, data local). Explorador recolhe sozinho nas telas cheias e lembra a
+  escolha por tela (`js/views.js`). Tela inicial em `js/home.js`; menus e atalhos (`?`) em `js/ui.js`.
 
 ### Rotas de sistema (paridade com o app_template, só backend — sem UI própria)
 - `GET /api/system/health`, `/metrics`, `/logs`, `POST /logs/clear` — expõe `log_buffer_service`.
@@ -74,8 +82,9 @@ Decisões da 2ª rodada (2026-09-29):
 - **Markdown → HTML sempre por `sanitizeHtml()`** (`js/utils.js`, DOMPurify): as notas são
   compartilhadas entre usuários, e o `marked` repassa HTML cru (`<img onerror>`). Vale para o
   preview e para a exportação (janela `about:blank` herda a origem). Links `javascript:` viram texto.
-- **CDN com versão exata + `integrity` (SRI)** no `index.html`. Ao trocar versão, recalcule:
-  `curl -sL URL | openssl dgst -sha384 -binary | openssl base64 -A`.
+- **Bibliotecas em `frontend/vendor/`** (antes CDN: rede corporativa bloqueava e o app abria em branco),
+  com o mesmo `integrity` (SRI) no `index.html`. Ao trocar versão, ver `vendor/README.md`
+  (`npm pack` + `openssl dgst -sha384 -binary arquivo | openssl base64 -A`).
 - **Lockout reserva a tentativa antes do hash** (`auth_service.verify_password`, sob `threading.Lock`).
 - Pendente: CSP (194 handlers `onclick=` inline a migrar para `data-*`, como no app_template).
 

@@ -35,12 +35,47 @@ function hideAllPanes() {
   }
 }
 
+// Um único item destacado: a tela onde a pessoa está ("Arquivos" = editor).
 function updateActivityBarActive() {
   document.querySelectorAll(".activity-btn").forEach((b) => {
     const panel = b.dataset.panel;
-    const active = panel === "explorer" ? st.sidebarOpen : st.mainView === panel;
+    const active = panel === "explorer" ? st.mainView === "editor" : st.mainView === panel;
     b.classList.toggle("active", active);
+    if (panel) b.setAttribute("aria-current", active ? "page" : "false");
   });
+}
+
+// ── Sidebar por tela ─────────────────────────────────────────────────────────
+// Kanban, Lista, Agenda... são telas largas: o Explorador começa recolhido nelas e
+// aberto no editor. Abrir/fechar à mão fica lembrado para aquela tela.
+const SIDEBAR_PREF_KEY = "mk-sidebar-por-tela";
+
+function sidebarPrefs() {
+  try {
+    return JSON.parse(localStorage.getItem(SIDEBAR_PREF_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function wantsSidebar(view) {
+  const prefs = sidebarPrefs();
+  return view in prefs ? !!prefs[view] : view === "editor";
+}
+
+function setSidebarOpen(open) {
+  st.sidebarOpen = open;
+  document.querySelector(".sidebar-panel")?.classList.toggle("collapsed", !open);
+  document.querySelectorAll(".sidebar-toggle-btn").forEach((b) => b.setAttribute("aria-expanded", String(open)));
+}
+
+export function toggleSidebar() {
+  setSidebarOpen(!st.sidebarOpen);
+  const prefs = sidebarPrefs();
+  prefs[st.mainView] = st.sidebarOpen;
+  try {
+    localStorage.setItem(SIDEBAR_PREF_KEY, JSON.stringify(prefs));
+  } catch {}
 }
 
 export function setMainView(view) {
@@ -85,6 +120,7 @@ export function setMainView(view) {
       }
     }
 
+    setSidebarOpen(wantsSidebar(view));
     updateActivityBarActive();
   };
 
@@ -92,11 +128,11 @@ export function setMainView(view) {
 }
 
 // ── Barra de atividades ─────────────────────────────────────────────────────
+// "Arquivos" volta para o editor; já no editor, abre/fecha o Explorador.
 export function switchPanel(panel) {
   if (panel === "explorer") {
-    st.sidebarOpen = !st.sidebarOpen;
-    document.querySelector(".sidebar-panel").classList.toggle("collapsed", !st.sidebarOpen);
-    updateActivityBarActive();
+    if (st.mainView === "editor") toggleSidebar();
+    else setMainView("editor");
     return;
   }
 
@@ -104,4 +140,4 @@ export function switchPanel(panel) {
 }
 
 // ── Expor ao DOM (necessário para event handlers inline) ──────────────────────
-Object.assign(window, { switchPanel });
+Object.assign(window, { switchPanel, toggleSidebar });

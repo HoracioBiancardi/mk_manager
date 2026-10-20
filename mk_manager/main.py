@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 import uvicorn
 from mk_manager.auth_middleware import AuthMiddleware, SecurityHeadersMiddleware
 from mk_manager.config import get_settings
-from mk_manager.routers import auth, files, search, stats, tags, links, assets, settings as settings_router, system, vault, tasks, sync
+from mk_manager.routers import auth, files, search, stats, tags, links, assets, settings as settings_router, system, vault, tasks, sync, kanban
 from mk_manager.services.auth_service import get_auth_service
 from mk_manager.services.git_sync_service import git_sync_service
 from mk_manager.services.log_buffer_service import log_buffer_service
@@ -65,6 +65,7 @@ def create_app() -> FastAPI:
     app.include_router(vault.router)
     app.include_router(tasks.router)
     app.include_router(sync.router)
+    app.include_router(kanban.router)
 
     @app.get("/health")
     def health():

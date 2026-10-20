@@ -1,7 +1,7 @@
 // Responsabilidade: busca full-text e filtros de tipo/tag (tela de Busca e painel de Tags)
 
 import { st } from "./state.js";
-import { toast } from "./utils.js";
+import { toast, promptDialog } from "./utils.js";
 import { apiFetch } from "./api.js";
 import { renderSearchResults, renderTagsPanel } from "./sidebar.js";
 import { doSearch, loadFiles } from "./files.js";
@@ -36,7 +36,7 @@ export function onTagSearchInput(v) {
 }
 
 export async function renameTagPrompt(oldTag) {
-  const input = prompt(`Renomear tag "${oldTag}" para:\n(se já existir, as duas são unificadas)`, oldTag);
+  const input = await promptDialog(`Renomear a tag "${oldTag}"`, "Se a nova já existir, as duas viram uma só.", oldTag, { confirmLabel: "Renomear" });
   if (input === null) return;
   const newTag = input.trim();
   if (!newTag || newTag === oldTag) return;

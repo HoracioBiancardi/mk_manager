@@ -1,6 +1,6 @@
 // Responsabilidade: bootstrap e inicialização da aplicação
 //
-// Cada módulo de feature (files, delete-modal, export, assets, search-filter,
+// Cada módulo de feature (files, export, assets, search-filter,
 // sidebar, editor, preview, kanban) expõe suas próprias funções em `window`
 // (necessário para os event handlers inline gerados nos templates). Este
 // arquivo só precisa importá-los — mesmo sem usar os exports diretamente,
@@ -18,6 +18,7 @@ import { loadProjectAssets } from "./assets-panel.js";
 import {
   initKanban,
   loadKanbanColumns,
+  syncKanbanColumnsFromServer,
   updateStatusSelect,
   closeKanbanQEdit,
 } from "./kanban.js";
@@ -31,8 +32,8 @@ import {
   renameFolder,
   deleteFolder,
   archiveFile,
+  deleteFile,
 } from "./files.js";
-import { closeDeleteModal, openDeleteModal } from "./delete-modal.js";
 import { closeSettingsModal, closeActivityOrderModal } from "./settings.js";
 import { openQuickOpen, closeQuickOpen } from "./quickopen.js";
 import { applyPrefsOnBoot } from "./prefs.js";
@@ -47,6 +48,7 @@ import "./format-code.js";
 import "./settings.js";
 import "./festa.js";
 import "./links.js";
+import "./ui.js";
 
 // ── Conexão ───────────────────────────────────────────────────────────────────
 // Só o check inicial do boot — depois disso o badge é mantido em dia pelo
@@ -61,7 +63,7 @@ async function checkConn() {
 }
 
 // ── Wiring entre módulos (evita imports circulares) ────────────────────────────
-initSidebarActions({ moveFileToFolder, confirmRenameFile, renameFolder, deleteFolder, newFile, openDeleteModal });
+initSidebarActions({ moveFileToFolder, confirmRenameFile, renameFolder, deleteFolder, newFile, deleteFile });
 initKanban({ openFile, archiveFile });
 
 // ── Init ───────────────────────────────────────────────────────────────────────
@@ -80,7 +82,6 @@ document.addEventListener("keydown", (e) => {
   }
   if (e.key === "Escape") {
     if (st.zenMode) setZenMode(false);
-    closeDeleteModal();
     closeKanbanQEdit();
     // Esc fecha primeiro o modal de ordem (aberto por cima das Configurações)
     if (document.getElementById("activity-order-overlay")?.classList.contains("open")) {
@@ -97,7 +98,7 @@ document.addEventListener("keydown", (e) => {
   loadKanbanColumns();
   updateStatusSelect();
   const treeEl = document.getElementById("file-tree");
-  if (treeEl) treeEl.innerHTML = '<div class="tree-empty">⏳ Carregando…</div>';
+  if (treeEl) treeEl.innerHTML = '<div class="tree-empty">Carregando…</div>';
   // (canvas de partículas do design system fica desativado por padrão —
   // roda um loop de requestAnimationFrame O(n²) para sempre, mesmo com o
   // editor/kanban por cima cobrindo o efeito; as auroras via CSS abaixo já
@@ -111,6 +112,7 @@ document.addEventListener("keydown", (e) => {
   await initAuth(async () => {
     const ok = await checkConn();
     if (ok) {
+      await syncKanbanColumnsFromServer();
       await loadFiles();
       startGitStatusPolling();
     } else {

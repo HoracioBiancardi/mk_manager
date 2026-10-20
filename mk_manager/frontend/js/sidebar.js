@@ -2,27 +2,27 @@
 // e interações da árvore (drag&drop, tooltip, rename/nova pasta inline)
 
 import { st } from './state.js';
-import { esc, timeAgo, toast } from './utils.js';
+import { esc, timeAgo, toast, confirmDialog } from './utils.js';
 import { apiFetch } from './api.js';
 import { showContextMenu } from './contextmenu.js';
 import { setSidebarWidth, SIDEBAR_WIDTH_DEFAULT } from './prefs.js';
 
-// ── Ações injetadas por files.js/delete-modal.js (evita import circular: files.js
+// ── Ações injetadas por files.js (evita import circular: files.js
 // precisa de renderSidebar/renderTree daqui, então este módulo não importa de volta) ──
 let _moveFileToFolder = null;
 let _confirmRenameFile = null;
 let _renameFolder = null;
 let _deleteFolder = null;
 let _newFile = null;
-let _openDeleteModal = null;
+let _deleteFile = null;
 
-export function initSidebarActions({ moveFileToFolder, confirmRenameFile, renameFolder, deleteFolder, newFile, openDeleteModal }) {
+export function initSidebarActions({ moveFileToFolder, confirmRenameFile, renameFolder, deleteFolder, newFile, deleteFile }) {
   _moveFileToFolder = moveFileToFolder;
   _confirmRenameFile = confirmRenameFile;
   _renameFolder = renameFolder;
   _deleteFolder = deleteFolder;
   _newFile = newFile;
-  _openDeleteModal = openDeleteModal;
+  _deleteFile = deleteFile;
 }
 
 // ── Redimensionamento da sidebar ────────────────────────────────────────────────
@@ -268,8 +268,8 @@ function treeFolderHtml(path, name, depth, isOpen, fileCount, hasContent) {
     <span class="tree-name">${esc(name)}</span>
     ${fileCount ? `<span class="tree-count">${fileCount}</span>` : ''}
     <div class="tree-item-actions" onclick="event.stopPropagation()">
-      <button class="icon-btn" onclick="startRenameFolder('${ep}')" title="Renomear pasta">✏</button>
-      <button class="icon-btn del" onclick="deleteFolderPrompt('${ep}')" title="Excluir pasta">✕</button>
+      <button class="icon-btn" onclick="startRenameFolder('${ep}')" title="Renomear pasta" aria-label="Renomear pasta"><span class="ms" aria-hidden="true">edit</span></button>
+      <button class="icon-btn del" onclick="deleteFolderPrompt('${ep}')" title="Excluir pasta" aria-label="Excluir pasta"><span class="ms" aria-hidden="true">folder_delete</span></button>
     </div>
   </div>`;
 }
@@ -310,8 +310,8 @@ function treeFileHtml(f, depth) {
     ${progress}
     ${otherBadge}
     <div class="tree-item-actions" onclick="event.stopPropagation()">
-      <button class="icon-btn" onclick="startRenameFile('${esc(f.id)}')" title="Renomear">✏</button>
-      <button class="icon-btn del" onclick="openDeleteModal('${esc(f.id)}','${esc(f.title || 'Sem título')}','${esc(f.filename)}')" title="Excluir">✕</button>
+      <button class="icon-btn" onclick="startRenameFile('${esc(f.id)}')" title="Renomear" aria-label="Renomear"><span class="ms" aria-hidden="true">edit</span></button>
+      <button class="icon-btn del" onclick="deleteFile('${esc(f.id)}')" title="Mover para a lixeira" aria-label="Mover para a lixeira"><span class="ms" aria-hidden="true">delete</span></button>
     </div>
   </div>`;
 }
@@ -362,15 +362,15 @@ function confirmRenameFolderInput(path, newName) {
   _renameFolder?.(path, trimmed);
 }
 
-export function deleteFolderPrompt(path) {
+export async function deleteFolderPrompt(path) {
   const affected = st.files.filter(f =>
     (f.folder || '') === path || (f.folder || '').startsWith(path + '/')
   );
   const name = path.includes('/') ? path.split('/').pop() : path;
   const msg = affected.length
-    ? `Excluir a pasta "${name}"?\n${affected.length} arquivo(s) serão movidos para a pasta pai (nada é apagado).`
-    : `Excluir a pasta "${name}"?`;
-  if (!window.confirm(msg)) return;
+    ? `${affected.length} arquivo(s) vão para a pasta de cima; nada é apagado.`
+    : "A pasta está vazia.";
+  if (!(await confirmDialog(`Excluir a pasta "${name}"?`, msg, { confirmLabel: "Excluir pasta", danger: true }))) return;
   _deleteFolder?.(path);
 }
 
@@ -458,7 +458,7 @@ function renderTagTreeNode(node, depth) {
     <span class="tagtree-name">${esc(node.name)}</span>
     <span class="tagtree-count">${node.count}</span>
     ${node.ownCount > 0
-      ? `<button class="icon-btn" onclick="event.stopPropagation(); renameTagPrompt('${ep}')" title="Renomear / unificar tag">✎</button>`
+      ? `<button class="icon-btn" onclick="event.stopPropagation(); renameTagPrompt('${ep}')" title="Renomear / unificar tag" aria-label="Renomear tag"><span class="ms" aria-hidden="true">edit</span></button>`
       : ''}
   </div>`;
 
@@ -567,12 +567,12 @@ export function showFileTooltip(e, id) {
   if (!tip) return;
 
   let html = `<div class="tip-title">${esc(f.title || 'Sem título')}</div>`;
-  if (f.folder) html += `<span class="tip-stat">📁 ${esc(f.folder)}</span>`;
+  if (f.folder) html += `<span class="tip-stat"><span class="ms" aria-hidden="true">folder</span>${esc(f.folder)}</span>`;
   if (f.tags?.length) {
     html += `<div class="tip-tags">${f.tags.map((t) => `<span class="tip-tag">${esc(t)}</span>`).join('')}</div>`;
   }
   if (f.type === 'task' && f.task_total) {
-    html += `<span class="tip-stat">✓ ${f.task_done}/${f.task_total} tasks</span>`;
+    html += `<span class="tip-stat"><span class="ms" aria-hidden="true">checklist</span>${f.task_done}/${f.task_total} tasks</span>`;
   }
   html += `<span class="tip-stat">${f.word_count} pal. · ${timeAgo(f.modified)}</span>`;
   tip.innerHTML = html;
@@ -641,8 +641,8 @@ export function onFileContextMenu(e, id) {
   const f = st.files.find((x) => x.id === id);
   if (!f) return;
   showContextMenu(e.clientX, e.clientY, [
-    { icon: '✏', label: 'Renomear', onClick: () => startRenameFile(id) },
-    { icon: '✕', label: 'Excluir', danger: true, onClick: () => _openDeleteModal?.(id, f.title || 'Sem título', f.filename) },
+    { icon: 'edit', label: 'Renomear', onClick: () => startRenameFile(id) },
+    { icon: 'delete', label: 'Mover para a lixeira', danger: true, onClick: () => _deleteFile?.(id) },
   ]);
 }
 
@@ -650,12 +650,12 @@ export function onFolderContextMenu(e, path) {
   e.preventDefault();
   e.stopPropagation();
   showContextMenu(e.clientX, e.clientY, [
-    { icon: '📄', label: 'Nova nota aqui', onClick: () => _newFile?.('note', path) },
-    { icon: '☑', label: 'Nova task aqui', onClick: () => _newFile?.('task', path) },
-    { icon: '📁', label: 'Nova pasta aqui', onClick: () => startNewFolderInput(path) },
+    { icon: 'note_add', label: 'Nova nota aqui', onClick: () => _newFile?.('note', path) },
+    { icon: 'add_task', label: 'Nova task aqui', onClick: () => _newFile?.('task', path) },
+    { icon: 'create_new_folder', label: 'Nova pasta aqui', onClick: () => startNewFolderInput(path) },
     { separator: true },
-    { icon: '✏', label: 'Renomear pasta', onClick: () => startRenameFolder(path) },
-    { icon: '✕', label: 'Excluir pasta', danger: true, onClick: () => deleteFolderPrompt(path) },
+    { icon: 'edit', label: 'Renomear pasta', onClick: () => startRenameFolder(path) },
+    { icon: 'folder_delete', label: 'Excluir pasta', danger: true, onClick: () => deleteFolderPrompt(path) },
   ]);
 }
 
@@ -664,9 +664,9 @@ export function onTreeBackgroundContextMenu(e) {
   e.preventDefault();
   e.stopPropagation();
   showContextMenu(e.clientX, e.clientY, [
-    { icon: '📄', label: 'Nova nota', onClick: () => _newFile?.('note') },
-    { icon: '☑', label: 'Nova task', onClick: () => _newFile?.('task') },
-    { icon: '📁', label: 'Nova pasta', onClick: () => startNewFolderInput() },
+    { icon: 'note_add', label: 'Nova nota', onClick: () => _newFile?.('note') },
+    { icon: 'add_task', label: 'Nova task', onClick: () => _newFile?.('task') },
+    { icon: 'create_new_folder', label: 'Nova pasta', onClick: () => startNewFolderInput() },
   ]);
 }
 

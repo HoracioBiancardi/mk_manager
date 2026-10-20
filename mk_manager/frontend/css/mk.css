@@ -3166,3 +3166,226 @@ body.zen-mode .links-bar { display: none; }
 .git-badge.syncing .ms { animation: git-spin 1s linear infinite; }
 .git-badge.error { background: var(--danger-dim); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 25%, transparent); }
 @keyframes git-spin { to { transform: rotate(-360deg); } }
+
+/* ══ Repaginada (2026-10-20) ═════════════════════════════════════════
+   Ícones Material no lugar de emoji, barra do editor numa linha, menus,
+   tela inicial, prazos legíveis e diálogos no visual do tema. */
+
+/* Topbar: campo "Abrir ou criar…" no lugar das dicas fixas de atalho */
+.topbar-search {
+  display: inline-flex; align-items: center; gap: .45rem;
+  height: 32px; min-width: 240px; padding: 0 .4rem 0 .6rem;
+  background: var(--surface-alt); border: 1px solid var(--border);
+  border-radius: var(--r-sm); color: var(--text-subtle);
+  font: inherit; font-size: .8rem; cursor: pointer;
+  transition: border-color .12s, color .12s;
+}
+.topbar-search:hover { border-color: var(--border-bright); color: var(--text-muted); }
+.topbar-search .ms { font-size: 18px; vertical-align: 0; }
+.topbar-search-text { flex: 1; text-align: left; }
+.topbar-search kbd, .home kbd, .shortcut-keys kbd {
+  font-family: inherit; font-size: .66rem; font-weight: 600; color: var(--text-muted);
+  background: var(--surface); border: 1px solid var(--border-bright);
+  border-bottom-width: 2px; border-radius: 4px; padding: .05rem .35rem;
+}
+
+/* Botões de ícone com foco visível em todo o app */
+.icon-btn:focus-visible, .tool-btn:focus-visible, .view-btn:focus-visible,
+.menu-item:focus-visible, .home-action:focus-visible, .home-item:focus-visible,
+.activity-btn:focus-visible, .topbar-search:focus-visible {
+  outline: 2px solid var(--primary); outline-offset: 1px;
+}
+.icon-btn { display: inline-flex; align-items: center; justify-content: center; }
+.icon-btn .ms { font-size: 18px; vertical-align: 0; }
+.btn .ms { font-size: 17px; vertical-align: -3px; margin-right: .3rem; }
+
+/* Topo do editor: ícones do mesmo tamanho; exportar/arquivar/lixeira no menu ⋮ */
+.view-btn { display: inline-flex; align-items: center; padding: 0 .45rem; }
+.view-btn .ms { font-size: 18px; vertical-align: 0; }
+.editor-top-btn {
+  width: var(--topbar-ctrl-h); height: var(--topbar-ctrl-h);
+  border: 1px solid var(--border); background: var(--surface-alt); border-radius: var(--r-sm);
+}
+.editor-top-btn.active { background: var(--primary-dim); color: var(--primary); }
+
+/* Menus suspensos */
+.menu-wrap { position: relative; display: inline-flex; }
+.menu {
+  position: absolute; top: calc(100% + 4px); right: 0; z-index: 150;
+  min-width: 210px; padding: .3rem;
+  background: var(--surface); border: 1px solid var(--border-bright);
+  border-radius: var(--r-md); box-shadow: var(--shadow-lg);
+  animation: fadeUp .12s ease both;
+}
+.menu-item {
+  display: flex; align-items: center; gap: .55rem; width: 100%;
+  background: none; border: none; border-radius: var(--r-sm);
+  padding: .45rem .6rem; color: var(--text); font: inherit; font-size: .8rem;
+  text-align: left; cursor: pointer; white-space: nowrap;
+}
+.menu-item .ms { font-size: 18px; color: var(--text-muted); vertical-align: 0; }
+.menu-item:hover { background: var(--surface-hover); }
+.menu-item.danger, .menu-item.danger .ms { color: var(--danger); }
+.menu-item.danger:hover { background: var(--danger-dim); }
+.menu-sep { height: 1px; background: var(--border); margin: .3rem .2rem; }
+
+/* Barra de formatação: uma linha, em grupos */
+.md-toolbar { flex-wrap: nowrap; gap: .25rem; padding: .3rem .5rem; overflow: visible; }
+.tool-group { display: flex; align-items: center; gap: 1px; padding-right: .3rem; margin-right: .1rem; border-right: 1px solid var(--border); }
+.tool-group:last-of-type { border-right: none; }
+.tool-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 28px; padding: 0 .3rem; }
+.tool-btn .ms { font-size: 18px; vertical-align: 0; }
+.tool-btn-text { font-size: .72rem; font-weight: 700; }
+.tool-btn-label { gap: .3rem; font-size: .74rem; font-weight: 600; }
+/* rótulos de Tabela/Diagrama só quando o editor tem largura (sem preview ao lado) */
+.editor-pane { container-type: inline-size; }
+.tool-lbl { display: none; }
+@container (min-width: 640px) { .tool-lbl { display: inline; } .tool-btn-label { padding: 0 .5rem; } }
+.tool-more { margin-left: auto; }
+.tool-more .menu { right: 0; }
+
+/* Ícones em listas e menus que antes usavam emoji */
+.context-menu-icon.ms { font-size: 17px; width: auto; color: var(--text-muted); vertical-align: 0; }
+.context-menu-item.danger .context-menu-icon { color: inherit; }
+.quickopen-type.ms { font-size: 18px; color: var(--text-muted); margin-top: 0; }
+.quickopen-type.task.ms { color: var(--primary); }
+.wiki-icon.ms { font-size: 16px; color: var(--text-muted); }
+.tip-stat .ms, .archive-row-origin .ms, .calendar-folder-badge .ms, .folder-browser-item .ms { font-size: 15px; vertical-align: -3px; margin-right: .2rem; }
+.settings-sec-title { display: flex; align-items: center; gap: .4rem; }
+.settings-sec-title .ms { font-size: 17px; vertical-align: 0; }
+.retro-select-arrow.ms { font-size: 18px; }
+.empty-state-icon .ms { font-size: 40px; }
+.sort-arrow.ms { font-size: 15px; vertical-align: -3px; margin-left: .15rem; }
+.list-group-arrow .ms { font-size: 18px; vertical-align: -4px; }
+
+/* Prazo: um chip só em Kanban, Lista, Agenda e tela inicial */
+.due-chip {
+  display: inline-flex; align-items: center; gap: .2rem; white-space: nowrap;
+  font-size: .68rem; font-weight: 600; line-height: 1;
+  padding: .2rem .4rem; border-radius: 999px;
+  background: var(--surface-hover); color: var(--text-muted);
+}
+.due-chip .ms { font-size: 13px; vertical-align: 0; }
+.due-chip.overdue { background: var(--danger-dim); color: var(--danger); }
+.due-chip.today { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); }
+.due-chip.soon { background: var(--primary-dim); color: var(--primary); }
+.due-chip.done { opacity: .6; text-decoration: line-through; }
+
+/* Kanban */
+.kanban-col-header { font-size: .72rem; letter-spacing: .05em; color: var(--text-muted); }
+.kanban-col-title { display: inline-flex; align-items: center; gap: .45rem; color: var(--text); }
+.kanban-col-title .ms { font-size: 16px; color: var(--warn); }
+.kanban-col-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-subtle); flex-shrink: 0; }
+.kanban-col-count { font-size: .65rem; padding: .08rem .4rem; }
+.kanban-col-del { display: inline-flex; visibility: hidden; }
+.kanban-col-del .ms { font-size: 16px; }
+.kanban-col:hover .kanban-col-del { display: inline-flex; visibility: visible; }
+.kanban-col-empty {
+  font-size: .72rem; color: var(--text-subtle); text-align: center;
+  padding: 1rem .5rem; border: 1px dashed var(--border); border-radius: var(--r-sm);
+}
+.kanban-col-orphan { border-style: dashed; border-color: color-mix(in srgb, var(--warn) 45%, var(--border)); }
+.kanban-orphan-hint { font-size: .7rem; color: var(--text-muted); margin: 0 .1rem .5rem; line-height: 1.45; }
+.link-btn { background: none; border: none; padding: 0; color: var(--primary); font: inherit; cursor: pointer; text-decoration: underline; }
+.kanban-card { padding: .6rem .7rem; }
+.kanban-card.is-overdue { border-left: 3px solid var(--danger); }
+.kanban-card-title { padding-right: 1.4rem; }
+.kanban-card-meta { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .4rem; }
+.status-orphan-chip {
+  font-size: .64rem; font-weight: 600; padding: .15rem .4rem; border-radius: 999px;
+  background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn);
+}
+.kanban-card-archive-btn { width: 1.5rem; height: 1.5rem; line-height: 1; color: var(--text-muted); }
+.kanban-card:hover .kanban-card-archive-btn { display: inline-flex; align-items: center; justify-content: center; }
+.kanban-card-archive-btn .ms { font-size: 15px; vertical-align: 0; }
+.kanban-card-task-icon.ms { font-size: 14px; margin-top: 0; }
+.kanban-card-progress { display: flex; align-items: center; gap: .4rem; margin-top: .45rem; }
+.kanban-card-progress .kanban-progress { flex: 1; margin-top: 0; height: 4px; }
+.kanban-card-progress .kanban-progress-label { margin-top: 0; }
+.kanban-add-col-btn { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0; }
+.kanban-add-col-btn .ms { font-size: 17px; vertical-align: 0; }
+
+/* Agenda */
+.pane-sub { font-size: .78rem; color: var(--text-subtle); }
+.calendar-column-header { display: flex; align-items: center; gap: .4rem; }
+.calendar-column-header .ms { font-size: 18px; vertical-align: 0; }
+.calendar-column-count {
+  margin-left: auto; font-size: .7rem; font-weight: 600; color: var(--text-muted);
+  background: var(--surface); padding: .05rem .45rem; border-radius: 999px;
+}
+.calendar-card-title { font-size: .85rem; font-weight: 600; text-shadow: none; }
+.calendar-folder-badge { max-width: none; }
+.calendar-card-footer { flex-wrap: wrap; }
+.calendar-task-card .status-chip {
+  font-size: .68rem; font-weight: 600; color: var(--text-muted);
+  background: var(--surface-hover); padding: .15rem .45rem; border-radius: 999px;
+}
+.calendar-task-progress { display: inline-flex; align-items: center; gap: .15rem; }
+.calendar-task-progress .ms { font-size: 14px; vertical-align: 0; }
+.calendar-empty { background: transparent; }
+
+/* Tela inicial (nenhuma nota aberta) */
+.empty-panel { align-items: flex-start; justify-content: center; overflow-y: auto; }
+.home { width: min(880px, 100%); padding: 3rem 2rem 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
+.home-head { display: flex; align-items: center; gap: 1rem; }
+.home-icon {
+  width: 48px; height: 48px; border-radius: var(--r-md); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--primary-dim); color: var(--primary);
+}
+.home-icon .ms { font-size: 28px; vertical-align: 0; }
+.home-title { font-size: 1.35rem; font-weight: 700; color: var(--text); margin: 0; }
+.home-sub { font-size: .85rem; color: var(--text-muted); margin: .2rem 0 0; }
+.home-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; }
+.home-action {
+  display: flex; align-items: center; gap: .7rem; text-align: left;
+  padding: .85rem 1rem; border-radius: var(--r-md); cursor: pointer;
+  background: var(--surface); border: 1px solid var(--border); color: var(--text); font: inherit;
+  transition: border-color .12s, background .12s;
+}
+.home-action:hover { border-color: var(--primary); background: var(--surface-alt); }
+.home-action > .ms { font-size: 24px; color: var(--primary); vertical-align: 0; }
+.home-action b { display: block; font-size: .875rem; }
+.home-action small { display: block; font-size: .72rem; color: var(--text-subtle); margin-top: .1rem; }
+.home-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+.home-section-title {
+  font-size: .68rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--text-subtle); margin: 0 0 .5rem;
+}
+.home-list { display: flex; flex-direction: column; gap: 2px; }
+.home-item {
+  display: flex; align-items: center; gap: .55rem; width: 100%; min-width: 0;
+  padding: .45rem .55rem; border-radius: var(--r-sm); cursor: pointer;
+  background: none; border: none; color: var(--text); font: inherit; font-size: .82rem; text-align: left;
+}
+.home-item:hover { background: var(--surface-hover); }
+.home-item > .ms { font-size: 18px; color: var(--text-muted); vertical-align: 0; }
+.home-item-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-item-folder { font-size: .7rem; color: var(--text-subtle); }
+.home-item-right { font-size: .72rem; color: var(--text-subtle); white-space: nowrap; }
+.home-empty { font-size: .8rem; color: var(--text-subtle); padding: .45rem .55rem; margin: 0; }
+.home-foot { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; font-size: .75rem; color: var(--text-subtle); }
+.home-foot > .ms { font-size: 16px; vertical-align: 0; }
+
+/* Toast com ação (Desfazer) */
+.toast { display: flex; align-items: center; gap: .9rem; }
+.toast > span { flex: 1; }
+.toast-action {
+  background: none; border: 1px solid var(--border-bright); border-radius: var(--r-sm);
+  color: var(--primary); font: inherit; font-size: .78rem; font-weight: 700;
+  padding: .2rem .55rem; cursor: pointer; white-space: nowrap;
+}
+.toast-action:hover { background: var(--primary-dim); }
+
+/* Diálogos (confirmar / pedir texto) no lugar de confirm()/prompt() */
+.app-dialog-overlay { z-index: 3000; }
+.app-dialog { max-width: 440px; width: calc(100% - 2rem); }
+.app-dialog .modal-body { white-space: pre-line; }
+.app-dialog-input { width: 100%; margin-top: .9rem; }
+
+/* Atalhos (tecla ?) */
+.shortcuts-modal { max-width: 520px; }
+.shortcut-row { display: flex; align-items: baseline; gap: 1rem; padding: .4rem 0; border-bottom: 1px solid var(--border); }
+.shortcut-row:last-child { border-bottom: none; }
+.shortcut-keys { flex: 0 0 140px; white-space: nowrap; }
+.retro-select-trigger > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -1,7 +1,7 @@
 // Responsabilidade: Gestor de Assets do Projeto (Painel Global de Arquivos/Imagens)
 
 import { st } from "./state.js";
-import { esc, toast } from "./utils.js";
+import { esc, toast, confirmDialog } from "./utils.js";
 import { apiUpload } from "./api.js";
 import { insRaw } from "./editor.js";
 import { setMainView } from "./views.js";
@@ -55,7 +55,7 @@ export function renderAssetsPanel() {
             <div class="asset-preview" style="height: 80px; width: 100%; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.2); border-radius: var(--r-sm); overflow: hidden;">
               ${a.is_image 
                 ? `<img src="${esc(a.url)}" alt="${esc(a.name)}" style="max-height: 100%; max-width: 100%; object-fit: contain;" />`
-                : `<div style="font-size: 1.5rem; opacity: 0.7;">📄 <span style="font-size: 0.65rem; display: block; font-weight: bold; text-align: center;">${esc(a.ext)}</span></div>`
+                : `<div style="opacity: 0.7; text-align: center;"><span class="ms" aria-hidden="true" style="font-size: 2rem;">description</span><span style="font-size: 0.65rem; display: block; font-weight: bold;">${esc(a.ext)}</span></div>`
               }
             </div>
             <div class="asset-name" title="${esc(a.name)}" style="font-size: 0.72rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text);">
@@ -63,13 +63,13 @@ export function renderAssetsPanel() {
             </div>
             <div class="asset-actions" style="display: flex; gap: 0.25rem; margin-top: auto;">
               <button class="btn btn-ghost btn-sm" style="flex: 1; padding: 0.2rem; font-size: 0.68rem;" onclick="insertAssetToEditor('${esc(markdownSnippet)}')" title="Inserir no editor">
-                ➕ Usar
+                <span class="ms" aria-hidden="true">add</span>Usar
               </button>
-              <button class="btn btn-ghost btn-sm" style="padding: 0.2rem 0.4rem; font-size: 0.68rem;" onclick="copyAssetSnippet('${esc(markdownSnippet)}')" title="Copiar link Markdown">
-                📋
+              <button class="btn btn-ghost btn-sm" style="padding: 0.2rem 0.4rem; font-size: 0.68rem;" onclick="copyAssetSnippet('${esc(markdownSnippet)}')" title="Copiar link Markdown" aria-label="Copiar link Markdown">
+                <span class="ms" aria-hidden="true">content_copy</span>
               </button>
-              <button class="btn btn-ghost btn-sm" style="padding: 0.2rem 0.4rem; font-size: 0.68rem; color: var(--danger);" onclick="deleteProjectAsset('${esc(a.name)}')" title="Excluir asset">
-                🗑️
+              <button class="btn btn-ghost btn-sm" style="padding: 0.2rem 0.4rem; font-size: 0.68rem; color: var(--danger);" onclick="deleteProjectAsset('${esc(a.name)}')" title="Excluir asset" aria-label="Excluir asset">
+                <span class="ms" aria-hidden="true">delete</span>
               </button>
             </div>
           </div>
@@ -102,13 +102,13 @@ export async function deleteProjectAsset(assetName) {
     if (usageRes.ok) usageInfo = await usageRes.json();
 
     const affected = usageInfo.affected_files || [];
-    let promptMsg = `Deseja excluir o asset "${assetName}" do projeto?`;
+    let promptMsg = "O arquivo é apagado do disco. Não dá para desfazer.";
     if (affected.length > 0) {
-      const names = affected.map(a => a.title).join("\n• ");
-      promptMsg = `⚠️ ATENÇÃO: Este asset está sendo utilizado em ${affected.length} nota(s)/task(s):\n\n• ${names}\n\nAo excluir, o arquivo será apagado do disco e os links para ele serão removidos dessas notas. Confirmar exclusão?`;
+      const names = affected.map(a => a.title).join(", ");
+      promptMsg = `Ele é usado em ${affected.length} nota(s)/task(s): ${names}. O arquivo é apagado do disco e os links para ele saem dessas notas. Não dá para desfazer.`;
     }
 
-    if (!confirm(promptMsg)) return;
+    if (!(await confirmDialog(`Excluir "${assetName}"?`, promptMsg, { confirmLabel: "Excluir", danger: true }))) return;
 
     const res = await fetch(`/api/assets/${encodeURIComponent(assetName)}`, { method: "DELETE", headers: { "Content-Type": "application/json" } });  // o servidor exige JSON em métodos que mudam estado (CSRF)
     if (!res.ok) throw new Error("Erro ao excluir asset.");

@@ -5,7 +5,7 @@
 
 import { apiFetch } from "./api.js";
 import { ligarSenhas } from "./senha.js";
-import { toast } from "./utils.js";
+import { toast, confirmDialog } from "./utils.js";
 
 const $ = (sel) => document.querySelector(sel);
 let currentUser = null;
@@ -164,7 +164,7 @@ function mostrarTemporaria(alvo, senha) {
 async function resetUserPassword() {
   const alvo = $("#us-alvo").value;
   if (currentUser && alvo === currentUser.username) return usErro("Para a sua própria senha use “Alterar Senha”.");
-  if (!alvo || !confirm(`Gerar uma senha temporária para “${alvo}”? As sessões abertas dele serão encerradas.`)) return;
+  if (!alvo || !(await confirmDialog(`Gerar senha temporária para “${alvo}”?`, "As sessões abertas desse usuário serão encerradas.", { confirmLabel: "Gerar senha" }))) return;
   try {
     const r = await api(`/auth/users/${encodeURIComponent(alvo)}/password`, "POST", {});
     usErro("");
@@ -174,7 +174,7 @@ async function resetUserPassword() {
 }
 async function deleteUser() {
   const alvo = $("#us-alvo").value;
-  if (!alvo || !confirm("Remover este usuário?")) return;
+  if (!alvo || !(await confirmDialog(`Remover o usuário “${alvo}”?`, "Ele perde o acesso na hora. As notas dele continuam.", { confirmLabel: "Remover", danger: true }))) return;
   try {
     renderUsers((await api(`/auth/users/${encodeURIComponent(alvo)}`, "DELETE")).users);
     usErro(""); toast(`Usuário “${alvo}” removido.`, "success");

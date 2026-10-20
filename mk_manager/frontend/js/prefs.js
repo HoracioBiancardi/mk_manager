@@ -95,16 +95,16 @@ export const DEFAULT_ACTIVITY_BAR_ORDER = [
 ];
 
 export const ACTIVITY_BAR_LABELS = {
-  explorer: "📂 Explorador",
-  search: "🔍 Busca",
-  tags: "🏷️ Tags",
-  kanban: "📋 Kanban",
-  links: "🔗 Ligações",
-  list: "📑 Lista",
-  calendar: "📅 Calendário",
-  archive: "📦 Arquivo",
-  assets: "🖼️ Assets",
-  trash: "🗑️ Lixeira",
+  explorer: "Arquivos",
+  search: "Buscar",
+  tags: "Tags",
+  kanban: "Kanban",
+  links: "Ligações",
+  list: "Lista",
+  calendar: "Agenda",
+  archive: "Arquivo",
+  assets: "Assets",
+  trash: "Lixeira",
 };
 
 export function getActivityBarOrder() {

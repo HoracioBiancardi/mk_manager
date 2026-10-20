@@ -1,7 +1,7 @@
 // Responsabilidade: ciclo de vida de arquivos via API (CRUD, busca, mover, renomear)
 
 import { st } from "./state.js";
-import { esc, toast } from "./utils.js";
+import { esc, toast, toastUndo, confirmDialog } from "./utils.js";
 import { apiFetch } from "./api.js";
 import { renderSidebar, renderSearchResults } from "./sidebar.js";
 import {
@@ -22,6 +22,7 @@ import { refreshListIfActive } from "./list.js";
 import { refreshArchiveIfActive } from "./archive.js";
 import { getDefaultView } from "./prefs.js";
 import { refreshLinksBar, resolveNote } from "./links.js";
+import { renderHome } from "./home.js";
 
 // ── Storage info ───────────────────────────────────────────────────────────────
 async function updateStorageInfo() {
@@ -46,6 +47,7 @@ export async function loadFiles() {
     st.knownFolders = new Set(rawFolders.filter(f => f !== 'assets' && !f.startsWith('assets/')));
     st.searchResults = null;
     renderSidebar();
+    if (!st.activeId) renderHome();
     updateStorageInfo();
     refreshLinksMapIfActive();
     refreshListIfActive();
@@ -144,9 +146,10 @@ async function resolveSaveConflict() {
   if (_conflictOpen) return; // o autosave pode disparar de novo enquanto a pergunta está aberta
   _conflictOpen = true;
   try {
-    const sobrescrever = confirm(
-      "Esta nota foi alterada em outro lugar (outro usuário ou outra aba).\n\n" +
-      "OK = sobrescrever com a sua versão\nCancelar = descartar suas mudanças e recarregar",
+    const sobrescrever = await confirmDialog(
+      "Esta nota mudou em outro lugar",
+      "Outro usuário (ou outra aba) salvou esta nota depois que você a abriu. Fique com a sua versão ou descarte as suas mudanças e recarregue a mais recente.",
+      { confirmLabel: "Manter a minha versão", cancelLabel: "Recarregar a mais recente" },
     );
     if (sobrescrever) {
       st.activeModified = null;
@@ -223,7 +226,7 @@ export async function openFile(id) {
       return;
     }
 
-    badge.textContent = file.type === "task" ? "Task" : "Note";
+    badge.textContent = file.type === "task" ? "Task" : "Nota";
     badge.className = `type-badge ${file.type}`;
     updateStatusVis(file.type);
 
@@ -283,7 +286,7 @@ export async function openOrCreateByTitle(title) {
     await openFile(match.id);
     return;
   }
-  if (window.confirm(`A nota "${title}" ainda não existe. Criar agora?`)) {
+  if (await confirmDialog("Criar nota?", `A nota "${title}" ainda não existe.`, { confirmLabel: "Criar" })) {
     await newFile("note", "", title);
   }
 }
@@ -303,7 +306,8 @@ export async function deleteFile(id) {
     refreshLinksMapIfActive();
     refreshListIfActive();
     refreshArchiveIfActive();
-    toast("Arquivo excluído.", "success");
+    renderKanban();
+    toastUndo("Movido para a lixeira.", () => untrashFile(id));
   } catch (e) {
     toast("Erro ao excluir: " + e.message, "error");
   }
@@ -324,15 +328,18 @@ export async function archiveFile(id) {
     refreshLinksMapIfActive();
     refreshListIfActive();
     refreshArchiveIfActive();
-    toast("Arquivado. Restaure na tela Arquivo se precisar.", "success");
+    toastUndo("Arquivado.", () => unarchiveFile(id));
   } catch (e) {
     toast("Erro ao arquivar: " + e.message, "error");
   }
 }
 
+export async function deleteCurrentFile() {
+  if (st.activeId) await deleteFile(st.activeId);
+}
+
 export async function archiveCurrentFile() {
   if (!st.activeId) return;
-  if (!window.confirm("Arquivar este arquivo? Ele sai das listagens normais, mas continua salvo — dá pra restaurar na tela Arquivo.")) return;
   await archiveFile(st.activeId);
 }
 
@@ -340,15 +347,32 @@ export async function unarchiveFile(id) {
   try {
     const r = await apiFetch(`/files/${id}/unarchive`, { method: "POST" });
     const restored = await r.json();
-    st.files.unshift(restored);
-    renderSidebar();
-    updateStorageInfo();
-    refreshLinksMapIfActive();
-    refreshListIfActive();
-    toast("Restaurado.", "success");
+    _afterRestore(restored);
+    refreshArchiveIfActive();
   } catch (e) {
     toast("Erro ao restaurar: " + e.message, "error");
   }
+}
+
+// Desfazer da lixeira: a nota volta para onde estava.
+export async function untrashFile(id) {
+  try {
+    const r = await apiFetch(`/files/${encodeURIComponent(id)}/untrash`, { method: "POST" });
+    _afterRestore(await r.json());
+  } catch (e) {
+    toast("Erro ao restaurar: " + e.message, "error");
+  }
+}
+
+function _afterRestore(restored) {
+  if (!restored?.archived_from && !st.files.some((f) => f.id === restored.id)) st.files.unshift(restored);
+  renderSidebar();
+  updateStorageInfo();
+  renderKanban();
+  refreshLinksMapIfActive();
+  refreshListIfActive();
+  refreshArchiveIfActive();
+  toast("Restaurado.", "success");
 }
 
 // ── Mover arquivo para pasta (drag & drop) ────────────────────────────────────
@@ -497,4 +521,6 @@ Object.assign(window, {
   openOrCreateByTitle,
   onMetaChange,
   archiveCurrentFile,
+  deleteCurrentFile,
+  deleteFile,
 });

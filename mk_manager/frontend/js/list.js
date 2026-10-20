@@ -3,9 +3,9 @@
 // mesmo padrão de graph.js, pra não interferir nos filtros globais de Busca/Tags.
 
 import { st } from "./state.js";
-import { esc, toast, timeAgo } from "./utils.js";
+import { esc, timeAgo, dueInfo, formatDate } from "./utils.js";
 import { openFile } from "./files.js";
-import { moveTaskStatus } from "./kanban.js";
+import { moveTaskStatus, isKnownStatus } from "./kanban.js";
 
 let _typeFilter = "all"; // all | note | task
 let _statusFilter = ""; // "" = todos os status
@@ -75,7 +75,7 @@ function matchesHierarchy(value, filter) {
 }
 
 function statusLabelFor(statusKey) {
-  return st.kanbanColumns?.find((c) => c.key === (statusKey || ""))?.label || "";
+  return st.kanbanColumns?.find((c) => c.key === (statusKey || ""))?.label || statusKey || "";
 }
 
 function getFilteredSortedFiles() {
@@ -172,14 +172,14 @@ export function toggleListGroup(key) {
 // Map de "id -> grupo" — cada grupo filtra `rows` de novo pelo seu critério.
 function groupsFor(rows) {
   if (_groupBy === "status") {
-    return st.kanbanColumns
-      .map((c) => ({
-        key: `status:${c.key}`,
-        label: c.label,
-        color: c.color,
-        files: rows.filter((f) => (f.status || "") === c.key),
-      }))
-      .filter((g) => g.files.length);
+    const groups = st.kanbanColumns.map((c) => ({
+      key: `status:${c.key}`,
+      label: c.label,
+      color: c.color,
+      files: rows.filter((f) => (f.status || "") === c.key),
+    }));
+    groups.push({ key: "status:__orphan__", label: "Sem coluna", files: rows.filter((f) => !isKnownStatus(f.status)) });
+    return groups.filter((g) => g.files.length);
   }
   if (_groupBy === "folder") {
     const folders = new Set(rows.map((f) => f.folder || ""));
@@ -237,10 +237,13 @@ function renderListRow(f) {
          <span class="kanban-progress-label">${f.task_done}/${f.task_total}</span>`
       : `<span class="list-dash">—</span>`;
 
+  const unknown = isTask && f.status && !isKnownStatus(f.status)
+    ? `<option value="${esc(f.status)}" selected>${esc(f.status)} (sem coluna)</option>`
+    : "";
   const statusCell = isTask
     ? `<select class="list-status-select" onclick="event.stopPropagation()"
         onchange="onListStatusChange(event,'${f.id}',this.value)">
-        <option value="">—</option>
+        <option value="">Backlog</option>${unknown}
         ${st.kanbanColumns
           .filter((c) => c.key)
           .map(
@@ -260,29 +263,18 @@ function renderListRow(f) {
     : "";
 
   const statusChangedCell = f.status_changed_at
-    ? esc(new Date(f.status_changed_at).toLocaleDateString("pt-BR"))
+    ? esc(formatDate(f.status_changed_at))
     : `<span class="list-dash">—</span>`;
 
-  const todayStr = new Date().toISOString().split("T")[0];
   let dueCell = `<span class="list-dash">—</span>`;
-  if (f.due_date) {
-    const isDone = f.status === "done";
-    const isOverdue = f.due_date < todayStr && !isDone;
-    const isToday = f.due_date === todayStr && !isDone;
-    let badgeClass = "due-badge";
-    let icon = "📅";
-    if (isOverdue) {
-      badgeClass += " overdue";
-      icon = "⚠️";
-    } else if (isToday) {
-      icon = "⏰";
-    }
-    dueCell = `<span class="${badgeClass}">${icon} ${esc(f.due_date)}</span>`;
+  const due = dueInfo(f.due_date, f.status === "done");
+  if (due) {
+    dueCell = `<span class="due-chip ${due.tone}" title="${esc(due.full)}"><span class="ms" aria-hidden="true">event</span>${esc(due.label)}</span>`;
   }
 
   return `<tr class="list-row" data-id="${f.id}">
     <td class="list-cell-title" onclick="openFileFromList('${f.id}')">${esc(f.title || "Sem título")}</td>
-    <td><span class="type-badge ${f.type}">${f.type === "task" ? "Task" : "Note"}</span></td>
+    <td><span class="type-badge ${f.type}">${f.type === "task" ? "Task" : "Nota"}</span></td>
     <td>${statusCell}</td>
     <td>${dueCell}</td>
     <td>${progressCell}</td>
@@ -306,8 +298,8 @@ function renderListTable() {
   const thead = `<thead><tr>${COLUMNS.map((c) => {
     if (!c.sortable) return `<th>${esc(c.label)}</th>`;
     const active = _sortCol === c.key;
-    const arrow = active ? (_sortDir === "asc" ? " ▲" : " ▼") : "";
-    return `<th class="sortable${active ? " active" : ""}" onclick="setListSort('${c.key}')">${esc(c.label)}${arrow}</th>`;
+    const arrow = active ? `<span class="ms sort-arrow" aria-hidden="true">${_sortDir === "asc" ? "arrow_upward" : "arrow_downward"}</span>` : "";
+    return `<th class="sortable${active ? " active" : ""}" onclick="setListSort('${c.key}')"${active ? ` aria-sort="${_sortDir === "asc" ? "ascending" : "descending"}"` : ""}>${esc(c.label)}${arrow}</th>`;
   }).join("")}</tr></thead>`;
 
   const groups = groupsFor(rows);
@@ -319,7 +311,7 @@ function renderListTable() {
 
 function renderListGroup(group) {
   const collapsed = _collapsedGroups.has(group.key);
-  const arrow = collapsed ? "▸" : "▾";
+  const arrow = `<span class="ms" aria-hidden="true">${collapsed ? "chevron_right" : "expand_more"}</span>`;
   const colorStyle = group.color ? `color:${group.color}` : "";
   const header = `<tr class="list-group-header" onclick="toggleListGroup('${group.key}')">
     <td colspan="${COLUMNS.length}">

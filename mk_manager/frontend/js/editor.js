@@ -3,6 +3,7 @@
 import { st } from "./state.js";
 import { esc, toast } from "./utils.js";
 import { renderPreview } from "./preview.js";
+import { renderHome } from "./home.js";
 
 let _scheduleSave = null;
 export function setSaveCallback(fn) {
@@ -60,6 +61,7 @@ export function showEditorPanel() {
 export function showEmptyPanel() {
   document.getElementById("empty-panel").style.display = "flex";
   document.getElementById("editor-area").style.display = "none";
+  renderHome();
 }
 
 // ── Visibilidade do status ─────────────────────────────────────────────────────
@@ -1119,11 +1121,11 @@ export function showWikiLinkSuggestions() {
   
   dropdown.innerHTML = suggestions.map((f, idx) => {
     const isSelected = idx === _wikiSelectedIdx ? "selected" : "";
-    const icon = f.type === "task" ? "☑" : "📝";
+    const icon = f.type === "task" ? "task_alt" : "description";
     return `<div class="wiki-link-item ${isSelected}" onclick="insertWikiLink('${esc(f.title || f.id)}')">
-              <span class="wiki-icon">${icon}</span>
+              <span class="wiki-icon ms" aria-hidden="true">${icon}</span>
               <span class="wiki-title">${esc(f.title || "Sem título")}</span>
-              <span class="wiki-type">${f.type === "task" ? "Task" : "Note"}</span>
+              <span class="wiki-type">${f.type === "task" ? "Task" : "Nota"}</span>
             </div>`;
   }).join("");
 }

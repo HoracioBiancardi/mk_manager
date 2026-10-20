@@ -24,6 +24,7 @@ function ensureMenuEl() {
  * @param {number} x
  * @param {number} y
  * @param {{label?:string, icon?:string, danger?:boolean, separator?:boolean, onClick?:()=>void}[]} items
+ *   icon = nome do Material Symbols (ex.: "edit")
  */
 export function showContextMenu(x, y, items) {
   _items = items;
@@ -32,7 +33,7 @@ export function showContextMenu(x, y, items) {
     .map((it, i) =>
       it.separator
         ? '<div class="context-menu-sep"></div>'
-        : `<button class="context-menu-item${it.danger ? " danger" : ""}" data-idx="${i}">${it.icon ? `<span class="context-menu-icon">${it.icon}</span>` : ""}${esc(it.label || "")}</button>`,
+        : `<button class="context-menu-item${it.danger ? " danger" : ""}" data-idx="${i}">${it.icon ? `<span class="context-menu-icon ms" aria-hidden="true">${esc(it.icon)}</span>` : ""}${esc(it.label || "")}</button>`,
     )
     .join("");
   menu.style.left = "0px";
